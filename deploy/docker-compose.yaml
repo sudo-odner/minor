@@ -1,0 +1,17 @@
+services:
+  api_gateway:
+    build:
+      context: ../backend/api_gateway
+      dockerfile: Dockerfile
+    container_name: traefik_gateway
+    ports:
+      - "80:80"        # Публичный HTTP порт
+      - "8080:8080"    # Порт для Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
