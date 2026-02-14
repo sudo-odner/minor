@@ -3,7 +3,7 @@ package app
 import (
 	"log/slog"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	httpapp "github.com/sudo-odner/min/backend/auth-service/internal/app/http"
 	"github.com/sudo-odner/min/backend/auth-service/internal/config"
 )
