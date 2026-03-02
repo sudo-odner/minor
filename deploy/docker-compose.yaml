@@ -12,6 +12,19 @@ services:
     networks:
       - app_network
 
+  auth_service:
+    build:
+      context: ../backend/auth_service
+      dockerfile: Dockerfile
+    container_name: auth_service
+    ports:
+      #TODO: 
+      - "${SOMEPORT}"
+    env_file:
+      - .env
+    networks:
+      - app_network
+
 networks:
   app_network:
     driver: bridge
