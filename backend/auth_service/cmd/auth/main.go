@@ -2,28 +2,27 @@ package main
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/sudo-odner/min/backend/auth-service/internal/app"
-	"github.com/sudo-odner/min/backend/auth-service/internal/app/http"
 	"github.com/sudo-odner/min/backend/auth-service/internal/config"
+	"github.com/sudo-odner/min/backend/auth-service/internal/http-server/middleware/cors"
+	"go.uber.org/zap"
 )
 
 const (
-	envLocal = "local"
 	envDev = "dev"
 	envProd = "prod"
 )
 
 func main() {
 	cfg := config.MustLoad()
-
-	log := setupLogger(cfg.Env)
+	log := setupLogger(envDev)
 
 	log.Info("starting authentication service")
 
@@ -33,7 +32,6 @@ func main() {
 	router.Use(cors.NewCORS)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
-
 
 	application := app.New(log, cfg, router)
 
@@ -46,29 +44,31 @@ func main() {
 
 	signal := <-stop
 
-	log.Info("stopping application", slog.String("signal", signal.String()))
+	log.Info("stopping application", zap.String("signal", signal.String()))
 
-	application.HTTPServer.Stop(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
+	defer cancel()
+
+	application.HTTPServer.Stop(ctx)
 
 	log.Info("application stopped")
 }
 
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
+func setupLogger(env string) *zap.Logger {
+	var log *zap.Logger
+	var err error
 
 	switch env {
-	case envLocal:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
 	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		log, err = zap.NewDevelopment()
+		if err != nil {
+			panic("failed to initialize development logger")
+		}
 	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
+		log, err = zap.NewProduction()
+		if err != nil {
+			panic("failed to initialize production logger")
+		}
 	}
 
 	return log
