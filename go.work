@@ -1,11 +1,11 @@
-go 1.25.6
+go 1.26.0
 
 use (
-    ./backend/auth_service
-    ./backend/user_service
-    ./backend/chat_service
-    ./backend/notification_service
-    ./backend/presence_service
+	./backend/auth_service
+	./backend/chat_service
+	./backend/notification_service
+	./backend/presence_service
+	./backend/user_service
 
-    ./danila_go
+	./danila_go
 )
