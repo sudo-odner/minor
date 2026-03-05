@@ -33,6 +33,10 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
+	router.Route("", func(r chi.Router) {
+		
+	})
+
 	application := app.New(log, cfg, router)
 
 	go func() {
