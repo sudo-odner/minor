@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	"github.com/sudo-odner/min/backend/auth-service/internal/app"
 	"github.com/sudo-odner/min/backend/auth-service/internal/config"
 	"github.com/sudo-odner/min/backend/auth-service/internal/http-server/middleware/cors"
+	"github.com/sudo-odner/min/backend/auth-service/internal/repository/postgres"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +26,13 @@ func main() {
 	cfg := config.MustLoad()
 	log := setupLogger(envDev)
 
+	storagePath := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s", cfg.PostgreConfig.Host, cfg.PostgreConfig.Port, cfg.PostgreConfig.Username, cfg.PostgreConfig.DBName, os.Getenv("POSTGRES_PASSWORD"), cfg.PostgreConfig.SSLMode)
+
+	dbConn, err := postgres.New(context.Background(), storagePath)
+	if err != nil {
+		panic("failed to initialize DB connection") 
+	}
+
 	log.Info("starting authentication service")
 
 	router := chi.NewRouter()
@@ -33,8 +42,8 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Route("", func(r chi.Router) {
-		
+	router.Route("/auth-service", func(r chi.Router) {
+		// r.Post("/refresh")
 	})
 
 	application := app.New(log, cfg, router)
