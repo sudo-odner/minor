@@ -5,16 +5,17 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/sudo-odner/min/backend/auth-service/internal/config"
 )
 
 type Claims struct {
-	UserID int64
+	UserID uuid.UUID
 	Email string
 	jwt.RegisteredClaims
 }
 
-func GenerateTokens(cfg config.TokenConfig, userID int64, email string) (accessToken string, refreshToken string, err error) {
+func GenerateTokens(cfg config.TokenConfig, userID uuid.UUID, email string) (accessToken string, refreshToken string, err error) {
 	accessClaims := Claims{
 		UserID: userID,
 		Email: email,
