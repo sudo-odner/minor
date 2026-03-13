@@ -1,0 +1,14 @@
+env: "local"
+
+psql:
+    host: "some"
+    port: "some"
+    username: "some"
+    dbname: "some"
+    sslmode: "disable"
+
+http_server:
+    host: "some"
+    port: "some"
+    timeout: 10s
+    idle_timeout: 60s
