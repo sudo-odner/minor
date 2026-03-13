@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/go-chi/render"
-	"github.com/sudo-odner/min/backend/auth-service/internal/config"
-	"github.com/sudo-odner/min/backend/auth-service/internal/lib/api/response"
-	"github.com/sudo-odner/min/backend/auth-service/internal/lib/jwt"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/config"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/lib/api/response"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/lib/jwt"
 )
 
 

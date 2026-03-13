@@ -6,6 +6,4 @@ use (
 	./backend/notification_service
 	./backend/presence_service
 	./backend/user_service
-
-	./danila_go
 )

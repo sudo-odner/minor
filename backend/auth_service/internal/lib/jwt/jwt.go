@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/sudo-odner/min/backend/auth-service/internal/config"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/config"
 )
 
 type Claims struct {

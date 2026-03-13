@@ -1,4 +1,4 @@
-module github.com/sudo-odner/min/backend/auth-service
+module github.com/sudo-odner/minor/backend/auth_service
 
 go 1.26.0
 

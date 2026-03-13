@@ -10,12 +10,12 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/sudo-odner/min/backend/auth-service/internal/app"
-	"github.com/sudo-odner/min/backend/auth-service/internal/config"
-	authHandler "github.com/sudo-odner/min/backend/auth-service/internal/http-server/handler/auth"
-	authService "github.com/sudo-odner/min/backend/auth-service/internal/service/auth"
-	"github.com/sudo-odner/min/backend/auth-service/internal/http-server/middleware/cors"
-	"github.com/sudo-odner/min/backend/auth-service/internal/repository/postgres"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/app"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/config"
+	authHandler "github.com/sudo-odner/minor/backend/auth_service/internal/http-server/handler/auth"
+	authService "github.com/sudo-odner/minor/backend/auth_service/internal/service/auth"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/http-server/middleware/cors"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/repository/postgres"
 	"go.uber.org/zap"
 )
 

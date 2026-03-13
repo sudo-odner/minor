@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sudo-odner/min/backend/auth-service/internal/config"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/config"
 	"go.uber.org/zap"
 )
 

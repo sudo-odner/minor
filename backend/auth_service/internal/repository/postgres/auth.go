@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/min/backend/auth-service/internal/models"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/models"
 )
 
 func (s *Storage) Create(ctx context.Context, input models.User) (error) {

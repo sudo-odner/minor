@@ -1,3 +1,3 @@
-module github.com/sudo-odner/min/backend/gateway_service
+module github.com/sudo-odner/minor/backend/gateway_service
 
 go 1.26.0

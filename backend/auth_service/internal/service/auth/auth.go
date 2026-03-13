@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/min/backend/auth-service/internal/config"
-	"github.com/sudo-odner/min/backend/auth-service/internal/lib/jwt"
-	"github.com/sudo-odner/min/backend/auth-service/internal/models"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/config"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/lib/jwt"
+	"github.com/sudo-odner/minor/backend/auth_service/internal/models"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
