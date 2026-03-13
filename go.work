@@ -1,9 +1,0 @@
-go 1.26.0
-
-use (
-	./backend/auth_service
-	./backend/chat_service
-	./backend/notification_service
-	./backend/presence_service
-	./backend/user_service
-)

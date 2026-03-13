@@ -1,0 +1,9 @@
+go 1.26.0
+
+use (
+	./services/auth_service
+	./services/chat_service
+	./services/notification_service
+	./services/presence_service
+	./services/user_service
+)
