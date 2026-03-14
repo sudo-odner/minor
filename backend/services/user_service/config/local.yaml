@@ -1,10 +1,10 @@
 env: "local"
 
 psql:
-    host: "some"
-    port: "some"
-    username: "some"
-    dbname: "some"
+    host: "localhost"
+    port: "5432"
+    username: "user_service_admin"
+    dbname: "user_service"
     sslmode: "disable"
 
 http_server:

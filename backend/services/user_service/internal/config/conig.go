@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -29,6 +30,18 @@ type ServerConfig struct {
 	Port        string        `yaml:"port"         env-required:"true"`
 	Timeout     time.Duration `yaml:"timeout"      env-default:"5s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
+}
+
+func (c *PostgreConfig) DSN() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		c.Username,
+		c.Password,
+		c.Host,
+		c.Port,
+		c.DBname,
+		c.SSLmode,
+	)
 }
 
 func MustLoad() *Config {
