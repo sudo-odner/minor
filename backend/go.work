@@ -1,4 +1,4 @@
-go 1.26.0
+go 1.26.1
 
 use (
 	./services/auth_service
@@ -6,4 +6,5 @@ use (
 	./services/notification_service
 	./services/presence_service
 	./services/user_service
+	./shared
 )
