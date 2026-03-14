@@ -10,7 +10,7 @@ import (
 
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/app"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/config"
-	"github.com/sudo-odner/minor/backend/shared/logger"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/lib/logger"
 	"go.uber.org/zap"
 )
 
@@ -27,10 +27,10 @@ func main() {
 
 	logger.Info("starting user service")
 
-	application := app.New(app.Deps{
-		Config: cfg,
-		Logger: logger,
-	})
+	application, err := app.New(cfg, logger)
+	if err != nil {
+		logger.Fatal("faild initalize application", zap.Error(err))
+	}
 
 	go application.Run()
 

@@ -2,17 +2,14 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	httpServer "github.com/sudo-odner/minor/backend/services/user_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/config"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/repository/postgres"
 	"go.uber.org/zap"
 )
-
-type Deps struct {
-	Config *config.Config
-	Logger *zap.Logger
-}
 
 type App struct {
 	log        *zap.Logger
@@ -20,7 +17,15 @@ type App struct {
 	ErrChan    chan error
 }
 
-func New(d Deps) *App {
+func New(cfg *config.Config, log *zap.Logger) (*App, error) {
+	const op = "app.New"
+
+	storageDSN := cfg.PostgreConfig.DSN()
+	_, err := postgres.New(context.Background(), storageDSN)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
 	// Initialize usecase
 	// Initialize router
 	// Заглушка для теста
@@ -31,10 +36,10 @@ func New(d Deps) *App {
 	})
 	// ------------------
 	return &App{
-		log:        d.Logger,
-		httpServer: httpServer.New(d.Config, d.Logger, mux),
+		log:        log,
+		httpServer: httpServer.New(cfg, log, mux),
 		ErrChan:    make(chan error, 1),
-	}
+	}, nil
 }
 
 func (a *App) Run() {
