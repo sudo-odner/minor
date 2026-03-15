@@ -21,3 +21,9 @@ type Friend struct {
 	Status   FriendStatus
 	CreateAt time.Time
 }
+
+type FriendPreview struct {
+	UserID   uuid.UUID
+	Username string
+	Status   FriendStatus
+}
