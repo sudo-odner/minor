@@ -11,6 +11,7 @@ type FriendStatus string
 const (
 	FriendStatusPending  = "pending"
 	FriendStatusAccepted = "accepted"
+	FriendStatusDeny     = "deny"
 	FriendStatusBlock    = "block"
 )
 

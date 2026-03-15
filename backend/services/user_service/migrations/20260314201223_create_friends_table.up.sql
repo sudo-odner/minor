@@ -1,4 +1,4 @@
-CREATE TYPE friend_status AS ENUM ('pending', 'accepted', 'blocked');
+CREATE TYPE friend_status AS ENUM ('pending', 'accepted', 'deny', 'blocked');
 
 CREATE TABLE IF NOT EXISTS friends (
     user_id   UUID REFERENCES users(id),
