@@ -1,0 +1,14 @@
+env: "local"
+
+psql:
+    host: "localhost"
+    port: "5432"
+    username: "user_service_admin"
+    dbname: "user_service"
+    sslmode: "disable"
+
+http_server:
+    host: "localhost"
+    port: "8230"
+    timeout: 10s
+    idle_timeout: 60s
