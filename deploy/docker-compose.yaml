@@ -1,16 +1,60 @@
 services:
-  api_gateway:
-    build:
-      context: ../backend/api_gateway
-      dockerfile: Dockerfile
+  traefik:
+    image: "traefik:v3.0"
     container_name: traefik_gateway
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
     ports:
-      - "80:80"        # Публичный HTTP порт
-      - "8080:8080"    # Порт для Dashboard
+      - "80:80"        # пбличный HTTP
+      - "8080:8080"    # ля Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - app_network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: discord_admin       
+      POSTGRES_PASSWORD: secret_password 
+      POSTGRES_DB: discord_core 
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data 
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U discord_admin -d discord_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra-db
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: "MessangerCluster"
+      MAX_HEAP_SIZE: "1G" 
+      HEAP_NEWSIZE: "256M"
+    ports:
+      - "9042:9042"
+    volumes:
+      - ./cassandra_data:/var/lib/cassandra
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   auth_service:
     build:
