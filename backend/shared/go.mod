@@ -1,6 +1,6 @@
 module github.com/sudo-odner/minor/backend/shared
 
-go 1.26.1
+go 1.26.0
 
 require (
 	go.uber.org/multierr v1.11.0 // indirect
