@@ -16,6 +16,24 @@ services:
     networks:
       - app_network
 
+  nats:
+    image: nats:2.10-alpine
+    container_name: nats
+    restart: unless-stopped
+    command: "-js --store-dir=/data -m 8222"
+    ports:
+      - "4222:4222" #Порт для подключения клиентов
+      - "8222:8222" #Порт для мониторинга
+    volumes:
+      - ./nats_data:/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "wget", "-q0-", "http://localhost:8222/varz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   postgres:
     image: postgres:15-alpine
     container_name: postgres-db
@@ -35,7 +53,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
   cassandra:
     image: cassandra:4.1
     container_name: cassandra-db
