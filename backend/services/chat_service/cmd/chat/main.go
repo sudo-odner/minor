@@ -23,5 +23,7 @@ func main() {
 		return
 	}
 
-	application.Run()
+	if err := application.Run(); err != nil {
+		logger.Error("falied run application", zap.Error(err))
+	}
 }
