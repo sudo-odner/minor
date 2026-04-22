@@ -81,12 +81,36 @@ func (s *Storage) GetByEmail(ctx context.Context, email string) (*models.User, e
 
 func (s *Storage) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	const op = "repository.postgres.auth.GetByID"
-
+	
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return
+		}
+		
+		commitErr := tx.Commit(ctx)
+		if commitErr != nil {
+			err = fmt.Errorf("%s: %w", op, commitErr)
+		}
+	}()
+	
+	row := s.pool.QueryRow(ctx, `
+		SELECT c.email, c.password_hash
+		FROM credentials
+		WHERE c.id = $1;
+	`, id)
+	
 	var user models.User
+	
+	err = row.Scan(&user.Email, &user.PasswordHash)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
 	return &user, nil
 }
-
-// func (s *Storage) SetEmailVerified(id User) {
-
-// }
