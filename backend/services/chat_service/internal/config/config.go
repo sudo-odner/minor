@@ -22,7 +22,13 @@ type HttpServer struct {
 }
 
 type Cassandra struct {
-	Url string `env:"CASSANDRA_URL" env-required:"true"`
+	Host        string        `env:"CASSANDRA_HOST" env-required:"true"`
+	Keyspace    string        `env:"CASSANDRA_KEYSPACE" env-required:"true"`
+	Username    string        `env:"CASSANDRA_USERNAME" env-dafault:""`
+	Password    string        `env:"CASSANSRA_PASSWORD" env-default:""`
+	Consistency string        `env:"CASSANDRA_CONSISTENCY" env-default:"ONE"`
+	NumConns    int           `env:"CASSANDRA_NUM_CONNS" env-default:"4"`
+	Timeout     time.Duration `env:"CASSANDRA_TIMEOUT" env-default:"15s"`
 }
 
 type Nuts struct {
