@@ -67,6 +67,13 @@ func (as *AuthorizationService) Register(ctx context.Context, email string, user
 	)
 
 	log.Info("attempting to register new user")
-
+	
+	id, err := uuid.NewV7()
+	if err != nil {
+		log.Error("%s: %w", zap.String("path:", op), zap.Error(err))
+	}
+	
+	as.authRepository.Create(ctx)
+	
 	return
 }
