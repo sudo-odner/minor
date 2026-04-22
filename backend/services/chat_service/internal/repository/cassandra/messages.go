@@ -26,7 +26,7 @@ func (r *Repository) SaveMessage(ctx context.Context, newMsg *models.NewMessage)
 
 	return models.Message{
 		ChannelID: newMsg.ChannelID,
-		MessageID: []byte(msgID.String()),
+		MessageID: msgID,
 		AuthorID:  newMsg.AuthorID,
 		Content:   newMsg.Content,
 		ReplyTo:   newMsg.ReplyTo,

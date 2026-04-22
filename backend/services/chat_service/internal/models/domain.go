@@ -1,19 +1,23 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type NewMessage struct {
-	ChannelID []byte
-	AuthorID  []byte
+	ChannelID uuid.UUID
+	AuthorID  uuid.UUID
 	Content   string
-	ReplyTo   []byte
+	ReplyTo   uuid.UUID
 }
 
 type Message struct {
-	ChannelID []byte
-	MessageID []byte
-	AuthorID  []byte
+	ChannelID uuid.UUID
+	MessageID uuid.UUID
+	AuthorID  uuid.UUID
 	Content   string
-	ReplyTo   []byte
+	ReplyTo   uuid.UUID
 	CreatedAt time.Time
 }
