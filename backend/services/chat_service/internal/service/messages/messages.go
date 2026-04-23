@@ -2,6 +2,7 @@ package messages
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
@@ -102,10 +103,55 @@ func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uui
 }
 
 func (ms *MessageService) GetMessages(ctx context.Context, userID, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error) {
-	// Get type channel
-	// Get access read to channel
+	const op = "service.messages.GetMessages"
+	log := ms.log.With(zap.String("op", op))
 
-	// Get Messages form Cassandra
+	channelType, err := ms.cache.GetChannelOwner(ctx, channelID)
+	if err != nil {
+		if errors.Is(err, models.ErrChannelNotFound) {
+			log.Debug("chanel not found in database", zap.String("channel_id", channelID.String()))
+			return nil, err
+		}
+		log.Error("failed get channel service owner", zap.Error(err))
+		return nil, err
+	}
+
+	var permission bool
+
+	switch channelType {
+	case models.ChannelTypeGuild:
+		permission, err = ms.guilds.CanRead(ctx, userID, channelID)
+		if err != nil {
+			log.Error("failed get permission form guilds", zap.Error(err))
+			return nil, err
+		}
+	case models.ChannelTypeDM:
+		permission, err = ms.users.CanRead(ctx, userID, channelID)
+		if err != nil {
+			log.Error("failed get permission from users", zap.Error(err))
+			return nil, err
+		}
+	default:
+		log.Warn("unknown channel type", zap.String("type", string(channelType)))
+		return nil, models.ErrInvalidChannel
+	}
+
+	if !permission {
+		log.Debug("permission to read denied", zap.String("user_id", userID.String()), zap.String("channel_id", channelID.String()))
+		return nil, models.ErrPermissionDenied
+	}
+
+	msg, err := ms.repo.GetMessages(ctx, channelID, limit, beforeID)
+	if err != nil {
+		if errors.Is(err, models.ErrChannelNotFound) {
+			log.Debug("channel not found in cache", zap.String("channel_id", channelID.String()))
+			return nil, err
+		}
+		log.Error("failed get messages from database", zap.Error(err))
+		return nil, err
+	}
+
+	return msg, nil
 }
 
 // Best-политика удаления:
