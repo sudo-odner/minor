@@ -9,7 +9,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
 )
 
-func (r *Repository) SaveMessage(ctx context.Context, newMsg *models.NewMessage) (models.Message, error) {
+func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (models.Message, error) {
 	const op = "repository.cassandra.SaveMessage"
 
 	msgID, err := uuid.NewV7()
@@ -19,17 +19,17 @@ func (r *Repository) SaveMessage(ctx context.Context, newMsg *models.NewMessage)
 	now := time.Now().UTC()
 
 	query := `INSERT INTO message (channel_id, message_id, author_id, content, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?)`
-	err = r.session.Query(query, newMsg.ChannelID, msgID, newMsg.AuthorID, newMsg.Content, newMsg.ReplyTo, now).WithContext(ctx).Exec()
+	err = r.session.Query(query, channelID, msgID, userID, content, replyTo, now).WithContext(ctx).Exec()
 	if err != nil {
 		return models.Message{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return models.Message{
-		ChannelID: newMsg.ChannelID,
+		ChannelID: channelID,
 		MessageID: msgID,
-		AuthorID:  newMsg.AuthorID,
-		Content:   newMsg.Content,
-		ReplyTo:   newMsg.ReplyTo,
+		AuthorID:  userID,
+		Content:   content,
+		ReplyTo:   replyTo,
 		CreatedAt: now,
 	}, nil
 }
