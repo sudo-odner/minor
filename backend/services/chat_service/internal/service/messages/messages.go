@@ -71,7 +71,7 @@ func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uui
 	case models.ChannelTypeGuild:
 		permission, err = ms.guilds.CanWrite(ctx, userID, channelID)
 		if err != nil {
-			log.Error("falied get permission form guilds", zap.Error(err))
+			log.Error("failed get permission form guilds", zap.Error(err))
 			return nil, err
 		}
 	case models.ChannelTypeDM:
@@ -98,7 +98,7 @@ func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uui
 
 	// По факту, если не получилось отправить в брокер это ошибка. Но из-за нее нельзя сообщать пользователю ошибку сохранния
 	if err := ms.broker.PublishMessageCreated(ctx, msg); err != nil {
-		log.Error("falied publich message to brocker", zap.Error(err))
+		log.Error("failed publish message to broker", zap.Error(err))
 	}
 
 	return &msg, nil
