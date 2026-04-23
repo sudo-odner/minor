@@ -12,11 +12,13 @@ import (
 type MessageRepo interface {
 	SaveMessage(ctx context.Context, authorID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (models.Message, error)
 	GetMessages(ctx context.Context, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error)
+	GetMessage(ctx context.Context, channelID, messageID uuid.UUID) (*models.Message, error)
 	DeleteMessage(ctx context.Context, channelID uuid.UUID, messageID uuid.UUID) error
 }
 
 type MessageBroker interface {
 	PublishMessageCreated(ctx context.Context, msg models.Message) error
+	PublishMessageDeleted(ctx context.Context, channelID, messageID uuid.UUID) error
 }
 
 type MessageCache interface {
@@ -155,12 +157,46 @@ func (ms *MessageService) GetMessages(ctx context.Context, userID, channelID uui
 }
 
 // Best-политика удаления:
-// 1. Получаем сообщеие с BD
-// 2. (90%) Проверяем userID == authorID, удаляем сообщение
-// 3. Для модерации в гильдии, если userID != authorID -> GuildProvider и проверяем права на удаление
+// 1. [+] Получаем сообщеие с BD
+// 2. [+] (90%) Проверяем userID == authorID, удаляем сообщение
+// 3. [ ] Для модерации в гильдии, если userID != authorID -> GuildProvider и проверяем права на удаление
+// 4. [+] Посылаем в шину для удаления соощения у остальных
+//
 // Я думаю что над реализацией удаления нужно еще подумать, к примеру было бы неплохо добавть time limit как в Telegram.
 // Пока думаю для MVP Minor в 99% случаях этого будет достаточно
 func (ms *MessageService) DeleteMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) error {
+	const op = "service.messages.DeleteMessage"
+	log := ms.log.With(zap.String("op", op))
+
+	msg, err := ms.repo.GetMessage(ctx, channelID, messageID)
+	if err != nil {
+		if errors.Is(err, models.ErrMessageNotFound) {
+			log.Debug("not found message", zap.String("message_id", messageID.String()))
+			return err
+		}
+		log.Error("failed get message from database", zap.Error(err))
+		return err
+	}
+
+	if msg.AuthorID != userID {
+		log.Debug("permission to delete denied", zap.String("user_id", userID.String()), zap.String("message_id", messageID.String()))
+		return models.ErrPermissionDenied
+	}
+
+	if err = ms.repo.DeleteMessage(ctx, channelID, messageID); err != nil {
+		if errors.Is(err, models.ErrMessageNotFound) {
+			log.Debug("not found message", zap.String("message_id", messageID.String()))
+			return err
+		}
+		log.Error("failed delete message", zap.Error(err))
+		return err
+	}
+
+	if err = ms.broker.PublishMessageDeleted(ctx, channelID, messageID); err != nil {
+		log.Error("failed to publish delete to broker", zap.Error(err))
+	}
+
+	return nil
 }
 
 // TODO: Implement later. Bulk deletion is heavy(in Cassandra), in Discord usess asynchronus soft-deletion
