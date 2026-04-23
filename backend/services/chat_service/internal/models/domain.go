@@ -10,7 +10,7 @@ type ChannelType string
 
 const (
 	ChannelTypeGuild ChannelType = "guild"
-	CHannelTypeDM    ChannelType = "dm"
+	ChannelTypeDM    ChannelType = "dm"
 )
 
 type Message struct {
