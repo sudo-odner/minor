@@ -52,12 +52,53 @@ func New(log *zap.Logger, repo MessageRepo, broker MessageBroker, cache MessageC
 	}
 }
 
-func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (models.Message, error) {
-	// Get type channel
-	// Get access write to channel
+func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error) {
+	const op = "service.messages.SaveMessage"
+	log := ms.log.With(zap.String("op", op))
 
-	// Save in Cassandra
-	// Push in NATS
+	channelType, err := ms.cache.GetChannelOwner(ctx, channelID)
+	if err != nil {
+		log.Error("failed get channel service owner", zap.Error(err))
+		return nil, err
+	}
+
+	var permission bool
+
+	switch channelType {
+	case models.ChannelTypeGuild:
+		permission, err = ms.guilds.CanWrite(ctx, userID, channelID)
+		if err != nil {
+			log.Error("falied get permission form guilds", zap.Error(err))
+			return nil, err
+		}
+	case models.ChannelTypeDM:
+		permission, err = ms.users.CanWrite(ctx, userID, channelID)
+		if err != nil {
+			log.Error("failed get permission from users", zap.Error(err))
+			return nil, err
+		}
+	default:
+		log.Warn("unknown channel type", zap.String("type", string(channelType)))
+		return nil, models.ErrInvalidChannel
+	}
+
+	if !permission {
+		log.Debug("permission to write denied", zap.String("user_id", userID.String()), zap.String("channel_id", channelID.String()))
+		return nil, models.ErrPermissionDenied
+	}
+
+	msg, err := ms.repo.SaveMessage(ctx, userID, channelID, content, replyTo)
+	if err != nil {
+		log.Error("failed save messsage", zap.Error(err))
+		return nil, err
+	}
+
+	// По факту, если не получилось отправить в брокер это ошибка. Но из-за нее нельзя сообщать пользователю ошибку сохранния
+	if err := ms.broker.PublishMessageCreated(ctx, msg); err != nil {
+		log.Error("falied publich message to brocker", zap.Error(err))
+	}
+
+	return &msg, nil
 }
 
 func (ms *MessageService) GetMessages(ctx context.Context, userID, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error) {
