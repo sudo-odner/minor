@@ -8,7 +8,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/models"
 )
 
-func (s *Storage) Create(ctx context.Context, input models.User) error {
+func (s *Storage) Create(ctx context.Context, input models.RegisterUser) error {
 	const op = "repository.postgres.auth.Create"
 
 	tx, err := s.pool.Begin(ctx)
@@ -44,7 +44,7 @@ func (s *Storage) Create(ctx context.Context, input models.User) error {
 	return nil
 }
 
-func (s *Storage) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+func (s *Storage) GetByEmail(ctx context.Context, email string) (*models.NormalizedUser, error) {
 	const op = "repository.postgres.auth.GetByEmail"
 
 	tx, err := s.pool.Begin(ctx)
@@ -70,7 +70,7 @@ func (s *Storage) GetByEmail(ctx context.Context, email string) (*models.User, e
 		WHERE c.email = $1;
 	`, email)
 
-	var user models.User
+	var user models.NormalizedUser
 	err = row.Scan(&user.ID, &user.Email, &user.PasswordHash)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
