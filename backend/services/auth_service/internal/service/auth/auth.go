@@ -13,10 +13,9 @@ import (
 )
 
 type AuthorizationRepository interface {
-	Create(ctx context.Context, input models.User) error
+	Create(ctx context.Context, input *models.User) error
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-	// VerifyEmail(ctx context.Context, code string) error
 }
 
 type AuthorizationService struct {
@@ -72,6 +71,8 @@ func (as *AuthorizationService) Register(ctx context.Context, email string, user
 	if err != nil {
 		log.Error("%s: %w", zap.String("path:", op), zap.Error(err))
 	}
+	
+	
 	
 	as.authRepository.Create(ctx)
 	
