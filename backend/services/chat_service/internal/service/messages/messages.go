@@ -10,14 +10,14 @@ import (
 )
 
 type MessageRepo interface {
-	SaveMessage(ctx context.Context, authorID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (models.Message, error)
+	SaveMessage(ctx context.Context, authorID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error)
 	GetMessages(ctx context.Context, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error)
 	GetMessage(ctx context.Context, channelID, messageID uuid.UUID) (*models.Message, error)
 	DeleteMessage(ctx context.Context, channelID uuid.UUID, messageID uuid.UUID) error
 }
 
 type MessageBroker interface {
-	PublishMessageCreated(ctx context.Context, msg models.Message) error
+	PublishMessageCreated(ctx context.Context, msg *models.Message) error
 	PublishMessageDeleted(ctx context.Context, channelID, messageID uuid.UUID) error
 }
 
@@ -101,7 +101,7 @@ func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uui
 		log.Error("failed publish message to broker", zap.Error(err))
 	}
 
-	return &msg, nil
+	return msg, nil
 }
 
 func (ms *MessageService) GetMessages(ctx context.Context, userID, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error) {
