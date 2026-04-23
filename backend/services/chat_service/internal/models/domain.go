@@ -10,6 +10,7 @@ import (
 var (
 	ErrPermissionDenied = errors.New("permission denied")
 	ErrMessageNotFound  = errors.New("message not found")
+	ErrChannelNotFound  = errors.New("channel not found")
 	ErrInvalidChannel   = errors.New("invalid channel type")
 )
 
