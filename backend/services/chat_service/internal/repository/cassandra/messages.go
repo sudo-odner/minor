@@ -9,22 +9,22 @@ import (
 	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
 )
 
-func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (models.Message, error) {
+func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error) {
 	const op = "repository.cassandra.SaveMessage"
 
 	msgID, err := uuid.NewV7()
 	if err != nil {
-		return models.Message{}, fmt.Errorf("%s: failed generate uuid message: %w", op, err)
+		return nil, fmt.Errorf("%s: failed generate uuid message: %w", op, err)
 	}
 	now := time.Now().UTC()
 
 	query := `INSERT INTO message (channel_id, message_id, author_id, content, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?)`
 	err = r.session.Query(query, channelID, msgID, userID, content, replyTo, now).WithContext(ctx).Exec()
 	if err != nil {
-		return models.Message{}, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return models.Message{
+	return &models.Message{
 		ChannelID: channelID,
 		MessageID: msgID,
 		AuthorID:  userID,
