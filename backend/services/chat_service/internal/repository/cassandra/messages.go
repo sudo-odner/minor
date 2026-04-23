@@ -35,7 +35,7 @@ func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUI
 }
 
 func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error) {
-	const op = "repositiry.cassandra.GetMessages"
+	const op = "repository.cassandra.GetMessages"
 
 	var query string
 	var args []any
