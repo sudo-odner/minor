@@ -63,3 +63,14 @@ func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit
 
 	return messages, nil
 }
+
+func (r *Repository) DeleteMessage(ctx context.Context, channelID, messageID uuid.UUID) error {
+	const op = "repository.cassandra.DeleteMessage"
+
+	query := `DELETE FROM messages WHERE channel_id = ? AND message_id = ?`
+	if err := r.session.Query(query, channelID, messageID).WithContext(ctx).Exec(); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
