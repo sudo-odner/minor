@@ -42,7 +42,7 @@ func (mh *MessageHandler) DeleteMessage() http.HandlerFunc {
 	}
 }
 
-// In future, because Discord use lazy delete(delete before time) for delete all messages in channel
+// TODO: Implement later. Bulk deletion is heavy(in Cassandra), in Discord usess asynchronus soft-deletion
 // func (mh *MessageHandler) DeleteAllMessage() http.HandlerFunc {
 // 	return func(w http.ResponseWriter, r *http.Request) {
 // 	}
