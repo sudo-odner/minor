@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/app"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/config"
-	authHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/http-server/handler/auth"
-	"github.com/sudo-odner/minor/backend/services/auth_service/internal/http-server/middleware/cors"
+	authHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
+	"github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/middleware/cors"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/postgres"
 	authService "github.com/sudo-odner/minor/backend/services/auth_service/internal/service/auth"
 	"go.uber.org/zap"
@@ -47,14 +47,16 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Route("/auth-service", func(r chi.Router) {
+	router.Route("/api/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register(context.Background()))
 		r.Post("/login", authHandler.Login(context.Background()))
+		
+		r.Post("/refresh", authHandler.RefreshToken(context.Background()))
+		r.Post("/logout", authHandler.Logout(context.Background()))
+		
+		// r.Post("/forgot-password")
+		// r.Post("/reset-password")
 	})
-
-	// router.Route("/token", func(r chi.Router) {
-	// 	r.Post("/refresh")
-	// })
 
 	application := app.New(log, cfg, router)
 
