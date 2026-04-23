@@ -1,9 +1,16 @@
 package models
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	ErrPermissionDenied = errors.New("permission denied")
+	ErrMessageNotFound  = errors.New("message not found")
+	ErrInvalidChannel   = errors.New("invalid channel type")
 )
 
 type ChannelType string
