@@ -13,6 +13,7 @@ type Config struct {
 	HttpServer HttpServer
 	Cassandra  Cassandra
 	Nuts       Nuts
+	Resid      Redis
 }
 
 type HttpServer struct {
@@ -31,8 +32,15 @@ type Cassandra struct {
 	Timeout     time.Duration `env:"CASSANDRA_TIMEOUT" env-default:"15s"`
 }
 
+type Redis struct {
+	Url string `env:"REDIS_URL" env-required:"true"`
+}
+
 type Nuts struct {
-	Url string `env:"NATS_URL" env-required:"true"`
+	Url           string        `env:"NATS_URL" env-required:"true"`
+	Timeout       time.Duration `env:"NATS_TIMEOUT" env-default:"10s"`
+	MaxReconnects int           `env:"NATS_MAX_RECONNECTS" env-default:"5"`
+	ReconnectWait time.Duration `env:"NATS_RECONNECT_WAIT" env-default:"2s"`
 }
 
 func MustLoad() *Config {
