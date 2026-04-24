@@ -17,7 +17,7 @@ type MessageRepo interface {
 }
 
 type MessageBroker interface {
-	PublishMessageCreated(ctx context.Context, msg *models.Message) error
+	PublishMessageCreated(ctx context.Context, msg models.Message) error
 	PublishMessageDeleted(ctx context.Context, channelID, messageID uuid.UUID) error
 }
 
@@ -97,7 +97,7 @@ func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uui
 	}
 
 	// По факту, если не получилось отправить в брокер это ошибка. Но из-за нее нельзя сообщать пользователю ошибку сохранния
-	if err := ms.broker.PublishMessageCreated(ctx, msg); err != nil {
+	if err := ms.broker.PublishMessageCreated(ctx, *msg); err != nil {
 		log.Error("failed publish message to broker", zap.Error(err))
 	}
 

@@ -9,7 +9,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
 )
 
-func (b *Broker) PublishMessageCreated(ctx context.Context, msg *models.Message) error {
+func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) error {
 	const op = "broker.nuts.PublishMessageCreated"
 
 	event := MessageCreatedEvent{
