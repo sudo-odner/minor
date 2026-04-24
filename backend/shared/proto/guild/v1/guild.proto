@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package guild.v1;
+
+option go_package = "github.com/sudo-odner/minor/backend/shared/pkg/pb/guild/v1;guildv1";
+
+service GuildService {
+  rpc CanWrite(CanWriteRequest) returns (CanWriteResponse);
+  rpc CanRead(CanReadRequest) returns (CanReadResponse);
+}
+
+message CanWriteRequest {
+  string user_id = 1;
+  string channel_id = 2;
+}
+
+message CanWriteResponse {
+  bool is_allowed = 1;
+}
+
+message CanReadRequest {
+  string user_id = 1;
+  string channel_id = 2;
+}
+
+message CanReadResponse {
+  bool is_allowed = 1;
+}
