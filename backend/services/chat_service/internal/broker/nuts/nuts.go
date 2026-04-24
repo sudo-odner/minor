@@ -11,10 +11,10 @@ type Broker struct {
 	conn *nats.Conn
 }
 
-func New(cfg config.Nuts, url string) (*Broker, error) {
+func New(cfg config.Nuts) (*Broker, error) {
 	const op = "broker.nuts.New"
 
-	nc, err := nats.Connect(url,
+	nc, err := nats.Connect(cfg.Url,
 		nats.Name("caht_service"),
 		nats.Timeout(cfg.Timeout),
 		nats.MaxReconnects(cfg.MaxReconnects),

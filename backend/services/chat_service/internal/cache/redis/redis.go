@@ -5,16 +5,17 @@ import (
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/sudo-odner/minor/backend/services/chat_service/internal/config"
 )
 
 type Cache struct {
 	client *redis.Client
 }
 
-func New(redisURL string) (*Cache, error) {
+func New(cfg config.Redis) (*Cache, error) {
 	const op = "cache.redis.New"
 
-	opts, err := redis.ParseURL(redisURL)
+	opts, err := redis.ParseURL(cfg.Url)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
 	}
