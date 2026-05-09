@@ -2,20 +2,19 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/chi/v5"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/app"
+	"github.com/sudo-odner/minor/backend/services/notification_service/internal/broker"
+	"github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/config"
-	authHandler "github.com/sudo-odner/minor/backend/services/notification_service/internal/http-server/handler/auth"
-	"github.com/sudo-odner/minor/backend/services/notification_service/internal/http-server/middleware/cors"
-	"github.com/sudo-odner/minor/backend/services/notification_service/internal/repository/postgres"
-	authService "github.com/sudo-odner/minor/backend/services/notification_service/internal/service/auth"
+	"github.com/sudo-odner/minor/backend/services/notification_service/internal/delivery"
+	"github.com/sudo-odner/minor/backend/services/notification_service/internal/service/notifier"
 	"go.uber.org/zap"
 )
 
@@ -28,46 +27,44 @@ func main() {
 	cfg := config.MustLoad()
 	log := setupLogger(envDev)
 
-	storagePath := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s", cfg.PostgreConfig.Host, cfg.PostgreConfig.Port, cfg.PostgreConfig.Username, cfg.PostgreConfig.DBName, os.Getenv("POSTGRES_PASSWORD"), cfg.PostgreConfig.SSLMode)
-
-	dbConn, err := postgres.New(context.Background(), storagePath)
+	log.Info("starting authentication service")
+	
+	natsConn, err := nats.Connect("nats://nats:4222")
 	if err != nil {
-		panic("failed to initialize DB connection")
+		log.Fatal("failed to initialize nats client:", zap.Error(err))
 	}
 
-	log.Info("starting authentication service")
+	jetStreamInstance, err := jetstream.New(natsConn)
+	if err != nil {
+		log.Fatal("failed to initialize jetstream instance:", zap.Error(err))
+	}
 
-	authService := authService.New(dbConn, log)
-	authHandler := authHandler.New(authService, log)
+	presenceClient, err := presence.NewPresenceClient(cfg.ClientDomain)
+	if err != nil {
+		log.Fatal("failed to initialize presence grpc client:", zap.Error(err))
+	}
 
-	router := chi.NewRouter()
+	notifier := notifier.NewNotifier(presenceClient, &delivery.FCMMock{})
 
-	router.Use(middleware.RequestID)
-	router.Use(cors.NewCORS)
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	router.Route("/auth-service", func(r chi.Router) {
-		r.Post("/register", authHandler.Register(context.Background()))
-		r.Post("/login", authHandler.Login(context.Background()))
-	})
+	consumer := broker.NewNotificationConsumer(log, jetStreamInstance, notifier)
+	go func() {
+		if err := consumer.Start(ctx); err != nil {
+			log.Fatal("failed to start consumer:", zap.Error(err))
+		}
+	}()
 
-	// router.Route("/token", func(r chi.Router) {
-	// 	r.Post("/refresh")
-	// })
-
-	application := app.New(log, cfg, router)
+	application := app.New(log, cfg)
 
 	go func() {
 		application.HTTPServer.Run()
 	}()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+	<-ctx.Done()
 
-	signal := <-stop
-
-	log.Info("stopping application", zap.String("signal", signal.String()))
+	log.Info("stopping application", zap.String("signal", ctx.Err().Error()))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
