@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package presence.v1;
+
+option go_package = "minor/backend/shared/pkg/presence/v1;presencev1";
+
+service PresenceService {
+    rpc SetStatus(SetStatusRequest) returns (SetStatusResponse);
+    rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+    rpc GetUserStatuses(GetUserStatusesRequest) returns (GetUserStatusesResponse);
+}
+
+enum UserStatus {
+    USER_STATUS_UNSPECIFIES = 0;
+    USER_STATUS_ONLINE = 1;
+    USER_STATUS_IDLE = 2;
+    USER_STATUS_DND = 3;
+    USED_STATUS_OFFLINE = 4;
+}
+
+message Presence {
+    string user_id = 1;
+    UserStatus status = 2;
+    string custom_status = 3;
+    int64 last_active_at = 4;
+}
+
+message SetStatusRequest {
+    string user_id = 1;
+    UserStatus status = 2;
+    string custom_status = 3;
+}
+
+message SetStatusResponse {
+    bool success = 1;
+}
+
+message GetStatusRequest {
+    string user_id = 1;
+}
+
+message GetStatusResponse {
+    Presence presence = 1;
+}
+
+message GetUserStatusesRequest {
+    repeated string user_ids = 1;
+}
+
+message GetUserStatusesResponse {
+    map<string, Presence> statuses = 1;
+}
