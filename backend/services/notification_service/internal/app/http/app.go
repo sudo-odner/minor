@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/config"
 	"go.uber.org/zap"
 )
@@ -15,10 +14,15 @@ type App struct {
 	httpServer *http.Server
 }
 
-func New(log *zap.Logger, cfg *config.Config, router chi.Router) *App {
+func New(log *zap.Logger, cfg *config.Config) *App {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	httpServer := http.Server{
 		Addr:         cfg.ServerConfig.Port,
-		Handler:      router,
+		Handler:      mux,
 		ReadTimeout:  cfg.ServerConfig.Timeout,
 		WriteTimeout: cfg.ServerConfig.Timeout,
 		IdleTimeout:  cfg.ServerConfig.IdleTimeout,

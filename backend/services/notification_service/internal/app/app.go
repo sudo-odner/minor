@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/go-chi/chi/v5"
 	httpapp "github.com/sudo-odner/minor/backend/services/notification_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/config"
 	"go.uber.org/zap"
@@ -12,8 +11,8 @@ type App struct {
 	log        *zap.Logger
 }
 
-func New(log *zap.Logger, cfg *config.Config, router chi.Router) *App {
-	httpApp := httpapp.New(log, cfg, router)
+func New(log *zap.Logger, cfg *config.Config) *App {
+	httpApp := httpapp.New(log, cfg)
 
 	return &App{
 		HTTPServer: httpApp,
