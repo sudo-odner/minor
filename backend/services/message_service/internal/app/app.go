@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	httpServ "github.com/sudo-odner/minor/backend/services/chat_service/internal/app/http_serv"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/config"
+	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http_serv"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"go.uber.org/zap"
 )
 

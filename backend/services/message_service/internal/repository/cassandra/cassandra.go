@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gocql/gocql"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/config"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 )
 
 type Repository struct {

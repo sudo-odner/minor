@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
 func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (models.ChannelType, error) {

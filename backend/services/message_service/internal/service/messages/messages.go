@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 	"go.uber.org/zap"
 )
 

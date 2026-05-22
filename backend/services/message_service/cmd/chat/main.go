@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/app"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/config"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/lib/logger"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/app"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/lib/logger"
 	"go.uber.org/zap"
 )
 

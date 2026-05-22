@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
 func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) error {

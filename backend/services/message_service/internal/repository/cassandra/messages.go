@@ -8,7 +8,7 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/services/chat_service/internal/models"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
 func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error) {
