@@ -1,0 +1,145 @@
+package messages
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"github.com/go-chi/render"
+	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/server/http/handler"
+	"go.uber.org/zap"
+)
+
+type MessageService interface {
+	SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error)
+	GetMessages(ctx context.Context, userID, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error)
+	DeleteMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) error
+}
+
+type MessageHandler struct {
+	log            *zap.Logger
+	messageService MessageService
+	validate       *validator.Validate
+}
+
+func New(log *zap.Logger, messageService MessageService) *MessageHandler {
+	return &MessageHandler{
+		log:            log,
+		messageService: messageService,
+		validate:       validator.New(),
+	}
+}
+
+func parceUUIDHeader(w http.ResponseWriter, r *http.Request, headerName string) (uuid.UUID, error) {
+	idStr := r.Header.Get(headerName)
+	if idStr == "" {
+		return uuid.Nil, fmt.Errorf("header is required: %s", headerName)
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid uuid format in %s", idStr)
+	}
+
+	return id, nil
+}
+
+func (mh *MessageHandler) SendMessage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "http.handler.message.SendMessage"
+		log := mh.log.With(zap.String("op", op))
+
+		userID, err := parceUUIDHeader(w, r, "X-User-ID")
+		if err != nil {
+			log.Debug("falied parce uuid", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
+			return
+		}
+
+		var req ReqSaveMessage
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Debug("failed to decode request body", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid request body")
+			return
+		}
+
+		if err := mh.validate.Struct(req); err != nil {
+			log.Debug("validation falied", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid request body")
+			return
+		}
+
+		var replyToUUID *uuid.UUID
+		if req.ReplyTo != "" {
+			parcedReply, err := uuid.Parse(req.ReplyTo)
+			if err != nil {
+				log.Debug("invalid reply_to uuid", zap.String("reply_to", req.ReplyTo))
+				handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid reply_to uuid")
+				return
+			}
+			replyToUUID = &parcedReply
+		}
+		channelID, err := uuid.Parse(req.ChannelID)
+		if err != nil {
+			log.Debug("invalid channel_id uuid", zap.String("channel_id", req.ChannelID))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid reply_to uuid")
+			return
+		}
+
+		msg, err := mh.messageService.SaveMessage(r.Context(), userID, channelID, req.Content, replyToUUID)
+		if err != nil {
+			// TODO: Обработка ошибок
+			log.Debug("invalid save message", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid reply_to uuid")
+			return
+		}
+
+		var replyToStr string
+		if msg.ReplyTo != nil {
+			replyToStr = msg.ReplyTo.String()
+		}
+
+		render.Status(r, http.StatusCreated)
+		render.JSON(w, r, Message{
+			MessageID: msg.MessageID.String(),
+			ChannelID: msg.ChannelID.String(),
+			AuthorID:  msg.AuthorID.String(),
+			Content:   msg.Content,
+			ReplyTo:   replyToStr,
+			CreateAt:  msg.CreatedAt,
+		})
+	}
+}
+
+func (mh *MessageHandler) GetMessages() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "http.handler.message.SendMessage"
+		userID, err := parceUUIDHeader(w, r, "X-User-ID")
+		if err != nil {
+			mh.log.Debug("falied parce uuid", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
+			return
+		}
+	}
+}
+
+func (mh *MessageHandler) DeleteMessage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "http.handler.message.SendMessage"
+		userID, err := parceUUIDHeader(w, r, "X-User-ID")
+		if err != nil {
+			mh.log.Debug("falied parce uuid", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
+		}
+	}
+}
+
+// TODO: Implement later. Bulk deletion is heavy(in Cassandra), in Discord usess asynchronus soft-deletion
+// func (mh *MessageHandler) DeleteAllMessage() http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 	}
+// }
