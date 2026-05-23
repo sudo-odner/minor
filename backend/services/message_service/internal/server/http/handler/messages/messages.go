@@ -26,6 +26,8 @@ type MessageHandler struct {
 	validate       *validator.Validate
 }
 
+// TODO: Need to write logs
+
 func New(log *zap.Logger, messageService MessageService) *MessageHandler {
 	return &MessageHandler{
 		log:            log,
@@ -169,11 +171,39 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 func (mh *MessageHandler) DeleteMessage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "http.handler.message.SendMessage"
+		log := mh.log.With(zap.String("op", op))
+
 		userID, err := parceUUIDHeader(w, r, "X-User-ID")
 		if err != nil {
 			mh.log.Debug("falied parce uuid", zap.Error(err))
 			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
 		}
+
+		channelIDStr := r.URL.Query().Get("channel_id")
+		channerID, err := uuid.Parse(channelIDStr)
+		if err != nil {
+			log.Debug("invalid chennle_id uuid")
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid chennel_id uuid")
+			return
+		}
+
+		messageIDStr := r.URL.Query().Get("channel_id")
+		messageID, err := uuid.Parse(messageIDStr)
+		if err != nil {
+			log.Debug("invalid message_id uuid")
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid message_id uuid")
+			return
+		}
+
+		// TODO: change to 'ok, err :='
+		if err := mh.messageService.DeleteMessage(r.Context(), userID, channerID, messageID); err != nil {
+			// TODO: custom error
+			log.Debug("failed delete messageID")
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid")
+			return
+		}
+
+		render.Status(r, http.StatusOK)
 	}
 }
 
