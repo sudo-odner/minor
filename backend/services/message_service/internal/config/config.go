@@ -14,6 +14,7 @@ type Config struct {
 	Cassandra  Cassandra
 	Nuts       Nuts
 	Resid      Redis
+	GRPC       GRPC
 }
 
 type HttpServer struct {
@@ -41,6 +42,15 @@ type Nuts struct {
 	Timeout       time.Duration `env:"NATS_TIMEOUT" env-default:"10s"`
 	MaxReconnects int           `env:"NATS_MAX_RECONNECTS" env-default:"5"`
 	ReconnectWait time.Duration `env:"NATS_RECONNECT_WAIT" env-default:"2s"`
+}
+
+type GRPC struct {
+	Client GRPCClient
+}
+
+type GRPCClient struct {
+	TargetUser  string `env:"GRPC_CLINET_USER_TARGET" env-required:"true"`
+	TargetGuild string `env:"GRPC_CLIENT_GUILD_TARGET" env-required:"true"`
 }
 
 func MustLoad() *Config {
