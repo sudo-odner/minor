@@ -49,7 +49,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// guild client
-	guildClient, err := guild.New(cfg.grpcGuild.target)
+	guildClient, err := guild.New(cfg.GRPC.Client.TargetGuild)
 	if err != nil {
 		repo.Close()
 		_ = brocker.Stop()
@@ -58,7 +58,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// user client
-	userClient, err := user.New(cfg.grpcUser.target)
+	userClient, err := user.New(cfg.GRPC.Client.TargetUser)
 	if err != nil {
 		repo.Close()
 		_ = brocker.Stop()
