@@ -118,12 +118,51 @@ func (mh *MessageHandler) SendMessage() http.HandlerFunc {
 func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "http.handler.message.SendMessage"
+		log := mh.log.With(zap.String("op", op))
+
 		userID, err := parceUUIDHeader(w, r, "X-User-ID")
 		if err != nil {
 			mh.log.Debug("falied parce uuid", zap.Error(err))
 			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
 			return
 		}
+
+		channelIDStr := r.URL.Query().Get("channel_id")
+		channerID, err := uuid.Parse(channelIDStr)
+		if err != nil {
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid chennel_id uuid")
+			return
+		}
+
+		// TODO: Write normal limits
+		msgs, err := mh.messageService.GetMessages(r.Context(), userID, channerID, 1, nil)
+		if err != nil {
+			// TODO: Обработка ошибок сервера
+			log.Debug("invalid save message", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid reply_to uuid")
+			return
+		}
+
+		msgModels := make([]Message, len(msgs))
+		var replyToStr string
+		for _, msg := range msgs {
+			if msg.ReplyTo != nil {
+				replyToStr = msg.ReplyTo.String()
+			}
+			msgModels = append(msgModels, Message{
+				MessageID: msg.MessageID.String(),
+				ChannelID: msg.ChannelID.String(),
+				AuthorID:  msg.AuthorID.String(),
+				Content:   msg.Content,
+				ReplyTo:   replyToStr,
+				CreateAt:  msg.CreatedAt,
+			})
+		}
+
+		render.Status(r, http.StatusOK)
+		render.JSON(w, r, ResGetMessages{
+			Messages: msgModels,
+		})
 	}
 }
 
