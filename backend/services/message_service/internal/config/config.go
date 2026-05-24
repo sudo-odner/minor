@@ -49,7 +49,7 @@ type GRPC struct {
 }
 
 type GRPCClient struct {
-	TargetUser      string `env:"GRPC_CLINET_USER_TARGET" env-required:"true"`
+	TargetUser      string `env:"GRPC_CLIENT_USER_TARGET" env-required:"true"`
 	TargetCommunity string `env:"GRPC_CLIENT_COMMUNITY_TARGET" env-required:"true"`
 }
 
