@@ -9,7 +9,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
-func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (models.ChannelType, error) {
+func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (models.ChannelOwner, error) {
 	const op = "cache.redis.GetChannelOwner"
 
 	// 55 symbol * 1 bite (for one symbol) = 55 bite per write
@@ -24,5 +24,5 @@ func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (model
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	return models.ChannelType(val), nil
+	return models.ChannelOwner(val), nil
 }
