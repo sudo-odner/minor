@@ -29,12 +29,12 @@ type MessageCache interface {
 }
 
 type CommunityClient interface {
-	FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (uint64, error)
+	FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error)
 	CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error)
 }
 
 type UserClient interface {
-	FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (uint64, error)
+	FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error)
 	CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error)
 }
 
@@ -100,7 +100,7 @@ func (ms *MessageService) loadChannelOwner(
 }
 
 // loadPermissionMask Получить маску доступов
-func (ms *MessageService) loadPermissionMask(ctx context.Context, userID, channelID uuid.UUID) (uint64, error) {
+func (ms *MessageService) loadPermissionMask(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
 	const op = "service.messages.loadPermission"
 
 	// 1. Получаем владельца channelID
@@ -110,7 +110,7 @@ func (ms *MessageService) loadPermissionMask(ctx context.Context, userID, channe
 	}
 
 	// 2. Идем в нуный сервис, чтобы получить макску прав
-	var maskPermission uint64
+	var maskPermission authz.Permission
 	switch channelOwner {
 	case models.ChannelOwnerCommunity:
 		mask, err := ms.communityClient.FetchPermission(ctx, userID, channelID)

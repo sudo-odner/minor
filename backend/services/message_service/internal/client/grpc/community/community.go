@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/sudo-odner/minor/backend/shared/pkg/authz"
 	communityv1 "github.com/sudo-odner/minor/backend/shared/pkg/pb/community/v1"
 	"google.golang.org/grpc"
 )
@@ -35,7 +36,7 @@ func (c *Client) Close() error {
 }
 
 // Получить побитовyю макску прав пользователя
-func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (uint64, error) {
+func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
 	// TODO: Implement logic
 	return 0xFFFFFFFFFFFFFFFF, nil
 }
