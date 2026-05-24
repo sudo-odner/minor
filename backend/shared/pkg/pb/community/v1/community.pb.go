@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.35.0
-// source: user/v1/user.proto
+// source: community/v1/community.proto
 
-package userv1
+package communityv1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -31,7 +31,7 @@ type FetchPermissionRequest struct {
 
 func (x *FetchPermissionRequest) Reset() {
 	*x = FetchPermissionRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[0]
+	mi := &file_community_v1_community_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +43,7 @@ func (x *FetchPermissionRequest) String() string {
 func (*FetchPermissionRequest) ProtoMessage() {}
 
 func (x *FetchPermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[0]
+	mi := &file_community_v1_community_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +56,7 @@ func (x *FetchPermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchPermissionRequest.ProtoReflect.Descriptor instead.
 func (*FetchPermissionRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{0}
+	return file_community_v1_community_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *FetchPermissionRequest) GetUserId() string {
@@ -82,7 +82,7 @@ type FetchPermissionResponse struct {
 
 func (x *FetchPermissionResponse) Reset() {
 	*x = FetchPermissionResponse{}
-	mi := &file_user_v1_user_proto_msgTypes[1]
+	mi := &file_community_v1_community_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -94,7 +94,7 @@ func (x *FetchPermissionResponse) String() string {
 func (*FetchPermissionResponse) ProtoMessage() {}
 
 func (x *FetchPermissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[1]
+	mi := &file_community_v1_community_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -107,7 +107,7 @@ func (x *FetchPermissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchPermissionResponse.ProtoReflect.Descriptor instead.
 func (*FetchPermissionResponse) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{1}
+	return file_community_v1_community_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *FetchPermissionResponse) GetPermissionMask() uint64 {
@@ -117,40 +117,40 @@ func (x *FetchPermissionResponse) GetPermissionMask() uint64 {
 	return 0
 }
 
-var File_user_v1_user_proto protoreflect.FileDescriptor
+var File_community_v1_community_proto protoreflect.FileDescriptor
 
-const file_user_v1_user_proto_rawDesc = "" +
+const file_community_v1_community_proto_rawDesc = "" +
 	"\n" +
-	"\x12user/v1/user.proto\x12\auser.v1\"P\n" +
+	"\x1ccommunity/v1/community.proto\x12\fcommunity.v1\"P\n" +
 	"\x16FetchPermissionRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x02 \x01(\tR\tchannelId\"B\n" +
 	"\x17FetchPermissionResponse\x12'\n" +
-	"\x0fpermission_mask\x18\x01 \x01(\x04R\x0epermissionMask2c\n" +
-	"\vUserService\x12T\n" +
-	"\x0fFetchPermission\x12\x1f.user.v1.FetchPermissionRequest\x1a .user.v1.FetchPermissionResponseBBZ@github.com/sudo-odner/minor/backend/shared/pkg/pb/user/v1;userv1b\x06proto3"
+	"\x0fpermission_mask\x18\x01 \x01(\x04R\x0epermissionMask2r\n" +
+	"\x10CommunityService\x12^\n" +
+	"\x0fFetchPermission\x12$.community.v1.FetchPermissionRequest\x1a%.community.v1.FetchPermissionResponseBLZJgithub.com/sudo-odner/minor/backend/shared/pkg/pb/community/v1;communityv1b\x06proto3"
 
 var (
-	file_user_v1_user_proto_rawDescOnce sync.Once
-	file_user_v1_user_proto_rawDescData []byte
+	file_community_v1_community_proto_rawDescOnce sync.Once
+	file_community_v1_community_proto_rawDescData []byte
 )
 
-func file_user_v1_user_proto_rawDescGZIP() []byte {
-	file_user_v1_user_proto_rawDescOnce.Do(func() {
-		file_user_v1_user_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)))
+func file_community_v1_community_proto_rawDescGZIP() []byte {
+	file_community_v1_community_proto_rawDescOnce.Do(func() {
+		file_community_v1_community_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_community_v1_community_proto_rawDesc), len(file_community_v1_community_proto_rawDesc)))
 	})
-	return file_user_v1_user_proto_rawDescData
+	return file_community_v1_community_proto_rawDescData
 }
 
-var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_user_v1_user_proto_goTypes = []any{
-	(*FetchPermissionRequest)(nil),  // 0: user.v1.FetchPermissionRequest
-	(*FetchPermissionResponse)(nil), // 1: user.v1.FetchPermissionResponse
+var file_community_v1_community_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_community_v1_community_proto_goTypes = []any{
+	(*FetchPermissionRequest)(nil),  // 0: community.v1.FetchPermissionRequest
+	(*FetchPermissionResponse)(nil), // 1: community.v1.FetchPermissionResponse
 }
-var file_user_v1_user_proto_depIdxs = []int32{
-	0, // 0: user.v1.UserService.FetchPermission:input_type -> user.v1.FetchPermissionRequest
-	1, // 1: user.v1.UserService.FetchPermission:output_type -> user.v1.FetchPermissionResponse
+var file_community_v1_community_proto_depIdxs = []int32{
+	0, // 0: community.v1.CommunityService.FetchPermission:input_type -> community.v1.FetchPermissionRequest
+	1, // 1: community.v1.CommunityService.FetchPermission:output_type -> community.v1.FetchPermissionResponse
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -158,26 +158,26 @@ var file_user_v1_user_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_user_v1_user_proto_init() }
-func file_user_v1_user_proto_init() {
-	if File_user_v1_user_proto != nil {
+func init() { file_community_v1_community_proto_init() }
+func file_community_v1_community_proto_init() {
+	if File_community_v1_community_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_community_v1_community_proto_rawDesc), len(file_community_v1_community_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_user_v1_user_proto_goTypes,
-		DependencyIndexes: file_user_v1_user_proto_depIdxs,
-		MessageInfos:      file_user_v1_user_proto_msgTypes,
+		GoTypes:           file_community_v1_community_proto_goTypes,
+		DependencyIndexes: file_community_v1_community_proto_depIdxs,
+		MessageInfos:      file_community_v1_community_proto_msgTypes,
 	}.Build()
-	File_user_v1_user_proto = out.File
-	file_user_v1_user_proto_goTypes = nil
-	file_user_v1_user_proto_depIdxs = nil
+	File_community_v1_community_proto = out.File
+	file_community_v1_community_proto_goTypes = nil
+	file_community_v1_community_proto_depIdxs = nil
 }
