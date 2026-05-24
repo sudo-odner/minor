@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -25,4 +26,16 @@ func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (model
 	}
 
 	return models.ChannelOwner(val), nil
+}
+
+func (c *Cache) WriteChannelOwner(ctx context.Context, channelID uuid.UUID, owner models.ChannelOwner) error {
+	const op = "cache.redis.WriteChannelOwner"
+
+	key := fmt.Sprintf("channel:owner:%s", channelID.String())
+
+	if err := c.client.Set(ctx, key, string(owner), 1*time.Minute).Err(); err != nil {
+		return fmt.Errorf("falied to set channelOwner: %w", err)
+	}
+
+	return nil
 }
