@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sudo-odner/minor-shared/pkg/authz"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
-	"github.com/sudo-odner/minor/backend/shared/pkg/authz"
 	"go.uber.org/zap"
 )
 

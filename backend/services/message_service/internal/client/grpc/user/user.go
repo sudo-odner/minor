@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/shared/pkg/authz"
-	userv1 "github.com/sudo-odner/minor/backend/shared/pkg/pb/user/v1"
+	"github.com/sudo-odner/minor-shared/pkg/authz"
+	userv1 "github.com/sudo-odner/minor-shared/pkg/pb/user/v1"
 	"google.golang.org/grpc"
 )
 
