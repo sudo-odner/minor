@@ -40,3 +40,9 @@ func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUI
 	// TODO: Implement logic
 	return 0xFFFFFFFFFFFFFFFF, nil
 }
+
+// Пренадлежит ли канал сервису
+func (c *Client) CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error) {
+	// TODO: Immplemet logic
+	return true, nil
+}
