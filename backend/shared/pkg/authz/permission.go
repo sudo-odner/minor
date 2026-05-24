@@ -38,23 +38,23 @@ const (
 )
 
 // Проверка прав доступа по одному из критериев
-func Has(mask uint64, perm Permission) bool {
-	return (mask & uint64(perm)) == uint64(perm)
+func Has(mask, perm Permission) bool {
+	return (mask & perm) == perm
 }
 
 // Проверка прав доступа по всем perms(если все права есть)
-func HasAll(mask uint64, perms ...Permission) bool {
-	var required uint64
+func HasAll(mask Permission, perms ...Permission) bool {
+	var required Permission
 	for _, p := range perms {
-		required |= uint64(p)
+		required |= p
 	}
 	return (mask & required) == required
 }
 
 // Провкрка прав доступа по всем perm(если хотябы один есть)
-func HashAny(mask uint64, perms ...Permission) bool {
+func HashAny(mask Permission, perms ...Permission) bool {
 	for _, p := range perms {
-		if (mask & uint64(p)) == uint64(p) {
+		if (mask & p) == p {
 			return true
 		}
 	}
