@@ -25,33 +25,33 @@ type MessageCache interface {
 	GetChannelOwner(ctx context.Context, channelID uuid.UUID) (models.ChannelType, error)
 }
 
-type GuildProvider interface {
+type CommunityClient interface {
 	CanWrite(ctx context.Context, userID, channelID uuid.UUID) (bool, error)
 	CanRead(ctx context.Context, userID, channelID uuid.UUID) (bool, error)
 }
 
-type UserProvider interface {
+type UserClient interface {
 	CanWrite(ctx context.Context, userID, channelID uuid.UUID) (bool, error)
 	CanRead(ctx context.Context, userID, channelID uuid.UUID) (bool, error)
 }
 
 type MessageService struct {
-	log    *zap.Logger
-	repo   MessageRepo
-	broker MessageBroker
-	cache  MessageCache
-	guilds GuildProvider
-	users  UserProvider
+	log             *zap.Logger
+	repo            MessageRepo
+	broker          MessageBroker
+	cache           MessageCache
+	communityClient CommunityClient
+	userClient      UserClient
 }
 
-func New(log *zap.Logger, repo MessageRepo, broker MessageBroker, cache MessageCache, guilds GuildProvider, users UserProvider) *MessageService {
+func New(log *zap.Logger, repo MessageRepo, broker MessageBroker, cache MessageCache, communityClient CommunityClient, userClient UserClient) *MessageService {
 	return &MessageService{
-		log:    log,
-		repo:   repo,
-		broker: broker,
-		cache:  cache,
-		guilds: guilds,
-		users:  users,
+		log:             log,
+		repo:            repo,
+		broker:          broker,
+		cache:           cache,
+		communityClient: communityClient,
+		userClient:      userClient,
 	}
 }
 
@@ -69,13 +69,13 @@ func (ms *MessageService) SaveMessage(ctx context.Context, userID, channelID uui
 
 	switch channelType {
 	case models.ChannelTypeGuild:
-		permission, err = ms.guilds.CanWrite(ctx, userID, channelID)
+		permission, err = ms.communityClient.CanWrite(ctx, userID, channelID)
 		if err != nil {
 			log.Error("failed get permission form guilds", zap.Error(err))
 			return nil, err
 		}
 	case models.ChannelTypeDM:
-		permission, err = ms.users.CanWrite(ctx, userID, channelID)
+		permission, err = ms.userClient.CanWrite(ctx, userID, channelID)
 		if err != nil {
 			log.Error("failed get permission from users", zap.Error(err))
 			return nil, err
@@ -122,13 +122,13 @@ func (ms *MessageService) GetMessages(ctx context.Context, userID, channelID uui
 
 	switch channelType {
 	case models.ChannelTypeGuild:
-		permission, err = ms.guilds.CanRead(ctx, userID, channelID)
+		permission, err = ms.communityClient.CanRead(ctx, userID, channelID)
 		if err != nil {
 			log.Error("failed get permission form guilds", zap.Error(err))
 			return nil, err
 		}
 	case models.ChannelTypeDM:
-		permission, err = ms.users.CanRead(ctx, userID, channelID)
+		permission, err = ms.userClient.CanRead(ctx, userID, channelID)
 		if err != nil {
 			log.Error("failed get permission from users", zap.Error(err))
 			return nil, err

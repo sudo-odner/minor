@@ -1,4 +1,4 @@
-package guild
+package community
 
 import (
 	"context"
@@ -14,7 +14,7 @@ type Client struct {
 }
 
 func New(target string) (*Client, error) {
-	const op = "client.grpc.guild.New"
+	const op = "client.grpc.community.New"
 
 	// TODO: enable when create comunication service
 	// conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))

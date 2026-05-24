@@ -9,7 +9,7 @@ import (
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http_serv"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nuts"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/guild"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
@@ -19,13 +19,13 @@ import (
 )
 
 type App struct {
-	log         *zap.Logger
-	httpServ    *httpServ.HttpServ
-	repo        *cassandra.Repository
-	broker      *nuts.Broker
-	cache       *redis.Cache
-	guildClient *guild.Clinet
-	userClient  *user.Clinet
+	log             *zap.Logger
+	httpServ        *httpServ.HttpServ
+	repo            *cassandra.Repository
+	broker          *nuts.Broker
+	cache           *redis.Cache
+	communityClient *community.Client
+	userClient      *user.Client
 }
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
@@ -48,17 +48,17 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		return nil, fmt.Errorf("redis not init")
 	}
 
-	// guild client
-	guildClient, err := guild.New(cfg.GRPC.Client.TargetGuild)
+	// community client
+	communityClient, err := community.New(cfg.GRPC.Client.TargetCommunity)
 	if err != nil {
 		repo.Close()
 		_ = brocker.Stop()
 		_ = cache.Stop()
-		return nil, fmt.Errorf("guild client not init")
+		return nil, fmt.Errorf("community client not init")
 	}
 
 	// user client
-	userClient, err := user.New(cfg.GRPC.Client.TargetUser)
+	userClient, err := user.New(cfg.GRPC.Client.TargetCommunity)
 	if err != nil {
 		repo.Close()
 		_ = brocker.Stop()
@@ -67,13 +67,12 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// services
-	service := messagesService.New(log, repo, brocker, cache, guildClient, userClient)
+	service := messagesService.New(log, repo, brocker, cache, communityClient, userClient)
 
 	// handler
 	handler := messagesHandler.New(log, service)
 
 	// TODO: add logger middlaware
-
 	router := chi.NewRouter()
 	router.Route("/", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -89,13 +88,13 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	})
 
 	return &App{
-		log:         log,
-		httpServ:    httpServ.New(&cfg.HttpServer, router),
-		repo:        repo,
-		broker:      brocker,
-		cache:       cache,
-		guildClient: guildClient,
-		userClient:  userClient,
+		log:             log,
+		httpServ:        httpServ.New(&cfg.HttpServer, router),
+		repo:            repo,
+		broker:          brocker,
+		cache:           cache,
+		communityClient: communityClient,
+		userClient:      userClient,
 	}, nil
 }
 
