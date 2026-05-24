@@ -1,3 +1,5 @@
+USE chat;
+
 CREATE TABLE IF NOT EXISTS messages (
     channel_id uuid,
     message_id uuid,
