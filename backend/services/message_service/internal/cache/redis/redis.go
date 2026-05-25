@@ -12,16 +12,25 @@ type Cache struct {
 	client *redis.Client
 }
 
-func New(cfg config.Redis) (*Cache, error) {
+// New Создание нового подключения к Redis
+func New(ctx context.Context, cfg config.Redis) (*Cache, error) {
 	const op = "cache.redis.New"
 
+	// Setting
 	opts, err := redis.ParseURL(cfg.Url)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
 	}
+	opts.PoolSize = cfg.PoolSize         // Максимальное колличество соединений на сервис
+	opts.MinIdleConns = cfg.MinIdleConns // Минимальное значения откртых соединений (горячий старт)
+	opts.DialTimeout = cfg.DialTimeout
+	opts.ReadTimeout = cfg.ReadTimeout
+	opts.WriteTimeout = cfg.WriteTimeout
 
 	client := redis.NewClient(opts)
-	if err := client.Ping(context.Background()).Err(); err != nil {
+
+	// Check connection
+	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("%s: failed to ping redis: %w", op, err)
 	}
 
@@ -30,10 +39,12 @@ func New(cfg config.Redis) (*Cache, error) {
 	}, nil
 }
 
-func (c *Cache) Ping() error {
-	return c.client.Ping(context.Background()).Err()
+// Ping Проверка соединения с Redis
+func (c *Cache) Ping(ctx context.Context) error {
+	return c.client.Ping(ctx).Err()
 }
 
+// Stop Закрыть соединение с Redis и освободить память
 func (c *Cache) Stop() error {
 	const op = "cache.redis.Stop"
 	if c.client != nil {

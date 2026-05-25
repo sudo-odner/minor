@@ -34,7 +34,14 @@ type Cassandra struct {
 }
 
 type Redis struct {
+	// REQUIRED
 	Url string `env:"REDIS_URL" env-required:"true"`
+	// OPTIONAL
+	PoolSize     int           `env:"REDIS_POOL_SIZE" env-default:"10"`
+	MinIdleConns int           `env:"REDIS_MIN_IDLE_CONNS" env-default:"3"`
+	DialTimeout  time.Duration `env:"REDIS_DIAL_TIMEOUT" env-default:"5s"`
+	ReadTimeout  time.Duration `env:"REDIS_READ_TIMEOUT" env-default:"3s"`
+	WriteTimeout time.Duration `env:"REIDS_WRITE_TIMEOUT" env-default:"3s"`
 }
 
 type Nuts struct {

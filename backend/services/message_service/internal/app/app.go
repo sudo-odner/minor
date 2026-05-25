@@ -26,6 +26,7 @@ type App struct {
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	const op = "app.New"
+	ctx := context.Background()
 
 	// Массив для закрытия всех ресурсов (Resource Collector)
 	var resourseToClose []func() error
@@ -53,11 +54,13 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	resourseToClose = append(resourseToClose, brocker.Stop)
 
 	// Init cache Redis
-	cache, err := redis.New(cfg.Resid)
+	cache, err := redis.New(ctx, cfg.Resid)
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("%s: cache(Redis) not init: %w", op, err)
 	}
+	log.Debug("Redis successfully starting")
+
 	resourseToClose = append(resourseToClose, cache.Stop)
 
 	// Init Community client gRPC
