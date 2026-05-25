@@ -1,30 +1,30 @@
-package user
+package community
 
 import (
 	"context"
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
-	userv1 "github.com/sudo-odner/minor-shared/pkg/pb/user/v1"
+	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
 	"google.golang.org/grpc"
 )
 
 type Client struct {
-	client userv1.UserServiceClient
+	client communityv1.CommunityServiceClient
 	conn   *grpc.ClientConn
 }
 
 func New(target string) (*Client, error) {
-	const op = "client.grpc.user.New"
+	const op = "client.grpc.community.New"
 
-	// TODO: enable when create user service gRPC server
+	// TODO: enable when create comunication service
 	// conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	// if err != nil {
 	// 	return nil, fmt.Errorf("%s: %w", op, err)
 	// }
 	//
 	// return &Client{
-	// 	client: userv1.NewUserServiceClient(conn),
+	// 	client: communityv1.NewCommunityServiceClient(conn),
 	// 	conn:   conn,
 	// }, nil
 	return &Client{}, nil

@@ -9,7 +9,7 @@ import (
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http_serv"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nuts"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/guild"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
@@ -19,61 +19,70 @@ import (
 )
 
 type App struct {
-	log         *zap.Logger
-	httpServ    *httpServ.HttpServ
-	repo        *cassandra.Repository
-	broker      *nuts.Broker
-	cache       *redis.Cache
-	guildClient *guild.Clinet
-	userClient  *user.Clinet
+	log             *zap.Logger
+	httpServ        *httpServ.HttpServ
+	resourseToClose []func() error
 }
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
-	// repo cassandra
+	const op = "app.New"
+
+	// Массив для закрытия всех ресурсов (Resource Collector)
+	var resourseToClose []func() error
+	rollback := func() {
+		for i := len(resourseToClose) - 1; i >= 0; i-- {
+			if err := resourseToClose[i](); err != nil {
+				log.Warn("falied close resource", zap.Error(err))
+			}
+		}
+	}
+
+	// Init repository Cassandra
 	repo, err := cassandra.New(&cfg.Cassandra)
 	if err != nil {
-		return nil, fmt.Errorf("cassandra not init")
+		return nil, fmt.Errorf("%s: repository(Cassandra) not init: %w", op, err)
 	}
-	// brocker nuts
+	resourseToClose = append(resourseToClose, repo.Close)
+
+	// Init brocker Nuts
 	brocker, err := nuts.New(cfg.Nuts)
 	if err != nil {
-		repo.Close()
-		return nil, fmt.Errorf("cassandra not init")
+		rollback()
+		return nil, fmt.Errorf("%s: brocker(Nuts) not init: %w", op, err)
 	}
-	// chache redis
+	resourseToClose = append(resourseToClose, brocker.Stop)
+
+	// Init cache Redis
 	cache, err := redis.New(cfg.Resid)
 	if err != nil {
-		repo.Close()
-		_ = brocker.Stop()
-		return nil, fmt.Errorf("redis not init")
+		rollback()
+		return nil, fmt.Errorf("%s: cache(Redis) not init: %w", op, err)
 	}
+	resourseToClose = append(resourseToClose, cache.Stop)
 
-	// guild client
-	guildClient, err := guild.New(cfg.GRPC.Client.TargetGuild)
+	// Init Community client gRPC
+	communityClient, err := community.New(cfg.GRPC.Client.TargetCommunity)
 	if err != nil {
-		repo.Close()
-		_ = brocker.Stop()
-		_ = cache.Stop()
-		return nil, fmt.Errorf("guild client not init")
+		rollback()
+		return nil, fmt.Errorf("%s: Community client(gRPC) not init: %w", op, err)
 	}
+	resourseToClose = append(resourseToClose, communityClient.Close)
 
-	// user client
-	userClient, err := user.New(cfg.GRPC.Client.TargetUser)
+	// Init User client gRPC
+	userClient, err := user.New(cfg.GRPC.Client.TargetCommunity)
 	if err != nil {
-		repo.Close()
-		_ = brocker.Stop()
-		_ = cache.Stop()
-		return nil, fmt.Errorf("user client not init")
+		rollback()
+		return nil, fmt.Errorf("%s: User client(gRPC) not init: %w", op, err)
 	}
+	resourseToClose = append(resourseToClose, userClient.Close)
 
-	// services
-	service := messagesService.New(log, repo, brocker, cache, guildClient, userClient)
+	// Init services
+	service := messagesService.New(log, repo, brocker, cache, communityClient, userClient)
 
-	// handler
+	// Init handler
 	handler := messagesHandler.New(log, service)
 
 	// TODO: add logger middlaware
-
 	router := chi.NewRouter()
 	router.Route("/", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -89,13 +98,9 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	})
 
 	return &App{
-		log:         log,
-		httpServ:    httpServ.New(&cfg.HttpServer, router),
-		repo:        repo,
-		broker:      brocker,
-		cache:       cache,
-		guildClient: guildClient,
-		userClient:  userClient,
+		log:             log,
+		resourseToClose: resourseToClose,
+		httpServ:        httpServ.New(&cfg.HttpServer, router),
 	}, nil
 }
 
@@ -117,12 +122,20 @@ func (a *App) Run() error {
 func (a *App) Stop(ctx context.Context) error {
 	const op = "app.Stop"
 	log := a.log.With(zap.String("op", op))
-
 	log.Info("stopping application")
+
+	// Останавливаем HTTP-server
 	if err := a.httpServ.Stop(ctx); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	log.Info("http server stopped")
+
+	// Останавливаем все сервисы
+	for i := len(a.resourseToClose) - 1; i >= 0; i-- {
+		if err := a.resourseToClose[i](); err != nil {
+			log.Warn("falied close resource", zap.Error(err))
+		}
+	}
 
 	log.Info("application stopped successfully")
 	return nil

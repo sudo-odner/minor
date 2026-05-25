@@ -14,11 +14,11 @@ var (
 	ErrInvalidChannel   = errors.New("invalid channel type")
 )
 
-type ChannelType string
+type ChannelOwner string
 
 const (
-	ChannelTypeGuild ChannelType = "guild"
-	ChannelTypeDM    ChannelType = "dm"
+	ChannelOwnerCommunity ChannelOwner = "community"
+	ChannelOwnerUser      ChannelOwner = "user"
 )
 
 type Message struct {
