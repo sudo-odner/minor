@@ -51,6 +51,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		rollback()
 		return nil, fmt.Errorf("%s: brocker(Nuts) not init: %w", op, err)
 	}
+	log.Debug("Brocker(Nuts) successfully starting")
 	resourseToClose = append(resourseToClose, brocker.Stop)
 
 	// Init cache Redis
@@ -60,7 +61,6 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: cache(Redis) not init: %w", op, err)
 	}
 	log.Debug("Redis successfully starting")
-
 	resourseToClose = append(resourseToClose, cache.Stop)
 
 	// Init Community client gRPC

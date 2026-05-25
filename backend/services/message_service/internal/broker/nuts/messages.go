@@ -15,7 +15,7 @@ func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) 
 	event := MessageCreatedEvent{
 		MessageID: msg.MessageID.String(),
 		ChannelID: msg.ChannelID.String(),
-		AuthorID:  msg.AuthorID.String(),
+		UserID:    msg.UserID.String(),
 		Content:   msg.Content,
 		CreatedAt: msg.CreatedAt,
 	}

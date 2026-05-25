@@ -24,7 +24,7 @@ const (
 type Message struct {
 	ChannelID uuid.UUID
 	MessageID uuid.UUID
-	AuthorID  uuid.UUID
+	UserID    uuid.UUID
 	Content   string
 	ReplyTo   *uuid.UUID
 	CreatedAt time.Time

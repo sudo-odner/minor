@@ -16,7 +16,7 @@ func New(cfg config.Nuts) (*Broker, error) {
 
 	nc, err := nats.Connect(
 		cfg.Url,
-		nats.Name("caht_service"),
+		nats.Name("message_service"),
 		nats.Timeout(cfg.Timeout),
 		nats.MaxReconnects(cfg.MaxReconnects),
 		nats.ReconnectWait(cfg.ReconnectWait),
