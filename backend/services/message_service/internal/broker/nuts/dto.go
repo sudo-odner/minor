@@ -10,7 +10,7 @@ const (
 type MessageCreatedEvent struct {
 	MessageID string    `json:"message_id"`
 	ChannelID string    `json:"channel_id"`
-	AuthorID  string    `json:"author_id"`
+	UserID    string    `json:"author_id"`
 	Content   string    `json:"content"`
 	ReplyTo   *string   `json:"reply_to,omitempty"`
 	CreatedAt time.Time `json:"created_at"`

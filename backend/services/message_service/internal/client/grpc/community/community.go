@@ -32,7 +32,10 @@ func New(target string) (*Client, error) {
 
 // Закрыть gRPC соединение
 func (c *Client) Close() error {
-	return c.conn.Close()
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+	return nil
 }
 
 // Получить побитовyю макску прав пользователя

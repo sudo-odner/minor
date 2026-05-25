@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http_serv"
+	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nuts"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/community"
@@ -26,6 +26,7 @@ type App struct {
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	const op = "app.New"
+	ctx := context.Background()
 
 	// Массив для закрытия всех ресурсов (Resource Collector)
 	var resourseToClose []func() error
@@ -42,6 +43,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: repository(Cassandra) not init: %w", op, err)
 	}
+	log.Debug("Repository(Cassandra) successfully starting")
 	resourseToClose = append(resourseToClose, repo.Close)
 
 	// Init brocker Nuts
@@ -50,14 +52,16 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		rollback()
 		return nil, fmt.Errorf("%s: brocker(Nuts) not init: %w", op, err)
 	}
+	log.Debug("Brocker(Nuts) successfully starting")
 	resourseToClose = append(resourseToClose, brocker.Stop)
 
 	// Init cache Redis
-	cache, err := redis.New(cfg.Resid)
+	cache, err := redis.New(ctx, cfg.Resid)
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("%s: cache(Redis) not init: %w", op, err)
 	}
+	log.Debug("Redis successfully starting")
 	resourseToClose = append(resourseToClose, cache.Stop)
 
 	// Init Community client gRPC
@@ -69,7 +73,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	resourseToClose = append(resourseToClose, communityClient.Close)
 
 	// Init User client gRPC
-	userClient, err := user.New(cfg.GRPC.Client.TargetCommunity)
+	userClient, err := user.New(cfg.GRPC.Client.TargetUser)
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("%s: User client(gRPC) not init: %w", op, err)
@@ -93,6 +97,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		r.Route("/channels/{channel_id}/messages", func(r chi.Router) {
 			r.Post("/", handler.SendMessage())
 			r.Get("/", handler.GetMessages())
+			r.Get("/{message_id}", handler.GetMessage())
 			r.Delete("/{message_id}", handler.DeleteMessage())
 		})
 	})

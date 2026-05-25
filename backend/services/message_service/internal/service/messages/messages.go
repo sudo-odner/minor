@@ -119,7 +119,7 @@ func (ms *MessageService) loadPermissionMask(ctx context.Context, userID, channe
 		}
 		maskPermission = mask
 	case models.ChannelOwnerUser:
-		mask, err := ms.communityClient.FetchPermission(ctx, userID, channelID)
+		mask, err := ms.userClient.FetchPermission(ctx, userID, channelID)
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
@@ -218,6 +218,49 @@ func (ms *MessageService) GetMessages(
 	return msg, nil
 }
 
+// GetMessage Получить сообщегте по messageID
+func (ms *MessageService) GetMessage(
+	ctx context.Context,
+	userID, channelID, messageID uuid.UUID,
+) (*models.Message, error) {
+	const op = "service.messages.GetMessage"
+	log := ms.log.With(zap.String("op", op))
+
+	// Получаем маску доступов
+	maskPermission, err := ms.loadPermissionMask(ctx, userID, channelID)
+	if err != nil {
+		if errors.Is(err, models.ErrChannelNotFound) {
+			log.Debug("owner channelID not found", zap.String("channelID", channelID.String()))
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		log.Error("falied to resolve channel owner", zap.Error(err))
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Проверка прав доступа на запись
+	if !authz.Has(maskPermission, authz.PermReadChat) {
+		log.Debug(
+			"permission denied to read message in channel",
+			zap.String("userID", userID.String()),
+			zap.String("channelID", channelID.String()),
+		)
+		return nil, models.ErrPermissionDenied
+	}
+
+	// Получение сообщения
+	msg, err := ms.repo.GetMessage(ctx, channelID, messageID)
+	if err != nil {
+		if errors.Is(err, models.ErrChannelNotFound) {
+			log.Debug("channel not found in cache", zap.String("channel_id", channelID.String()))
+			return msg, err
+		}
+		log.Error("failed get messages from database", zap.Error(err))
+		return msg, err
+	}
+
+	return msg, nil
+}
+
 // Best-политика удаления:
 // 1. [+] Получаем сообщеие с BD
 // 2. [+] (90%) Проверяем userID == authorID, удаляем сообщение
@@ -240,7 +283,7 @@ func (ms *MessageService) DeleteMessage(ctx context.Context, userID, channelID, 
 		return err
 	}
 
-	if msg.AuthorID != userID {
+	if msg.UserID != userID {
 		log.Debug("permission to delete denied", zap.String("user_id", userID.String()), zap.String("message_id", messageID.String()))
 		return models.ErrPermissionDenied
 	}

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS messages (
     channel_id uuid,
     message_id uuid,
-    author_id uuid,
+    user_id uuid,
     content text,
     reply_to uuid,
     created_at timestamp,
