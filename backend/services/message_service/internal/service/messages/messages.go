@@ -240,7 +240,7 @@ func (ms *MessageService) DeleteMessage(ctx context.Context, userID, channelID, 
 		return err
 	}
 
-	if msg.AuthorID != userID {
+	if msg.UserID != userID {
 		log.Debug("permission to delete denied", zap.String("user_id", userID.String()), zap.String("message_id", messageID.String()))
 		return models.ErrPermissionDenied
 	}

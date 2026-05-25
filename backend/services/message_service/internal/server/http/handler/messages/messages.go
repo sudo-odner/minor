@@ -111,7 +111,7 @@ func (mh *MessageHandler) SendMessage() http.HandlerFunc {
 		render.JSON(w, r, Message{
 			MessageID: msg.MessageID.String(),
 			ChannelID: msg.ChannelID.String(),
-			AuthorID:  msg.AuthorID.String(),
+			AuthorID:  msg.UserID.String(),
 			Content:   msg.Content,
 			ReplyTo:   replyToStr,
 			CreateAt:  msg.CreatedAt,
@@ -157,7 +157,7 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 			msgModels = append(msgModels, Message{
 				MessageID: msg.MessageID.String(),
 				ChannelID: msg.ChannelID.String(),
-				AuthorID:  msg.AuthorID.String(),
+				AuthorID:  msg.UserID.String(),
 				Content:   msg.Content,
 				ReplyTo:   replyToStr,
 				CreateAt:  msg.CreatedAt,
