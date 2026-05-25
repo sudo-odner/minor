@@ -14,7 +14,7 @@ type Message struct {
 type ReqSaveMessage struct {
 	ChannelID string `json:"channel_id" validate:"required,uuid"`
 	Content   string `json:"content" validate:"required"`
-	ReplyTo   string `json:"reply_to" validate:"omitempty, uuid"`
+	ReplyTo   string `json:"reply_to" validate:"omitempty,uuid"`
 }
 
 type ResGetMessages struct {

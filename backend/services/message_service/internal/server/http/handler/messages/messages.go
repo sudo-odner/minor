@@ -51,6 +51,7 @@ func parceUUIDHeader(w http.ResponseWriter, r *http.Request, headerName string) 
 	return id, nil
 }
 
+// TODO: revrite channel id from url path
 func (mh *MessageHandler) SendMessage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "http.handler.message.SendMessage"
