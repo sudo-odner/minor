@@ -16,45 +16,40 @@ func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUI
 	const op = "repository.cassandra.SaveMessage"
 
 	now := time.Now().UTC()
-	msgID, err := uuid.NewV7()
+	messageID, err := uuid.NewV7()
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed generate uuid message: %w", op, err)
 	}
 
-	cqlMessageUUID, err := gocql.ParseUUID(msgID.String())
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid uuid conversion(messageID): %w", op, err)
-	}
-	cqlUserUUID, err := gocql.ParseUUID(userID.String())
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid uuid conversion(userID): %w", op, err)
-	}
-	cqlChannelUUID, err := gocql.ParseUUID(channelID.String())
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid uuid conversion(channelID): %w", op, err)
-	}
+	cqlMessageID := gocql.UUID(messageID)
+	cqlUserID := gocql.UUID(userID)
+	cqlChannelID := gocql.UUID(channelID)
 
-	var cqlReplyTo any
+	var cqlReplyTo any = nil
 	if replyTo != nil {
-		parsedReply, err := gocql.ParseUUID(replyTo.String())
-		if err != nil {
-			return nil, fmt.Errorf("%s: invalid uuid conversion(replyTo): %w", op, err)
-		}
-		cqlReplyTo = parsedReply
-	} else {
-		cqlReplyTo = nil // Для Cassandra это означает записать NULL
+		cqlReplyTo = gocql.UUID(*replyTo)
 	}
 
-	query := `INSERT INTO messages (channel_id, message_id, author_id, content, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?);`
-	err = r.session.Query(query, cqlChannelUUID, cqlMessageUUID, cqlUserUUID, content, cqlReplyTo, now).WithContext(ctx).Exec()
+	query := `
+	INSERT INTO messages (channel_id, message_id, user_id, content, reply_to, created_at) 
+	VALUES (?, ?, ?, ?, ?, ?);`
+	err = r.session.Query(
+		query,
+		cqlChannelID,
+		cqlMessageID,
+		cqlUserID,
+		content,
+		cqlReplyTo,
+		now,
+	).WithContext(ctx).Exec()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return &models.Message{
 		ChannelID: channelID,
-		MessageID: msgID,
-		AuthorID:  userID,
+		MessageID: messageID,
+		UserID:    userID,
 		Content:   content,
 		ReplyTo:   replyTo,
 		CreatedAt: now,
@@ -67,63 +62,56 @@ func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit
 	var query string
 	var args []any
 
-	cqlChannelUUID, err := gocql.ParseUUID(channelID.String())
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid uuid conversion(channelID): %w", op, err)
-	}
-
-	var cqlBeforeID any
+	cqlChannelID := gocql.UUID(channelID)
+	var cqlBeforeID any = nil
 	if beforeID != nil {
-		parsedReply, err := gocql.ParseUUID(beforeID.String())
-		if err != nil {
-			return nil, fmt.Errorf("%s: invalid uuid conversion(replyTo): %w", op, err)
-		}
-		cqlBeforeID = parsedReply
-	} else {
-		cqlBeforeID = nil // Для Cassandra это означает записать NULL
+		cqlBeforeID = gocql.UUID(*beforeID)
 	}
 
 	if beforeID == nil {
-		query = `SELECT channel_id, message_id, author_id, content, reply_to, created_at FROM messages WHERE channel_id = ? LIMIT ?;`
-		args = []any{cqlChannelUUID, limit}
+		query = `
+		SELECT channel_id, message_id, user_id, content, reply_to, created_at 
+		FROM messages 
+		WHERE channel_id = ? 
+		LIMIT ?;`
+		args = []any{cqlChannelID, limit}
 	} else {
-		query = `SELECT channel_id, message_id, author_id, content, reply_to, created_at FROM messages WHERE channel_id = ? AND message_id < ? LIMIT ?;`
-		args = []any{cqlChannelUUID, cqlBeforeID, limit}
+		query = `
+		SELECT channel_id, message_id, user_id, content, reply_to, created_at 
+		FROM messages 
+		WHERE channel_id = ? AND message_id < ? 
+		LIMIT ?;`
+		args = []any{cqlChannelID, cqlBeforeID, limit}
 	}
 
 	iter := r.session.Query(query, args...).WithContext(ctx).Iter()
-
 	messages := make([]models.Message, 0, limit)
 	var (
-		cqlChan   gocql.UUID
-		cqlMsg    gocql.UUID
-		cqlAuth   gocql.UUID
-		content   string
-		cqlReply  *gocql.UUID
-		createdAt time.Time
+		cqlIterChannelID gocql.UUID
+		cqlIterMessageID gocql.UUID
+		cqlIterUserID    gocql.UUID
+		cqlIterContent   string
+		cqlIterReplyTo   *gocql.UUID
+		cqlIterCreatedAt time.Time
 	)
+	for iter.Scan(&cqlChannelID, &cqlIterMessageID, &cqlIterUserID, &cqlIterContent, &cqlIterReplyTo, &cqlIterCreatedAt) {
+		iterChannelID := uuid.UUID(cqlIterChannelID)
+		iterMessageID := uuid.UUID(cqlIterMessageID)
+		iterUserID := uuid.UUID(cqlIterUserID)
 
-	for iter.Scan(&cqlChan, &cqlMsg, &cqlAuth, &content, &cqlReply, &createdAt) {
-		goChanID, _ := uuid.Parse(cqlChan.String())
-		goMsgID, _ := uuid.Parse(cqlMsg.String())
-		goAuthID, _ := uuid.Parse(cqlAuth.String())
-
-		var goReplyTo *uuid.UUID
-		if cqlReply != nil {
-			parsedReply, err := uuid.Parse(cqlReply.String())
-			if err == nil {
-				goReplyTo = &parsedReply
-			}
+		var iterReplyTo *uuid.UUID
+		if cqlIterReplyTo != nil {
+			parsedUUID := uuid.UUID(*cqlIterReplyTo)
+			iterReplyTo = &parsedUUID
 		}
 
-		// Собираем бизнес-модель
 		messages = append(messages, models.Message{
-			ChannelID: goChanID,
-			MessageID: goMsgID,
-			AuthorID:  goAuthID,
-			Content:   content,
-			ReplyTo:   goReplyTo,
-			CreatedAt: createdAt,
+			ChannelID: iterChannelID,
+			MessageID: iterMessageID,
+			UserID:    iterUserID,
+			Content:   cqlIterContent,
+			ReplyTo:   iterReplyTo,
+			CreatedAt: cqlIterCreatedAt,
 		})
 	}
 
@@ -137,30 +125,34 @@ func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit
 func (r *Repository) GetMessage(ctx context.Context, channelID, messageID uuid.UUID) (*models.Message, error) {
 	const op = "repository.cassandra.GetMessage"
 
-	cqlMessageUUID, err := gocql.ParseUUID(messageID.String())
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid uuid conversion(messageID): %w", op, err)
-	}
-	cqlChannelUUID, err := gocql.ParseUUID(channelID.String())
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid uuid conversion(channelID): %w", op, err)
-	}
-
+	cqlMessageID := gocql.UUID(messageID)
+	cqlChannelID := gocql.UUID(channelID)
 	var (
-		cqlChan   gocql.UUID
-		cqlMsg    gocql.UUID
-		cqlAuth   gocql.UUID
-		content   string
-		cqlReply  *gocql.UUID
-		createdAt time.Time
+		cqlIterChannelID gocql.UUID
+		cqlIterMessageID gocql.UUID
+		cqlIterUserID    gocql.UUID
+		cqlIterContent   string
+		cqlIterReplyTo   *gocql.UUID
+		cqlIterCreatedAt time.Time
 	)
 
-	query := `SELECT channel_id, message_id, author_id, content, reply_to, created_at 
-			  FROM messages WHERE channel_id = ? AND message_id = ?;`
+	query := `
+	SELECT channel_id, message_id, user_id, content, reply_to, created_at 
+	FROM messages 
+	WHERE channel_id = ? AND message_id = ?;`
 
-	err = r.session.Query(query, cqlChannelUUID, cqlMessageUUID).
-		WithContext(ctx).
-		Scan(&cqlChan, &cqlMsg, &cqlAuth, &content, &cqlReply, &createdAt)
+	err := r.session.Query(
+		query,
+		cqlChannelID,
+		cqlMessageID,
+	).WithContext(ctx).Scan(
+		&cqlIterChannelID,
+		&cqlIterMessageID,
+		&cqlIterUserID,
+		&cqlIterContent,
+		&cqlIterReplyTo,
+		&cqlIterCreatedAt,
+	)
 	if err != nil {
 		if errors.Is(err, gocql.ErrNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, models.ErrMessageNotFound)
@@ -168,41 +160,34 @@ func (r *Repository) GetMessage(ctx context.Context, channelID, messageID uuid.U
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	goChanID, _ := uuid.Parse(cqlChan.String())
-	goMsgID, _ := uuid.Parse(cqlMsg.String())
-	goAuthID, _ := uuid.Parse(cqlAuth.String())
+	iterChannelID := uuid.UUID(cqlIterChannelID)
+	iterMessageID := uuid.UUID(cqlIterMessageID)
+	iterUserID := uuid.UUID(cqlIterUserID)
 
-	var goReplyTo *uuid.UUID
-	if cqlReply != nil {
-		parsedReply, err := uuid.Parse(cqlReply.String())
-		if err == nil {
-			goReplyTo = &parsedReply
-		}
+	var iterReplyTo *uuid.UUID
+	if cqlIterReplyTo != nil {
+		parsedUUID := uuid.UUID(*cqlIterReplyTo)
+		iterReplyTo = &parsedUUID
 	}
+
 	return &models.Message{
-		ChannelID: goChanID,
-		MessageID: goMsgID,
-		AuthorID:  goAuthID,
-		Content:   content,
-		ReplyTo:   goReplyTo,
-		CreatedAt: createdAt,
+		ChannelID: iterChannelID,
+		MessageID: iterMessageID,
+		UserID:    iterUserID,
+		Content:   cqlIterContent,
+		ReplyTo:   iterReplyTo,
+		CreatedAt: cqlIterCreatedAt,
 	}, nil
 }
 
 func (r *Repository) DeleteMessage(ctx context.Context, channelID, messageID uuid.UUID) error {
 	const op = "repository.cassandra.DeleteMessage"
 
-	cqlMessageUUID, err := gocql.ParseUUID(messageID.String())
-	if err != nil {
-		return fmt.Errorf("%s: invalid uuid conversion(messageID): %w", op, err)
-	}
-	cqlChannelUUID, err := gocql.ParseUUID(channelID.String())
-	if err != nil {
-		return fmt.Errorf("%s: invalid uuid conversion(channelID): %w", op, err)
-	}
+	cqlChannelID := gocql.UUID(channelID)
+	cqlMessageID := gocql.UUID(messageID)
 
 	query := `DELETE FROM messages WHERE channel_id = ? AND message_id = ?;`
-	if err := r.session.Query(query, cqlChannelUUID, cqlMessageUUID).WithContext(ctx).Exec(); err != nil {
+	if err := r.session.Query(query, cqlChannelID, cqlMessageID).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

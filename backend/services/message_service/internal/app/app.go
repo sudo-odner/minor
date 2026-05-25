@@ -43,6 +43,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: repository(Cassandra) not init: %w", op, err)
 	}
+	log.Debug("Repository(Cassandra) successfully starting")
 	resourseToClose = append(resourseToClose, repo.Close)
 
 	// Init brocker Nuts
