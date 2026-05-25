@@ -20,7 +20,7 @@ import (
 type MessageService interface {
 	SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error)
 	GetMessages(ctx context.Context, userID, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error)
-	GetMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) (models.Message, error)
+	GetMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) (*models.Message, error)
 	DeleteMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) error
 }
 
