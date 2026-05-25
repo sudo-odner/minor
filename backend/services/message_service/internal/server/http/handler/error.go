@@ -9,7 +9,9 @@ import (
 type ErrorCode string
 
 const (
-	CodeInvalidRequset = "INVALID_REQUEST"
+	CodeInvalidRequset      = "INVALID_REQUEST"
+	CodeNotFound            = "NOT_FOUND"
+	CodeInternalServerError = "INTERNAL_SERVER_ERROR"
 )
 
 type ErrorDitail struct {

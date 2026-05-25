@@ -3,6 +3,7 @@ package messages
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -18,6 +19,7 @@ import (
 type MessageService interface {
 	SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error)
 	GetMessages(ctx context.Context, userID, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error)
+	GetMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) (models.Message, error)
 	DeleteMessage(ctx context.Context, userID, channelID, messageID uuid.UUID) error
 }
 
@@ -167,6 +169,63 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 		render.Status(r, http.StatusOK)
 		render.JSON(w, r, ResGetMessages{
 			Messages: msgModels,
+		})
+	}
+}
+
+func (mh *MessageHandler) GetMessage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "http.handler.message.GetMessage"
+		log := mh.log.With(zap.String("op", op))
+
+		userID, err := parceUUIDHeader(w, r, "X-User-ID")
+		if err != nil {
+			log.Debug("falied parce channel_id in uuid format", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
+			return
+		}
+
+		channelIDStr := chi.URLParam(r, "channel_id")
+		channelID, err := uuid.Parse(channelIDStr)
+		if err != nil {
+			log.Debug("falied parce channel_id in uuid format", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
+			return
+		}
+
+		messageIDStr := chi.URLParam(r, "message_id")
+		messageID, err := uuid.Parse(messageIDStr)
+		if err != nil {
+			log.Debug("falied parce message_id in uuid format", zap.Error(err))
+			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
+			return
+		}
+
+		msg, err := mh.messageService.GetMessage(r.Context(), userID, channelID, messageID)
+		if err != nil {
+			// TODO: Обратотка ошибок сервера
+			if errors.Is(err, models.ErrMessageNotFound) {
+				log.Debug(fmt.Sprintf("message with %s not found", messageID.String()))
+				handler.RenderError(w, r, http.StatusNotFound, handler.CodeNotFound, err.Error())
+				return
+			}
+			log.Warn("error find message", zap.Error(err))
+			handler.RenderError(w, r, http.StatusInternalServerError, handler.CodeInternalServerError, err.Error())
+			return
+		}
+		var strReplyTo string
+		if msg.ReplyTo != nil {
+			strReplyTo = msg.ReplyTo.String()
+		}
+
+		render.Status(r, http.StatusOK)
+		render.JSON(w, r, Message{
+			MessageID: msg.MessageID.String(),
+			ChannelID: msg.ChannelID.String(),
+			AuthorID:  msg.UserID.String(),
+			Content:   msg.Content,
+			ReplyTo:   strReplyTo,
+			CreateAt:  msg.CreatedAt,
 		})
 	}
 }
