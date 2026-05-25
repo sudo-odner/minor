@@ -119,7 +119,7 @@ func (ms *MessageService) loadPermissionMask(ctx context.Context, userID, channe
 		}
 		maskPermission = mask
 	case models.ChannelOwnerUser:
-		mask, err := ms.communityClient.FetchPermission(ctx, userID, channelID)
+		mask, err := ms.userClient.FetchPermission(ctx, userID, channelID)
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}

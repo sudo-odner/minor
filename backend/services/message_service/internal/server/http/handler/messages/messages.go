@@ -195,9 +195,9 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 			return
 		}
 
-		msgModels := make([]Message, len(msgs))
-		var replyToStr string
+		msgModels := make([]Message, 0, len(msgs))
 		for _, msg := range msgs {
+			var replyToStr string
 			if msg.ReplyTo != nil {
 				replyToStr = msg.ReplyTo.String()
 			}

@@ -94,7 +94,7 @@ func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit
 		cqlIterReplyTo   *gocql.UUID
 		cqlIterCreatedAt time.Time
 	)
-	for iter.Scan(&cqlChannelID, &cqlIterMessageID, &cqlIterUserID, &cqlIterContent, &cqlIterReplyTo, &cqlIterCreatedAt) {
+	for iter.Scan(&cqlIterChannelID, &cqlIterMessageID, &cqlIterUserID, &cqlIterContent, &cqlIterReplyTo, &cqlIterCreatedAt) {
 		iterChannelID := uuid.UUID(cqlIterChannelID)
 		iterMessageID := uuid.UUID(cqlIterMessageID)
 		iterUserID := uuid.UUID(cqlIterUserID)

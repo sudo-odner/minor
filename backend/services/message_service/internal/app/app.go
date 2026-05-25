@@ -73,7 +73,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	resourseToClose = append(resourseToClose, communityClient.Close)
 
 	// Init User client gRPC
-	userClient, err := user.New(cfg.GRPC.Client.TargetCommunity)
+	userClient, err := user.New(cfg.GRPC.Client.TargetUser)
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("%s: User client(gRPC) not init: %w", op, err)
@@ -97,6 +97,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		r.Route("/channels/{channel_id}/messages", func(r chi.Router) {
 			r.Post("/", handler.SendMessage())
 			r.Get("/", handler.GetMessages())
+			r.Get("/{message_id}", handler.GetMessage())
 			r.Delete("/{message_id}", handler.DeleteMessage())
 		})
 	})
