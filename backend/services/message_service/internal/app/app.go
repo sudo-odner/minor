@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http_serv"
+	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nuts"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/community"
