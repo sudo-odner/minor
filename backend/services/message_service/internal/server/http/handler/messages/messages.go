@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -129,9 +130,10 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 			return
 		}
 
-		channelIDStr := r.URL.Query().Get("channel_id")
+		channelIDStr := chi.URLParam(r, "channel_id")
 		channerID, err := uuid.Parse(channelIDStr)
 		if err != nil {
+			fmt.Println(channelIDStr)
 			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "invalid chennel_id uuid")
 			return
 		}
@@ -179,7 +181,7 @@ func (mh *MessageHandler) DeleteMessage() http.HandlerFunc {
 			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, err.Error())
 		}
 
-		channelIDStr := r.URL.Query().Get("channel_id")
+		channelIDStr := chi.URLParam(r, "channel_id")
 		channerID, err := uuid.Parse(channelIDStr)
 		if err != nil {
 			log.Debug("invalid chennle_id uuid")
@@ -187,7 +189,7 @@ func (mh *MessageHandler) DeleteMessage() http.HandlerFunc {
 			return
 		}
 
-		messageIDStr := r.URL.Query().Get("channel_id")
+		messageIDStr := chi.URLParam(r, "message_id")
 		messageID, err := uuid.Parse(messageIDStr)
 		if err != nil {
 			log.Debug("invalid message_id uuid")
