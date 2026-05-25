@@ -90,10 +90,10 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 			w.Write([]byte("ok"))
 		})
 
-		r.Route("/channels/{channelID}/messages", func(r chi.Router) {
+		r.Route("/channels/{channel_id}/messages", func(r chi.Router) {
 			r.Post("/", handler.SendMessage())
 			r.Get("/", handler.GetMessages())
-			r.Delete("/{messageID}", handler.DeleteMessage())
+			r.Delete("/{message_id}", handler.DeleteMessage())
 		})
 	})
 

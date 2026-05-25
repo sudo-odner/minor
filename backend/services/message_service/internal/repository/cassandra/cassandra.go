@@ -16,12 +16,12 @@ func New(cfg *config.Cassandra) (*Repository, error) {
 
 	cluster := gocql.NewCluster(cfg.Host)
 	cluster.Keyspace = cfg.Keyspace
-	if cfg.Username != "" {
-		cluster.Authenticator = gocql.PasswordAuthenticator{
-			Username: cfg.Username,
-			Password: cfg.Password,
-		}
-	}
+	// if cfg.Username != "" {
+	// 	cluster.Authenticator = gocql.PasswordAuthenticator{
+	// 		Username: cfg.Username,
+	// 		Password: cfg.Password,
+	// 	}
+	// }
 
 	cluster.Timeout = cfg.Timeout
 	consistency, err := gocql.ParseConsistencyWrapper(cfg.Consistency)
