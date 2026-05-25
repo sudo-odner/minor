@@ -24,8 +24,10 @@ type HttpServer struct {
 }
 
 type Cassandra struct {
-	Host        string        `env:"CASSANDRA_HOST" env-required:"true"`
-	Keyspace    string        `env:"CASSANDRA_KEYSPACE" env-required:"true"`
+	// REQUIRED
+	Host     string `env:"CASSANDRA_HOST" env-required:"true"`
+	Keyspace string `env:"CASSANDRA_KEYSPACE" env-required:"true"`
+	// OPTIONAL
 	Username    string        `env:"CASSANDRA_USERNAME" env-dafault:""`
 	Password    string        `env:"CASSANSRA_PASSWORD" env-default:""`
 	Consistency string        `env:"CASSANDRA_CONSISTENCY" env-default:"ONE"`
