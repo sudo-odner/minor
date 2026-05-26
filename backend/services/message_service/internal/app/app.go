@@ -56,7 +56,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	resourseToClose = append(resourseToClose, brocker.Stop)
 
 	// Init cache Redis
-	cache, err := redis.New(ctx, cfg.Resid)
+	cache, err := redis.New(ctx, cfg.Redis)
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("%s: cache(Redis) not init: %w", op, err)
