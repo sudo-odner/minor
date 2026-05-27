@@ -1,13 +1,22 @@
 package main
 
 import (
+	"log"
+
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/config"
+	"github.com/sudo-odner/minor/backend/services/community_service/internal/lib/logger"
 )
 
 func main() {
-	// TODO: Init cofnig
 	config := config.MustLoad()
-	// TODO: Init logger
+	logger, err := logger.New(logger.Config{
+		Env:         logger.Env(config.Env),
+		ServiceName: "community-service",
+	})
+	if err != nil {
+		log.Fatalf("FATAL: falied init logger: %s", err)
+	}
+
 	// TODO: Init application
 
 	// TODO: Run and Stop app with graceful shutdown
