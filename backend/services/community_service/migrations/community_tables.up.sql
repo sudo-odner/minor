@@ -52,11 +52,12 @@ CREATE TABLE channels (
 -- Для того чтобы быстро сортировать по server_id
 CREATE INDEX idx_channels_server ON channels(server_id);
 
+CREATE TYPE override_target_type AS ENUM ('role', 'user');
 -- Переопределение, когда нам нужно чтобы определенные каналы было доступны только некоторым или наоборот.
 CREATE TABLE channel_permission_overrides (
     channel_id     UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
 
-    target_type    VARCHAR(10) NOT NULL, -- 'role' or 'user'
+    target_type    override_target_type NOT NULL, -- 'role' or 'user'
     target_id UUID NOT NULL, --'role_id' or 'user_id'
 
     allow          BIGINT NOT NULL DEFAULT 0,
