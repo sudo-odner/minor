@@ -92,7 +92,20 @@ func (repo *Repository) GetServerMembers(ctx context.Context, serverID uuid.UUID
 	return members, nil
 }
 
-func (repo *Repository) RemoveMember() {}
+func (repo *Repository) RemoveMember(ctx context.Context, serverID, userID uuid.UUID) error {
+	const op = "repository.postgres.RemoveMember"
+
+	query := `DELETE FROM members WHERE server_id = $1 AND user_id = $2`
+	res, err := repo.pool.Exec(ctx, query, serverID, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrNotFound
+	}
+
+	return nil
+}
 
 func (repo *Repository) UpdateMemberNickname() {}
 
