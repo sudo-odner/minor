@@ -103,4 +103,16 @@ func (repo *Repository) UpdateServer(
 	return &server, nil
 }
 
-func (repo *Repository) DeleteServer() {}
+func (repo *Repository) DeleteServer(ctx context.Context, serverID uuid.UUID) error {
+	const op = "repository.postgres.DeleteServer"
+
+	query := `DELETE FROM servers WHERE id = $1`
+	res, err := repo.pool.Exec(ctx, query, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
