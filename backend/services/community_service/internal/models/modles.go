@@ -14,7 +14,7 @@ type Server struct {
 	CreatedAt time.Time
 }
 
-type Members struct {
+type Member struct {
 	ServerID uuid.UUID
 	UserID   uuid.UUID
 	Nickname *string
