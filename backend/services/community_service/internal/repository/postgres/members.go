@@ -61,7 +61,36 @@ func (repo *Repository) GetServerMember(ctx context.Context, serverID, userID uu
 	return &member, nil
 }
 
-func (repo *Repository) GetServerMembers() {}
+func (repo *Repository) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]models.Member, error) {
+	const op = "repository.postgres.GetServerMembers"
+
+	query := `
+		SELECT server_id, user_id, nickname, joined_at
+		FROM memers
+		WHERE server_id = $1;
+	`
+	rows, err := repo.pool.Query(ctx, query, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	var members []models.Member
+	for rows.Next() {
+		var member models.Member
+		if err := rows.Scan(
+			&member.ServerID,
+			&member.UserID,
+			&member.Nickname,
+			&member.JoinedAt,
+		); err != nil {
+			return nil, fmt.Errorf("%s: scan error: %w", op, err)
+		}
+		members = append(members, member)
+	}
+
+	return members, nil
+}
 
 func (repo *Repository) RemoveMember() {}
 
