@@ -2,6 +2,7 @@ go 1.26.1
 
 use (
 	./services/auth_service
+	./services/community_service
 	./services/message_service
 	./services/notification_service
 	./services/presence_service
