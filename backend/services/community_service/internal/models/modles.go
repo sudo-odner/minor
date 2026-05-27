@@ -14,6 +14,13 @@ type Server struct {
 	CreatedAt time.Time
 }
 
+type Members struct {
+	ServerID uuid.UUID
+	UserID   uuid.UUID
+	Nickname *string
+	JoinedAt time.Time
+}
+
 type ChannelType int
 
 const (
