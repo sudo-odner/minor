@@ -47,7 +47,7 @@ func (repo *Repository) GetServer(ctx context.Context, serverID uuid.UUID) (*mod
 	const op = "repository.postgres.GetServer"
 
 	query := `
-		SELECT id, name, owner_id, avator_url, created_at
+		SELECT id, name, owner_id, avatar_url, created_at
 		FROM servers
 		WHERE id = $1;
 	`
@@ -106,7 +106,7 @@ func (repo *Repository) UpdateServer(
 func (repo *Repository) DeleteServer(ctx context.Context, serverID uuid.UUID) error {
 	const op = "repository.postgres.DeleteServer"
 
-	query := `DELETE FROM servers WHERE id = $1`
+	query := `DELETE FROM servers WHERE id = $1;`
 	res, err := repo.pool.Exec(ctx, query, serverID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
