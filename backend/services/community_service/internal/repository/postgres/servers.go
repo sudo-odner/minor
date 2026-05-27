@@ -10,7 +10,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 )
 
-func (repo *Repository) CreateServer(
+func (repo *Repository) CreateServerWithDefaultSetup(
 	ctx context.Context,
 	name string,
 	ownerID uuid.UUID,
@@ -18,29 +18,57 @@ func (repo *Repository) CreateServer(
 ) (*models.Server, error) {
 	const op = "repository.postgres.CreateServer"
 
-	newID, err := uuid.NewV7()
+	tx, err := repo.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: begin tx failed: %w", op, err)
+	}
+	defer tx.Rollback(ctx)
+
+	serverID, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("%s: uuid generation failed: %w", op, err)
 	}
 
-	query := `
+	queryServer := `
 		INSERT INTO servers (id, name, owner_id, avatar_url, created_at)
-		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-		RETURNING id, name, owner_id, avatar_url, created_at;
+		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);
 	`
-	var server models.Server
-
-	if err := repo.pool.QueryRow(ctx, query, newID, name, ownerID, avatarURL).Scan(
-		&server.ID,
-		&server.Name,
-		&server.OwnerID,
-		&server.AvatarURL,
-		&server.CreatedAt,
-	); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+	_, err = tx.Exec(ctx, queryServer, serverID, name, ownerID, avatarURL)
+	if err != nil {
+		return nil, fmt.Errorf("%s: insert server failed: %w", op, err)
 	}
 
-	return &server, nil
+	// TODO: Поменять маску прав на чтение/запись
+	queryRole := `
+		INSERT INTO roles (id, server_id, name, permissions, position, created_at)
+		VALUES ($1, $1, $2, $3, $4, CURRENT_TIMESTAMP);
+	`
+	_, err = tx.Exec(ctx, queryRole, serverID, "@everyone", 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("%s: insert default role failed: %w", op, err)
+	}
+
+	queryMember := `
+		INSERT INTO members (server_id, user_id, nickname, joined_at)
+		VALUES ($1, $2, NULL, CURRENT_TIMESTAMP);
+	`
+	_, err = tx.Exec(ctx, queryMember, serverID, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: add owner as member failed: %w", op, err)
+	}
+
+	// TODO: Привязывать пользователей к @everyone? (Скорее нет, чем да)
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("%s: commit failed: %w", op, err)
+	}
+
+	return &models.Server{
+		ID:        serverID,
+		Name:      name,
+		OwnerID:   ownerID,
+		AvatarURL: avatarURL,
+	}, nil
 }
 
 func (repo *Repository) GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error) {
