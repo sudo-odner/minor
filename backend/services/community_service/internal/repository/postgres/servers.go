@@ -26,7 +26,7 @@ func (repo *Repository) CreateServer(
 	query := `
 		INSERT INTO servers (id, name, owner_id, avatar_url, created_at)
 		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-		RETURNING id, name, owner_id, avatar_url, created_at
+		RETURNING id, name, owner_id, avatar_url, created_at;
 	`
 	var server models.Server
 
@@ -49,7 +49,7 @@ func (repo *Repository) GetServer(ctx context.Context, serverID uuid.UUID) (*mod
 	query := `
 		SELECT id, name, owner_id, avator_url, created_at
 		FROM servers
-		WHERE id = $1
+		WHERE id = $1;
 	`
 	var server models.Server
 
@@ -69,6 +69,38 @@ func (repo *Repository) GetServer(ctx context.Context, serverID uuid.UUID) (*mod
 	return &server, nil
 }
 
-func (repo *Repository) UpdateServer() {}
+func (repo *Repository) UpdateServer(
+	ctx context.Context,
+	serverID uuid.UUID,
+	name *string,
+	avatarURL *string,
+) (*models.Server, error) {
+	const op = "repository.postgres.UpdateServer"
+
+	query := `
+		UPDATE servers 
+		SET
+			name = COALESCE($1, name),
+			avatar_url = COALESCE($2, avatar_url)
+		WHERE id = $3
+		RETURNING id, name, owner_id, avatar_url, created_at;
+	`
+	var server models.Server
+
+	if err := repo.pool.QueryRow(ctx, query, name, avatarURL, serverID).Scan(
+		&server.ID,
+		&server.Name,
+		&server.OwnerID,
+		&server.AvatarURL,
+		&server.CreatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &server, nil
+}
 
 func (repo *Repository) DeleteServer() {}
