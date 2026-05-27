@@ -1,5 +1,19 @@
 package models
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Server struct {
+	ID        uuid.UUID
+	Name      string
+	OwnerID   uuid.UUID
+	AvatarURL string
+	CreatedAt time.Time
+}
+
 type ChannelType int
 
 const (
