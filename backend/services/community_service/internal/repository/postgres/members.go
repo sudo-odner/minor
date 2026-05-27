@@ -107,8 +107,60 @@ func (repo *Repository) RemoveMember(ctx context.Context, serverID, userID uuid.
 	return nil
 }
 
-func (repo *Repository) UpdateMemberNickname() {}
+// Хз нужно ли возврощять объект пользователя ради 1 поля, нужно будет перепишу
+func (repo *Repository) UpdateMemberNickname(
+	ctx context.Context,
+	serverID, userID uuid.UUID,
+	nickname string,
+) error {
+	const op = "repository.postgres.UpdateMemberNickname"
 
-func (repo *Repository) AddRoleToMember() {}
+	query := `
+		UPDATE members 
+		SET nickname = $1 
+		WHERE server_id = $2 AND user_id = $3;
+	`
+	res, err := repo.pool.Exec(ctx, query, nickname, serverID, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrNotFound
+	}
 
-func (repo *Repository) RemoveRoleFromMember() {}
+	return nil
+}
+
+// defalut role? @everyone?
+func (repo *Repository) AddRoleToMember(ctx context.Context, serverID, userID, roleID uuid.UUID) error {
+	const op = "repository.postgres.AddRoleToMember"
+
+	query := `
+		INSERT INTO members_roles (server_id, user_id, role_id)
+		VALUES ($1, $2, $3);
+	`
+	_, err := repo.pool.Exec(ctx, query, serverID, userID, roleID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (repo *Repository) RemoveRoleFromMember(ctx context.Context, serverID, userID, roleID uuid.UUID) error {
+	const op = "repository.postgres.RemoveRoleFromMember"
+
+	query := `
+		DELETE FROM members_roles (server_id, user_id, role_id)
+		WHERE server_id = $1 AND user_id = $2 AND roleID = $3;
+	`
+	res, err := repo.pool.Exec(ctx, query, serverID, userID, roleID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrNotFound
+	}
+
+	return nil
+}
