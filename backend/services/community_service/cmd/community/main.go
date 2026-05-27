@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	// Init config and logger
 	config := config.MustLoad()
 	logger, err := logger.New(logger.Config{
 		Env:         logger.Env(config.Env),
@@ -16,6 +17,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("FATAL: falied init logger: %s", err)
 	}
+
+	// Init application
+	logger.Info("starting init application")
+	application, err := 
 
 	// TODO: Init application
 
