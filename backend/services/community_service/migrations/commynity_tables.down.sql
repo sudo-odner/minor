@@ -1,2 +1,5 @@
-DROP INDEX IF EXISTS index_users_username;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS member_roles;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS server_members;
+DROP TABLE IF EXISTS servers;
