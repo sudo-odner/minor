@@ -29,6 +29,16 @@ const (
 	ChannelTypeVoice    ChannelType = 2
 )
 
+type Channel struct {
+	ID        uuid.UUID
+	ServerID  uuid.UUID
+	Name      string
+	Type      ChannelType
+	ParentID  *uuid.UUID
+	Position  int
+	CreatedAt time.Time
+}
+
 type OverrideType string
 
 const (
