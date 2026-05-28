@@ -9,11 +9,31 @@ import (
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 )
 
+// Хз поидее разные логики и если что то поменяется то будет окей. Но не совсем увререн в каком это враианте будет
+// Поидее можно их объеденить Created и Updated
 func (b *Broker) PublishChannelCreated(ctx context.Context, serverID uuid.UUID, channel *models.Channel) error {
+	const op = "broker.nuts.PublishChannelCreated"
+
+	if err := b.publish(SubjectChannelCreated, ChannelEvent{
+		ServerID: serverID.String(),
+		Channel:  toChannelDTO(channel),
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 
 func (b *Broker) PublishChannelUpdated(ctx context.Context, serverID uuid.UUID, channel *models.Channel) error {
+	const op = "broker.nuts.PublishChannelUpdated"
+
+	if err := b.publish(SubjectChannelUpdated, ChannelEvent{
+		ServerID: serverID.String(),
+		Channel:  toChannelDTO(channel),
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 
