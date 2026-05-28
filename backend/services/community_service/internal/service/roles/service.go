@@ -56,3 +56,25 @@ func (s *Service) CreateRole(ctx context.Context, actorID, serverID uuid.UUID, n
 
 	return role, nil
 }
+
+func (s *Service) GetRole(ctx context.Context, roleID uuid.UUID) (*models.Role, error) {
+	const op = "service.roles.GetRole"
+
+	role, err := s.repo.GetRole(ctx, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return role, nil
+}
+
+func (s *Service) GetServerRoles(ctx context.Context, serverID uuid.UUID) ([]models.Role, error) {
+	const op = "service.roles.GetServerRoles"
+
+	roles, err := s.repo.GetServerRoles(ctx, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return roles, nil
+}
