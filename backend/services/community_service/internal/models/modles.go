@@ -55,3 +55,11 @@ type Role struct {
 	Position   int
 	CreatedAt  time.Time
 }
+
+type ChannelPermissionOverride struct {
+	ChannelID  uuid.UUID
+	TargetType OverrideType
+	TargetID   uuid.UUID
+	Allow      authz.Permission
+	Deny       authz.Permission
+}

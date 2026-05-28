@@ -182,8 +182,43 @@ func (repo *Repository) DeleteRole(ctx context.Context, roleID uuid.UUID) error 
 	return nil
 }
 
+func (repo *Repository) ReplaceChannelPermissionOverrides(
+	ctx context.Context,
+	channelID uuid.UUID,
+	overrides []models.ChannelPermissionOverride,
+) error {
+	const op = "repository.postgres.ReplaceChannelPermissionOverrides"
+
+	tx, err := repo.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: begin tx falied: %w", op, err)
+	}
+	defer tx.Rollback(ctx)
+
+	deleteQuery := `DELETE FROM channel_permission_overrides WHERE channel_id = $1`
+	_, err = tx.Exec(ctx, deleteQuery, channelID)
+	if err != nil {
+		return fmt.Errorf("%s: clear overrieds failed: %w", op, err)
+	}
+
+	if len(overrides) <= 0 {
+		return tx.Commit(ctx)
+	}
+
+	insertQuery := `
+		INSERT INTO channel_permission_overrides (channel_id, target_type, target_id, allow, deny)
+		VALUES ($1, $2, $3, $4, $5);
+	`
+	for _, ov := range overrides {
+		_, err = tx.Exec(ctx, insertQuery, channelID, ov.TargetType, ov.TargetID, ov.Allow, ov.Deny)
+		if err != nil {
+			return fmt.Errorf("%s: insert override falied: %w", op, err)
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (repo *Repository) UpsertChannelOverride() {}
-
 func (repo *Repository) DeleteChannelOverride() {}
-
-func (repo *Repository) GetChannelOverrides() {}
+func (repo *Repository) GetChannelOverrides()   {}
