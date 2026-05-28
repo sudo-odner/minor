@@ -3,7 +3,8 @@ package models
 import "github.com/google/uuid"
 
 type User struct {
-	Email string
+	ID           uuid.UUID
+	Email        string
 	PasswordHash string
 }
 
@@ -19,6 +20,13 @@ type RegisterUser struct {
 }
 
 type NormalizedUser struct {
-	ID          uuid.UUID `json:"id"`
-	Email       string    `json:"email"`
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	Username string    `json:"username"`
+}
+
+type AuthResponse struct {
+	User         *NormalizedUser `json:"user"`
+	AcceeToken   string          `json:"access_token"`
+	RefreshToken string          `json:"refresh_token"`
 }
