@@ -15,7 +15,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateTokens(cfg config.TokenConfig, userID uuid.UUID, email string) (accessToken string, refreshToken string, err error) {
+func GenerateTokens(cfg config.TokenConfig, userID uuid.UUID, email string) (accessToken string, err error) {
 	accessClaims := Claims{
 		UserID: userID,
 		Email:  email,
@@ -27,24 +27,10 @@ func GenerateTokens(cfg config.TokenConfig, userID uuid.UUID, email string) (acc
 
 	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString(cfg.AccessSecret)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate access token: %w", err)
+		return "", fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	refreshClaims := Claims{
-		UserID: userID,
-		Email:  email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(cfg.RefreshTokenTTL * time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString(cfg.RefreshSecret)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
-	}
-
-	return accessToken, refreshToken, nil
+	return accessToken, nil
 }
 
 func ValidateAccessToken(cfg config.TokenConfig, tokenString string) (*Claims, error) {
@@ -67,18 +53,18 @@ func ValidateAccessToken(cfg config.TokenConfig, tokenString string) (*Claims, e
 	return nil, fmt.Errorf("invalid token")
 }
 
-func Refresh(cfg config.TokenConfig, oldRefreshToken string) (newAccess string, newRefresh string, err error) {
+func Refresh(cfg config.TokenConfig, oldRefreshToken string) (newAccess string, err error) {
 	token, err := jwt.Parse(oldRefreshToken, func(t *jwt.Token) (any, error) {
 		return cfg.RefreshSecret, nil
 	})
 
 	if err != nil || !token.Valid {
-		return "", "", fmt.Errorf("invalid refresh token")
+		return "", fmt.Errorf("invalid refresh token")
 	}
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
-		return "", "", fmt.Errorf("invalid refresh token")
+		return "", fmt.Errorf("invalid refresh token")
 	}
 
 	return GenerateTokens(cfg, claims.UserID, claims.Email)
