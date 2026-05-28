@@ -2,6 +2,7 @@ package servers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
@@ -32,20 +33,43 @@ func New(log *zap.Logger, repo Repository) *Service {
 
 func (s *Service) CreateServer(ctx context.Context, name string, ownerID uuid.UUID, avatarURL string) (*models.Server, error) {
 	const op = "service.server.CreateServer"
-	return nil, nil
+
+	server, err := s.repo.CreateServerWithDefaultSetup(ctx, name, ownerID, "")
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return server, nil
 }
 
 func (s *Service) GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error) {
 	const op = "service.server.GetServer"
-	return nil, nil
+
+	server, err := s.repo.GetServer(ctx, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return server, nil
 }
 
 func (s *Service) UpdateServer(ctx context.Context, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error) {
 	const op = "service.server.UpdateServer"
-	return nil, nil
+
+	server, err := s.repo.UpdateServer(ctx, serverID, name, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return server, nil
 }
 
 func (s *Service) DeleteServer(ctx context.Context, serverID uuid.UUID) error {
 	const op = "service.server.DeleteServer"
+
+	if err := s.repo.DeleteServer(ctx, serverID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
