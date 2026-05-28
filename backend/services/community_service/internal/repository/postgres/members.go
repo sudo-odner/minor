@@ -19,8 +19,9 @@ func (repo *Repository) AddMember(
 	const op = "repository.postgres.AddMember"
 
 	query := `
-		INSER INTO members (server_id, user_id, nickname, joined_at)
-		VALUES ($1, $2, $3, CURRENT_TIMESTAMP);
+		INSERT INTO members (server_id, user_id, nickname, joined_at)
+		VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+		RETURN server_id, user_id, nickname, joined_at;
 	`
 	var member models.Member
 
@@ -42,7 +43,7 @@ func (repo *Repository) GetServerMember(ctx context.Context, serverID, userID uu
 	query := `
 		SELECT server_id, user_id, nickname, joined_at
 		FROM members
-		WHERE server_id = $1 AND userID = $2;
+		WHERE server_id = $1 AND user_id = $2;
 	`
 	var member models.Member
 
@@ -66,7 +67,7 @@ func (repo *Repository) GetServerMembers(ctx context.Context, serverID uuid.UUID
 
 	query := `
 		SELECT server_id, user_id, nickname, joined_at
-		FROM memers
+		FROM members
 		WHERE server_id = $1;
 	`
 	rows, err := repo.pool.Query(ctx, query, serverID)
@@ -151,8 +152,7 @@ func (repo *Repository) RemoveRoleFromMember(ctx context.Context, serverID, user
 	const op = "repository.postgres.RemoveRoleFromMember"
 
 	query := `
-		DELETE FROM members_roles (server_id, user_id, role_id)
-		WHERE server_id = $1 AND user_id = $2 AND roleID = $3;
+		DELETE FROM members_roles WHERE server_id = $1 AND user_id = $2 AND role_id = $3;
 	`
 	res, err := repo.pool.Exec(ctx, query, serverID, userID, roleID)
 	if err != nil {

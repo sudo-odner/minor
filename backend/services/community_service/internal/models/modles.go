@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/shared/pkg/authz"
+	"github.com/sudo-odner/minor-shared/pkg/authz"
 )
 
 type Server struct {

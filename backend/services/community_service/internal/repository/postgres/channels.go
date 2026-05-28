@@ -36,7 +36,7 @@ func (repo *Repository) CreateChannel(
 			(
 				SELECT COALESCE(MAX(position), 0) + 1
 				FROM channels 
-				WHERE server_id = $2 AND ((parent_id = $5) OR (parent_id IS NULL AND $5 IS NULL)
+				WHERE server_id = $2 AND ((parent_id = $5) OR (parent_id IS NULL AND $5 IS NULL))
 			),
 			CURRENT_TIMESTAMP
         )
@@ -91,10 +91,11 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 	const op = "repository.postgres.GetChannels"
 
 	query := `
-		SELECT id, server_id, name, type, parent_id, position, created_at
-		FROM channels
-		WHERE server_id = $1
-		OREDER BY 
+		SELECT c.id, c.server_id, c.name, c.type, c.parent_id, c.position, c.created_at
+		FROM channels c
+		LEFT JOIN channels p ON c.parent_id = p.id
+		WHERE c.server_id = $1
+		ORDER BY 
 			-- Сначала каналы бещ категорий
 			(c.parent_id IS NULL AND c.type != 0) DESC,
 			COALESCE(p.position, c.position) ASC,
@@ -110,7 +111,7 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 	defer rows.Close()
 
 	var channels []models.Channel
-	if rows.Next() {
+	for rows.Next() {
 		var channel models.Channel
 
 		if err := rows.Scan(
@@ -126,7 +127,8 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 		}
 		channels = append(channels, channel)
 	}
-	return nil, fmt.Errorf("%s: find channel failed: %w", op, err)
+
+	return channels, nil
 }
 
 // TODO: продумать это чуть получше
@@ -134,7 +136,7 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 func (repo *Repository) UpdateChannel(
 	ctx context.Context,
 	channelID, serverID uuid.UUID,
-	name *string,
+	name string,
 	parentID *uuid.UUID,
 ) (*models.Channel, error) {
 	const op = "repository.postgres.UpdateChannel"
@@ -153,6 +155,7 @@ func (repo *Repository) UpdateChannel(
 				WHEN $2::uuid = '00000000-0000-0000-0000-000000000000'::uuid THEN NULL
 				ELSE $2::uuid
 			END
+		WHERE id = $3 AND server_id = $4
 		RETURNING id, server_id, name, type, parent_id, position, created_at;
 	`
 	var channel models.Channel

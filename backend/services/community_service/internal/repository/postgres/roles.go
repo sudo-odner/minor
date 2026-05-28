@@ -25,9 +25,9 @@ func (repo *Repository) CreateRole(
 	}
 
 	query := `
-		INSERT INTO roles (id, server_id, name, permission, positiion, created_at)
+		INSERT INTO roles (id, server_id, name, permission, position, created_at)
 		VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(position), 0) + 1 FROM roles WHERE server_id = $2), CURRENT_TIMESTAMP)
-		RETURNING id, server_id, name, permission, position, created_at;
+		RETURNING id, server_id, name, permissions, position, created_at;
 	`
 	var role models.Role
 	if err := repo.pool.QueryRow(ctx, query, roleID, serverID, name, permission).Scan(
@@ -47,7 +47,7 @@ func (repo *Repository) CreateRole(
 func (repo *Repository) GetRole(ctx context.Context, roleID uuid.UUID) (*models.Role, error) {
 	const op = "repository.postgres.GetRole"
 
-	query := `SELECT id, server_id, name, permission, position, created_at FROM roles WHERE id = $1;`
+	query := `SELECT id, server_id, name, permissions, position, created_at FROM roles WHERE id = $1;`
 	var role models.Role
 
 	if err := repo.pool.QueryRow(ctx, query, roleID).Scan(
@@ -70,7 +70,7 @@ func (repo *Repository) GetRole(ctx context.Context, roleID uuid.UUID) (*models.
 func (repo *Repository) GetServerRoles(ctx context.Context, serverID uuid.UUID) ([]models.Role, error) {
 	const op = "repository.postgres.GetServerRoles"
 
-	query := `SELECT id, server_id, name, permission, position, created_at FROM roles WHERE server_id = $1 ORDER BY position DESC;`
+	query := `SELECT id, server_id, name, permissions, position, created_at FROM roles WHERE server_id = $1 ORDER BY position DESC;`
 	rows, err := repo.pool.Query(ctx, query, serverID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -101,7 +101,7 @@ func (repo *Repository) GetMemberRoles(ctx context.Context, serverID, userID uui
 	const op = "repository.postgres.GetMemberRoles"
 
 	query := `
-		SELECT id, server_id, name, permission, position, created_at 
+		SELECT id, server_id, name, permissions, position, created_at 
 		FROM roles r
 		JOIN members_roles mr ON r.id = mr.role_id
 		WHERE mr.server_id = $1 AND mr.user_id = $2 
@@ -144,13 +144,13 @@ func (repo *Repository) UpdateRole(
 		UPDATE roles
 		SET
 			name = COALESCE($1, name),
-			permissions = COALESCE($2, permission)
+			permissions = COALESCE($2, permissions)
 		WHERE id = $3
-		RETURNING id, server_id, name, permission, position, created_at;
+		RETURNING id, server_id, name, permissions, position, created_at;
 	`
 	var role models.Role
 
-	if err := repo.pool.QueryRow(ctx, query, roleID).Scan(
+	if err := repo.pool.QueryRow(ctx, query, name, permissions, roleID).Scan(
 		&role.ID,
 		&role.ServerID,
 		&role.Name,
@@ -170,7 +170,7 @@ func (repo *Repository) UpdateRole(
 func (repo *Repository) DeleteRole(ctx context.Context, roleID uuid.UUID) error {
 	const op = "repository.postgres.DeleteRole"
 
-	query := `DELTE FROM roles WHERE id = $1`
+	query := `DELETE FROM roles WHERE id = $1`
 	res, err := repo.pool.Exec(ctx, query, roleID)
 	if err != nil {
 		return fmt.Errorf("%s: delete role falied: %w", op, err)
@@ -222,7 +222,7 @@ func (repo *Repository) ReplaceChannelPermissionOverrides(
 func (repo *Repository) GetChannelOverrides(ctx context.Context, channelID uuid.UUID) ([]models.ChannelPermissionOverride, error) {
 	const op = "repository.postgres.GetChannelOverrides"
 
-	query := `SELECT channel_id, target_type, target_id, allow, deny FROM channel_permission_overrides WHERE cahnnel_id = $1`
+	query := `SELECT channel_id, target_type, target_id, allow, deny FROM channel_permission_overrides WHERE channel_id = $1`
 	rows, err := repo.pool.Query(ctx, query, channelID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
