@@ -190,6 +190,33 @@ func (s *Service) DeleteChannel(ctx context.Context, actorID, serverID, channelI
 	return nil
 }
 
-func (s *Service) MoveChannel(ctx context.Context, serverID, channelID uuid.UUID, oldParentID, newParentID *uuid.UUID, oldPos, newPos int) error {
+func (s *Service) MoveChannel(
+	ctx context.Context,
+	actorID uuid.UUID,
+	serverID, channelID uuid.UUID,
+	oldParentID, newParentID *uuid.UUID,
+	oldPos, newPos int,
+) error {
+	const op = "server.channel.MoveChannel"
+
+	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: falied to fetch permissions: %w", op, err)
+	}
+	if !authz.Has(permission, authz.PermManageChannels) {
+		return models.ErrPermissionDenied
+	}
+
+	if err := s.repo.MoveChannel(ctx, serverID, channelID, oldParentID, newParentID, oldPos, newPos); err != nil {
+		return fmt.Errorf("%s: db move failed: %w", op, err)
+	}
+
+	channels, err := s.repo.GetServerChannels(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: falied to fetch updated channels: %w", op, err)
+	}
+
+	_ = s.broker.PublishChannelPositionsUpdated(ctx, serverID, channels)
+
 	return nil
 }
