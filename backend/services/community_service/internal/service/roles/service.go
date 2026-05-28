@@ -98,8 +98,16 @@ func (s *Service) UpdateRole(ctx context.Context, actorID, serverID, roleID uuid
 	return role, nil
 }
 
-func (s *Service) ReplaceChannelPermissionOverrides(ctx context.Context, channelID uuid.UUID, overrides []models.ChannelPermissionOverride) error {
+func (s *Service) ReplaceChannelPermissionOverrides(ctx context.Context, actorID, serverID, channelID uuid.UUID, overrides []models.ChannelPermissionOverride) error {
 	const op = "service.roles.ReplaceChannelPermissionOverrides"
+
+	server, err := s.sServer.GetServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get server: %w", op, err)
+	}
+	if actorID != server.OwnerID {
+		return models.ErrPermissionDenied
+	}
 
 	if err := s.repo.ReplaceChannelPermissionOverrides(ctx, channelID, overrides); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
