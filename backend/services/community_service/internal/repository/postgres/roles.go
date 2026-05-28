@@ -132,7 +132,40 @@ func (repo *Repository) GetMemberRoles(ctx context.Context, serverID, userID uui
 	return roles, nil
 }
 
-func (repo *Repository) UpdateRole() {}
+func (repo *Repository) UpdateRole(
+	ctx context.Context,
+	roleID uuid.UUID,
+	name *string,
+	permissions *authz.Permission,
+) (*models.Role, error) {
+	const op = "repository.postgres.UpdateRole"
+
+	query := `
+		UPDATE roles
+		SET
+			name = COALESCE($1, name),
+			permissions = COALESCE($2, permission)
+		WHERE id = $3
+		RETURNING id, server_id, name, permission, position, created_at;
+	`
+	var role models.Role
+
+	if err := repo.pool.QueryRow(ctx, query, roleID).Scan(
+		&role.ID,
+		&role.ServerID,
+		&role.Name,
+		&role.Permission,
+		&role.Position,
+		&role.CreatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &role, nil
+}
 
 func (repo *Repository) DeleteRole() {}
 
