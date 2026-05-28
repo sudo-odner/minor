@@ -167,7 +167,20 @@ func (repo *Repository) UpdateRole(
 	return &role, nil
 }
 
-func (repo *Repository) DeleteRole() {}
+func (repo *Repository) DeleteRole(ctx context.Context, roleID uuid.UUID) error {
+	const op = "repository.postgres.DeleteRole"
+
+	query := `DELTE FROM roles WHERE id = $1`
+	res, err := repo.pool.Exec(ctx, query, roleID)
+	if err != nil {
+		return fmt.Errorf("%s: delete role falied: %w", op, err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrNotFound
+	}
+
+	return nil
+}
 
 func (repo *Repository) UpsertChannelOverride() {}
 
