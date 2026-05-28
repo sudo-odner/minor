@@ -37,7 +37,16 @@ func (b *Broker) PublishChannelUpdated(ctx context.Context, serverID uuid.UUID, 
 	return nil
 }
 
-func (b *Broker) PublishChannelDeleted(ctx context.Context, serverID uuid.UUID, channel *models.Channel) error {
+func (b *Broker) PublishChannelDeleted(ctx context.Context, serverID, channelID uuid.UUID) error {
+	const op = "broker.nuts.PublishChannelDeleted"
+
+	if err := b.publish(SubjectChannelDeleted, ChannelDeletedEvent{
+		ServerID:  serverID.String(),
+		ChannelID: channelID.String(),
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 
