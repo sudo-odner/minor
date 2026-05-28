@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
-	github.com/sudo-odner/minor-shared v0.1.2
+	github.com/sudo-odner/minor-shared v0.2.4
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
