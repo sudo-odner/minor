@@ -160,6 +160,19 @@ func (repo *Repository) UpdateChannel(
 	return &channel, nil
 }
 
-func (repo *Repository) DeleteChannel() {}
+func (repo *Repository) DeleteChannel(ctx context.Context, channelID uuid.UUID) error {
+	const op = "repository.postgres.DeleteChannel"
+
+	query := `DELETE FROM channels WHERE id = $1`
+	res, err := repo.pool.Exec(ctx, query, channelID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.RowsAffected() == 0 {
+		return models.ErrNotFound
+	}
+
+	return nil
+}
 
 func (repo *Repository) MoveChannel() {}
