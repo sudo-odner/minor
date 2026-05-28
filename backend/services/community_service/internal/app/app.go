@@ -30,7 +30,14 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	// TODO: Init broker Nuts
+
+	// Init broker Nuts
+	broker, err := nuts.New(&cfg.Nuts)
+	if err != nil {
+		repo.Close(ctx)
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
 	// TODO: Init service
 	// TODO: Init HTTP server
 	// TODO: Init gRPC server
