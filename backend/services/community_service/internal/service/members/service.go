@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
-	"github.com/sudo-odner/minor/backend/shared/pkg/authz"
 	"go.uber.org/zap"
 )
 
@@ -132,6 +131,44 @@ func (s *Service) UpdateNickname(ctx context.Context, actorID, serverID, targetU
 	}
 
 	if err := s.repo.UpdateMemberNickname(ctx, serverID, targetUserID, nickname); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *Service) AddRoleToMember(ctx context.Context, actorID, serverID, targetUserID, roleID uuid.UUID) error {
+	const op = "service.member.AddRoleToMember"
+
+	server, err := s.serviceServer.GetServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get server: %w", op, err)
+	}
+	// TODO: Пока может только сам валадеелец наанчать роли нужно чуть поменять
+	if actorID != server.OwnerID {
+		return models.ErrPermissionDenied
+	}
+
+	if err := s.repo.AddRoleToMember(ctx, serverID, targetUserID, roleID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *Service) DeleteRoleToMember(ctx context.Context, actorID, serverID, targetUserID, roleID uuid.UUID) error {
+	const op = "service.member.DeleteRoleToMember"
+
+	server, err := s.serviceServer.GetServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get server: %w", op, err)
+	}
+	// TODO: Пока может только сам валадеелец наанчать роли нужно чуть поменять
+	if actorID != server.OwnerID {
+		return models.ErrPermissionDenied
+	}
+
+	if err := s.repo.RemoveRoleFromMember(ctx, serverID, targetUserID, roleID); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
