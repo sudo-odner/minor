@@ -87,12 +87,28 @@ func (s *Service) CreateChannel(
 	return ch, nil
 }
 
+// TODO: полумать на счет скрытых каналов
+
 func (s *Service) GetChannel(ctx context.Context, channelID uuid.UUID) (*models.Channel, error) {
-	return nil, nil
+	const op = "service.channel.GetChannel"
+
+	ch, err := s.repo.GetChannel(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return ch, nil
 }
 
-func (s *Service) GetServerChannel(ctx context.Context, serverID uuid.UUID) (*models.Channel, error) {
-	return nil, nil
+func (s *Service) GetServerChannel(ctx context.Context, serverID uuid.UUID) ([]models.Channel, error) {
+	const op = "service.channel.GetServerChannel"
+
+	chs, err := s.repo.GetServerChannels(ctx, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return chs, nil
 }
 
 func (s *Service) UpdatedChannel(
