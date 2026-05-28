@@ -46,6 +46,8 @@ func New(log *zap.Logger, repo Repository, broker Broker, permService Permission
 	}
 }
 
+// Пока проверка управлением каналами глобально(не для конкретного сервера)
+
 func (s *Service) CreateChannel(
 	ctx context.Context,
 	actorID uuid.UUID,
@@ -113,12 +115,52 @@ func (s *Service) GetServerChannel(ctx context.Context, serverID uuid.UUID) ([]m
 
 func (s *Service) UpdatedChannel(
 	ctx context.Context,
-	serverID uuid.UUID,
-	name string,
-	typeChannel models.ChannelType,
+	actorID uuid.UUID,
+	channelID, serverID uuid.UUID,
+	name *string,
 	parentID *uuid.UUID,
 ) (*models.Channel, error) {
-	return nil, nil
+	const op = "service.channel.UpdateChannel"
+
+	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to fetch permission: %w", op, err)
+	}
+	if !authz.Has(permission, authz.PermModerateChat) {
+		return nil, models.ErrPermissionDenied
+	}
+
+	ch, err := s.repo.GetChannel(ctx, channelID)
+	if err != nil {
+		return nil, err
+	}
+	if ch.ServerID != serverID {
+		return nil, models.ErrPermissionDenied
+	}
+
+	if parentID != nil {
+		if *parentID != uuid.Nil {
+			parent, err := s.repo.GetChannel(ctx, *parentID)
+			if err != nil {
+				return nil, fmt.Errorf("%s: parent category not found: %w", op, err)
+			}
+			if parent.ServerID != serverID {
+				return nil, fmt.Errorf("parent category must belogn to the same server: %w", models.ErrImpossible)
+			}
+			if parent.Type != models.ChannelTypeCategory {
+				return nil, fmt.Errorf("parent channel must be a category: %w", models.ErrImpossible)
+			}
+		}
+	}
+
+	updated, err := s.repo.UpdateChannel(ctx, channelID, serverID, name, parentID)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = s.broker.PublishChannelCreated(ctx, serverID, *updated)
+
+	return updated, nil
 }
 
 func (s *Service) DeleteChannel(ctx context.Context, serverID, channelID uuid.UUID) error {
