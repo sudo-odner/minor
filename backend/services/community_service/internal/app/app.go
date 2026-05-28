@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 
 	grpcServ "github.com/sudo-odner/minor/backend/services/community_service/internal/app/grpc"
 	httpServ "github.com/sudo-odner/minor/backend/services/community_service/internal/app/http"
@@ -22,7 +23,13 @@ type App struct {
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	const op = "app.New"
-	// TODO: Init repository Postgres
+	ctx := context.Background()
+
+	// Init repository Postgres
+	repo, err := postgres.New(ctx, cfg.Postgres.DSN())
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 	// TODO: Init broker Nuts
 	// TODO: Init service
 	// TODO: Init HTTP server

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -12,8 +13,8 @@ type Config struct {
 	Env        string `env:"ENV" env-required:"true"`
 	ServerHTTP ServerHTTP
 	ServerGRPC ServerGRPC
-	Broker     Nuts
-	Repository Postgres
+	Nuts       Nuts
+	Postgres   Postgres
 }
 
 type ServerHTTP struct {
@@ -48,6 +49,15 @@ type Postgres struct {
 	Password string `env:"POSTGRES_PASSWORD" env-required:"true"`
 	Database string `env:"POSTGRES_DATABASE" env-required:"true"`
 	// Optional
+}
+
+func (p *Postgres) DSN() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s",
+		p.User, p.Password,
+		p.Host, p.Port,
+		p.Database,
+	)
 }
 
 func MustLoad() *Config {
