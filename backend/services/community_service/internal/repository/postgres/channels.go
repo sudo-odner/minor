@@ -115,7 +115,50 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 	return nil, fmt.Errorf("%s: find channel failed: %w", op, err)
 }
 
-func (repo *Repository) UpdateChannel() {}
+// TODO: продумать это чуть получше
+// Если parendID == nil - не обновляем значение, если == uuid.Nil
+func (repo *Repository) UpdateChannel(
+	ctx context.Context,
+	channelID, serverID uuid.UUID,
+	name *string,
+	parentID *uuid.UUID,
+) (*models.Channel, error) {
+	const op = "repository.postgres.UpdateChannel"
+
+	var dbParentID any
+	if parentID != nil {
+		dbParentID = *parentID
+	}
+
+	query := `
+		UPDATE channels 
+		SET 
+			name = $1, 
+			parent_id = CASE 
+				WHEN $2::uuid IS NULL THEN parent_id
+				WHEN $2::uuid = '00000000-0000-0000-0000-000000000000'::uuid THEN NULL
+				ELSE $2::uuid
+			END
+		RETURNING id, server_id, name, type, parent_id, position, created_at;
+	`
+	var channel models.Channel
+	if err := repo.pool.QueryRow(ctx, query, name, dbParentID, channelID, serverID).Scan(
+		&channel.ID,
+		&channel.ServerID,
+		&channel.Name,
+		&channel.Type,
+		&channel.ParentID,
+		&channel.Position,
+		&channel.CreatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &channel, nil
+}
 
 func (repo *Repository) DeleteChannel() {}
 
