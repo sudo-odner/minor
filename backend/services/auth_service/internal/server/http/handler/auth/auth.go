@@ -4,12 +4,19 @@ import (
 	"context"
 	"net/http"
 
+	authv1 "github.com/sudo-odner/minor-shared/pkg/pb/auth/v1"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/lib/cookie"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/models"
+	authService "github.com/sudo-odner/minor/backend/services/auth_service/internal/service/auth"
 	"go.uber.org/zap"
 )
+
+type AuthGRPCHandler struct {
+	authv1.UnimplementedAuthServiceServer
+	authService *authService.AuthorizationService
+}
 
 type AuthorizationService interface {
 	Login(ctx context.Context, logUser *models.LoginUser) (user *models.NormalizedUser, accessToken string, refreshToken string, err error)
@@ -38,6 +45,23 @@ func (ah *AuthorizationHandler) Login(ctx context.Context) http.HandlerFunc {
 type RegisterResponse struct {
 	User        models.NormalizedUser `json:"user"`
 	AccessToken string                `json:"access_token"`
+}
+
+func (h *AuthGRPCHandler) VerifyToken(ctx context.Context, req *authv1.VerifyTokenRequest) (*authv1.VerifyTokenResponse, error) {
+	claims, err := h.authService.VerifyAccessToken(req.AccessToken)
+	
+	if err != nil {
+		return &authv1.VerifyTokenResponse{
+			IsValid:       false,
+			ErrorMessage: err.Error(),
+		}, nil
+	}
+
+	return &authv1.VerifyTokenResponse{
+		UserId:    claims.UserID,
+		IsValid:   true,
+		ExpiresAt: claims.ExpiresAt.Unix(),
+	}, nil
 }
 
 func (ah *AuthorizationHandler) Register(ctx context.Context) http.HandlerFunc {
