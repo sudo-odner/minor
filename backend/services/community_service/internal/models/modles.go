@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sudo-odner/minor/backend/shared/pkg/authz"
 )
 
 type Server struct {
@@ -45,3 +46,12 @@ const (
 	OverrideTypeRole OverrideType = "role"
 	OverrideTypeUser OverrideType = "user"
 )
+
+type Role struct {
+	ID         uuid.UUID
+	ServerID   uuid.UUID
+	Name       string
+	Permission authz.Permission
+	Position   int
+	CreatedAt  time.Time
+}
