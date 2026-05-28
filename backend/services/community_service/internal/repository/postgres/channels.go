@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 )
 
@@ -50,9 +52,68 @@ func (repo *Repository) CreateChannel(
 	return &channel, nil
 }
 
-func (repo *Repository) GetChannel() {}
+func (repo *Repository) GetChannel(ctx context.Context, channelID uuid.UUID) (*models.Channel, error) {
+	const op = "repository.postgres.GetChannel"
 
-func (repo *Repository) GetServerChannels() {}
+	query := `
+		SELECT id, server_id, name, type, parent_id, position, created_at
+		FROM channels
+		WHERE id = $1;
+	`
+	var channel models.Channel
+
+	if err := repo.pool.QueryRow(ctx, query, channelID).Scan(
+		&channel.ID,
+		&channel.ServerID,
+		&channel.Name,
+		&channel.Type,
+		&channel.ParentID,
+		&channel.Position,
+		&channel.CreatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("%s: find channel failed: %w", op, err)
+	}
+
+	return &channel, nil
+}
+
+func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUID) ([]models.Channel, error) {
+	const op = "repository.postgres.GetChannels"
+
+	query := `
+		SELECT id, server_id, name, type, parent_id, position, created_at
+		FROM channels
+		WHERE server_id = $1
+		OREDER BY position ASC, created_at ASC;
+	`
+	rows, err := repo.pool.Query(ctx, query, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	var channels []models.Channel
+	if rows.Next() {
+		var channel models.Channel
+
+		if err := rows.Scan(
+			&channel.ID,
+			&channel.ServerID,
+			&channel.Name,
+			&channel.Type,
+			&channel.ParentID,
+			&channel.Position,
+			&channel.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("%s: scan error: %w", op, err)
+		}
+		channels = append(channels, channel)
+	}
+	return nil, fmt.Errorf("%s: find channel failed: %w", op, err)
+}
 
 func (repo *Repository) UpdateChannel() {}
 
