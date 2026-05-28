@@ -117,7 +117,7 @@ func (repo *Repository) UpdateMemberNickname(
 
 	query := `
 		UPDATE members 
-		SET nickname = $1 
+		SET nickname = NULLIF($1, '')
 		WHERE server_id = $2 AND user_id = $3;
 	`
 	res, err := repo.pool.Exec(ctx, query, nickname, serverID, userID)
