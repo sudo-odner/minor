@@ -19,25 +19,35 @@ type Repository interface {
 	AddRoleToMember(ctx context.Context, serverID, userID, roleID uuid.UUID) error
 	RemoveRoleFromMember(ctx context.Context, serverID, userID, roleID uuid.UUID) error
 }
+
 type PermissionService interface {
 	FetchServerPermissions(ctx context.Context, userID, serverID uuid.UUID) (authz.Permission, error)
 }
-type Service struct {
-	log  *zap.Logger
-	repo Repository
-	perm PermissionService
+
+type ServerService interface {
+	GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error)
 }
 
-func New(log *zap.Logger, repo Repository, permService PermissionService) *Service {
+type Service struct {
+	log           *zap.Logger
+	repo          Repository
+	serviceServer ServerService
+	servicePerm   PermissionService
+}
+
+func New(log *zap.Logger, repo Repository, serviceServer ServerService, servicePerm PermissionService) *Service {
 	return &Service{
-		log:  log,
-		repo: repo,
-		perm: permService,
+		log:           log,
+		repo:          repo,
+		serviceServer: serviceServer,
+		servicePerm:   servicePerm,
 	}
 }
 
 func (s *Service) AddMember(ctx context.Context, serverID, userID uuid.UUID, nickname *string) (*models.Member, error) {
 	const op = "service.member.AddMember"
+
+	// Только у когдо есть модерация
 
 	m, err := s.repo.AddMember(ctx, serverID, userID, nickname)
 	if err != nil {
@@ -67,4 +77,38 @@ func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]m
 	}
 
 	return ms, nil
+}
+
+func (s *Service) RemoveMember(
+	ctx context.Context,
+	actorID uuid.UUID,
+	serverID uuid.UUID,
+	targetUserID uuid.UUID,
+) error {
+	const op = "service.member.RemoveMember"
+
+	server, err := s.serviceServer.GetServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get server: %w", op, err)
+	}
+
+	if server.OwnerID == targetUserID {
+		return fmt.Errorf("server owner cannnot leave or kick (wihtout transferring ownership) the server: %w", models.ErrImpossible)
+	}
+	if actorID != targetUserID {
+		permissions, err := s.servicePerm.FetchServerPermissions(ctx, actorID, serverID)
+		if err != nil {
+			return fmt.Errorf("%s: falied to fetch permissions: %w", op, err)
+		}
+
+		if !authz.Has(permissions, authz.PermKickMembers) {
+			return models.ErrPermissionDenied
+		}
+	}
+
+	if err := s.repo.RemoveMember(ctx, serverID, targetUserID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }
