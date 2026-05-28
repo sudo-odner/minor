@@ -219,6 +219,24 @@ func (repo *Repository) ReplaceChannelPermissionOverrides(
 	return tx.Commit(ctx)
 }
 
-func (repo *Repository) UpsertChannelOverride() {}
-func (repo *Repository) DeleteChannelOverride() {}
-func (repo *Repository) GetChannelOverrides()   {}
+func (repo *Repository) GetChannelOverrides(ctx context.Context, channelID uuid.UUID) ([]models.ChannelPermissionOverride, error) {
+	const op = "repository.postgres.GetChannelOverrides"
+
+	query := `SELECT channel_id, target_type, target_id, allow, deny FROM channel_permission_overrides WHERE cahnnel_id = $1`
+	rows, err := repo.pool.Query(ctx, query, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	var overrides []models.ChannelPermissionOverride
+	for rows.Next() {
+		var ov models.ChannelPermissionOverride
+		if err := rows.Scan(&ov.ChannelID, &ov.TargetType, &ov.TargetID, &ov.Allow, &ov.Deny); err != nil {
+			return nil, fmt.Errorf("%s: scan error: %w", op, err)
+		}
+		overrides = append(overrides, ov)
+	}
+
+	return overrides, nil
+}
