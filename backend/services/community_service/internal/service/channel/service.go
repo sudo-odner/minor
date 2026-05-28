@@ -126,7 +126,7 @@ func (s *Service) UpdatedChannel(
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to fetch permission: %w", op, err)
 	}
-	if !authz.Has(permission, authz.PermModerateChat) {
+	if !authz.Has(permission, authz.PermManageChannels) {
 		return nil, models.ErrPermissionDenied
 	}
 
@@ -158,12 +158,35 @@ func (s *Service) UpdatedChannel(
 		return nil, err
 	}
 
-	_ = s.broker.PublishChannelCreated(ctx, serverID, *updated)
+	_ = s.broker.PublishChannelUpdated(ctx, serverID, *updated)
 
 	return updated, nil
 }
 
-func (s *Service) DeleteChannel(ctx context.Context, serverID, channelID uuid.UUID) error {
+func (s *Service) DeleteChannel(ctx context.Context, actorID, serverID, channelID uuid.UUID) error {
+	const op = "service.channel.DeleteChannel"
+
+	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: falied to fetch permission: %w", op, err)
+	}
+	if !authz.Has(permission, authz.PermManageChannels) {
+		return models.ErrPermissionDenied
+	}
+
+	ch, err := s.repo.GetChannel(ctx, channelID)
+	if err != nil {
+		return err
+	}
+	if ch.ServerID != serverID {
+		return models.ErrPermissionDenied
+	}
+	if err := s.repo.DeleteChannel(ctx, channelID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_ = s.broker.PublishChannelDeleted(ctx, serverID, channelID)
+
 	return nil
 }
 
