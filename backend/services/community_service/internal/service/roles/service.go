@@ -2,6 +2,7 @@ package roles
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
@@ -24,13 +25,34 @@ type ServiceServer interface {
 }
 
 type Service struct {
-	log  *zap.Logger
-	repo Repository
+	log     *zap.Logger
+	repo    Repository
+	sServer ServiceServer
 }
 
-func New(log *zap.Logger, repo Repository) *Service {
+func New(log *zap.Logger, repo Repository, sServer ServiceServer) *Service {
 	return &Service{
-		log:  log,
-		repo: repo,
+		log:     log,
+		repo:    repo,
+		sServer: sServer,
 	}
+}
+
+func (s *Service) CreateRole(ctx context.Context, actorID, serverID uuid.UUID, name string, permissions authz.Permission) (*models.Role, error) {
+	const op = "service.roles.CreateRole"
+
+	server, err := s.sServer.GetServer(ctx, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to get server: %w", op, err)
+	}
+	if actorID != server.OwnerID {
+		return nil, models.ErrPermissionDenied
+	}
+
+	role, err := s.repo.CreateRole(ctx, serverID, name, permissions)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return role, nil
 }
