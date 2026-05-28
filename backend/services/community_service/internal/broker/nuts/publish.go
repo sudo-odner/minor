@@ -50,12 +50,26 @@ func (b *Broker) PublishChannelDeleted(ctx context.Context, serverID, channelID 
 	return nil
 }
 
-func (b *Broker) PubllisChannelPositionsUpdated(
+func (b *Broker) PublishChannelPositionsUpdated(
 	ctx context.Context,
 	serverID uuid.UUID,
-	parentID *uuid.UUID,
-	channel *models.Channel,
+	channels []models.Channel,
 ) error {
+	const op = "broker.nuts.PublishChannelPositionsUpdated"
+
+	layouts := make([]ShortChannelDTO, len(channels))
+	for i, ch := range channels {
+		layouts[i] = toShortChannelDTO(ch)
+	}
+
+	event := ChannelPositionUpdateEvent{
+		ServerID: serverID.String(),
+		Channels: layouts,
+	}
+	if err := b.publish(SubjectChannelPositionsUpdated, event); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 

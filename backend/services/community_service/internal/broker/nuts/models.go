@@ -44,6 +44,26 @@ func toChannelDTO(ch *models.Channel) ChannelDTO {
 	}
 }
 
+type ShortChannelDTO struct {
+	ID       string `json:"id"`
+	ParentID string `json:"parent_id"`
+	Position int    `json:"position"`
+}
+
+func toShortChannelDTO(ch models.Channel) ShortChannelDTO {
+	// TODO: Что-то нужно придумать не нравиться что переводим в ""
+	parentIDStr := ""
+	if ch.ParentID != nil {
+		parentIDStr = ch.ParentID.String()
+	}
+
+	return ShortChannelDTO{
+		ID:       ch.ID.String(),
+		ParentID: parentIDStr,
+		Position: ch.Position,
+	}
+}
+
 type ChannelEvent struct {
 	ServerID string     `json:"server_id"`
 	Channel  ChannelDTO `json:"channel"`
@@ -60,9 +80,8 @@ type ChannelPositionUpdate struct {
 }
 
 type ChannelPositionUpdateEvent struct {
-	ServerID  string                  `json:"server_id"`
-	ParentID  *string                 `json:"parent_id"`
-	Positions []ChannelPositionUpdate `json:"positions"`
+	ServerID string            `json:"server_id"`
+	Channels []ShortChannelDTO `json:"channels"`
 }
 
 // Subscriber
