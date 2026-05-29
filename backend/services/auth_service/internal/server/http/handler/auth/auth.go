@@ -5,36 +5,20 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
-	authv1 "github.com/sudo-odner/minor-shared/pkg/pb/auth/v1"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/lib/cookie"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/models"
 	"go.uber.org/zap"
 )
 
-type AuthGRPCService interface {
-	VerifyAccessToken(ctx context.Context, token string) (*models.Claims, error)
-}
-
-type AuthGRPCHandler struct {
-	authv1.UnimplementedAuthServiceServer
-	authService AuthGRPCService
-	log         *zap.Logger
-}
-
-func NewGRPCHandler(authService AuthGRPCService, log *zap.Logger) *AuthGRPCHandler {
-	return &AuthGRPCHandler{
-		authService: authService,
-		log:         log,
-	}
-}
-
 type AuthHTTPService interface {
 	Login(ctx context.Context, loginUser *models.LoginUser, ip, userAgent string) (user *models.AuthResponse, err error)
 	Register(ctx context.Context, registerUser *models.RegisterUser) (user *models.AuthResponse, err error)
 	Logout(ctx context.Context, refreshToken string) (err error)
+	VerifyAccessToken(ctx context.Context, token string) (*models.Claims, error)
 }
 
 type AuthHTTPHandler struct {
@@ -54,7 +38,7 @@ func (ah *AuthHTTPHandler) Login(ctx context.Context) http.HandlerFunc {
 		const path = "server.http.handler.auth.Login"
 
 		ctx = r.Context()
-		
+
 		log := ah.log.With(
 			zap.String("path", path),
 			zap.String("req-id", middleware.GetReqID(ctx)),
@@ -188,19 +172,18 @@ func (ah *AuthHTTPHandler) RefreshToken(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-func (gh *AuthGRPCHandler) VerifyAccessToken(ctx context.Context, req *authv1.VerifyTokenRequest) (*authv1.VerifyTokenResponse, error) {
-	claims, err := gh.authService.VerifyAccessToken(ctx, req.AccessToken)
+func (ah *AuthHTTPHandler) VerifyInternal(ctx context.Context) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	if err != nil {
-		return &authv1.VerifyTokenResponse{
-			IsValid:      false,
-			ErrorMessage: err.Error(),
-		}, nil
+		claims, err := ah.authService.VerifyAccessToken(r.Context(), token)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		w.Header().Set("X-User-ID", claims.UserID)
+		w.WriteHeader(http.StatusOK)
 	}
-
-	return &authv1.VerifyTokenResponse{
-		UserId:    claims.UserID,
-		IsValid:   true,
-		ExpiresAt: claims.ExpiresAt.Unix(),
-	}, nil
 }
