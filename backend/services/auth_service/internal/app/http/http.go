@@ -17,11 +17,11 @@ type App struct {
 
 func New(log *zap.Logger, cfg *config.Config, router chi.Router) *App {
 	httpServer := http.Server{
-		Addr:         cfg.ServerConfig.Port,
+		Addr:         cfg.HTTP.Port,
 		Handler:      router,
-		ReadTimeout:  cfg.ServerConfig.Timeout,
-		WriteTimeout: cfg.ServerConfig.Timeout,
-		IdleTimeout:  cfg.ServerConfig.IdleTimeout,
+		ReadTimeout:  cfg.HTTP.Timeout,
+		WriteTimeout: cfg.HTTP.Timeout,
+		IdleTimeout:  cfg.HTTP.IdleTimeout,
 	}
 
 	return &App{log: log, httpServer: &httpServer}
