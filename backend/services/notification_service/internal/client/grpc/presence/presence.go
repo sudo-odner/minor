@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	presencev1 "github.com/sudo-odner/minor/backend/shared/pkg/pb/presence/v1"
+	presencev1 "github.com/sudo-odner/minor-shared/pkg/pb/presence/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
