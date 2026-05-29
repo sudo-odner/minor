@@ -7,7 +7,7 @@ import (
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/models"
-	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/service/notifier"
+	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/service/gateway"
 	"go.uber.org/zap"
 )
 
