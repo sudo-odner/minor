@@ -17,7 +17,8 @@ import (
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/postgres"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/redis"
-	authHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
+	authHTTPHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
+	authGRPCHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/grpc/handler/auth"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/middleware/cors"
 	authService "github.com/sudo-odner/minor/backend/services/auth_service/internal/service/auth"
 	"go.uber.org/zap"
@@ -54,8 +55,8 @@ func main() {
 	log.Info("starting authentication service")
 
 	authService := authService.New(pgConn, redisConn, publisher, log, cfg.Auth)
-	authHTTPHandler := authHandler.NewHTTPHandler(authService, log)
-	authGRPCHandler := authHandler.NewGRPCHandler(authService, log)
+	authHTTPHandler := authHTTPHandler.NewHTTPHandler(authService, log)
+	authGRPCHandler := authGRPCHandler.NewGRPCHandler(authService, log)
 
 	router := chi.NewRouter()
 
@@ -64,7 +65,7 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Route("/api/auth", func(r chi.Router) {
+	router.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", authHTTPHandler.Register(context.Background()))
 		r.Post("/login", authHTTPHandler.Login(context.Background()))
 
@@ -72,6 +73,7 @@ func main() {
 		r.Post("/logout", authHTTPHandler.Logout(context.Background()))
 		// r.Post("/logout-all", authHTTPHandler.LogoutAll(context.Background()))
 
+		r.Post("/verify-internal", authHTTPHandler.VerifyInternal(context.Background()))
 		// r.Post("/forgot-password")
 		// r.Post("/reset-password")
 	})
