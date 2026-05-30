@@ -1,4 +1,4 @@
-package model
+package models
 
 import (
 	"fmt"
@@ -37,4 +37,11 @@ type Relationship struct {
 	Status    RelationshipStatus
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type RelationshipPreview struct {
+	UserID    uuid.UUID
+	Username  string
+	AvatarURL *string
+	Status    RelationshipStatus
 }
