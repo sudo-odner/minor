@@ -5,41 +5,41 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/services/user_service/internal/model"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/models"
 	"go.uber.org/zap"
 )
 
 type Repository interface {
-	CreateUser(ctx context.Context, u *model.User) (*model.User, error)
-	GetUser(ctx context.Context, id uuid.UUID) (*model.User, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, username *string, bio *string) (*model.User, error)
+	CreateUser(ctx context.Context, u *models.User) (*models.User, error)
+	GetUser(ctx context.Context, id uuid.UUID) (*models.User, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, username *string, bio *string) (*models.User, error)
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 }
 
-type EventPublisher interface {
-	PublishUserCreated(ctx context.Context, u *model.User) error
-	PublishUserUpdated(ctx context.Context, u *model.User) error
+type Broker interface {
+	PublishUserCreated(ctx context.Context, u *models.User) error
+	PublishUserUpdated(ctx context.Context, u *models.User) error
 	PublishUserDeleted(ctx context.Context, userID uuid.UUID) error
 }
 
-type Service struct {
-	log       *zap.Logger
-	repo      Repository
-	publisher EventPublisher
+type UserService struct {
+	log    *zap.Logger
+	repo   Repository
+	broker Broker
 }
 
-func New(log *zap.Logger, repo Repository, publisher EventPublisher) *Service {
-	return &Service{
-		log:       log,
-		repo:      repo,
-		publisher: publisher,
+func New(log *zap.Logger, repo Repository, broker Broker) *UserService {
+	return &UserService{
+		log:    log,
+		repo:   repo,
+		broker: broker,
 	}
 }
 
-func (s *Service) CreateUser(ctx context.Context, userID uuid.UUID, username, bio string) (*model.User, error) {
+func (s *UserService) CreateUser(ctx context.Context, userID uuid.UUID, username, bio string) (*models.User, error) {
 	const op = "service.user.CreateUser"
 
-	u := &model.User{
+	u := &models.User{
 		ID:       userID,
 		Username: username,
 		Bio:      bio,
@@ -50,8 +50,8 @@ func (s *Service) CreateUser(ctx context.Context, userID uuid.UUID, username, bi
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if s.publisher != nil {
-		if err := s.publisher.PublishUserCreated(ctx, created); err != nil {
+	if s.broker != nil {
+		if err := s.broker.PublishUserCreated(ctx, created); err != nil {
 			s.log.Error("failed to publish user created event", zap.String("op", op), zap.Error(err))
 		}
 	}
@@ -59,7 +59,7 @@ func (s *Service) CreateUser(ctx context.Context, userID uuid.UUID, username, bi
 	return created, nil
 }
 
-func (s *Service) GetUser(ctx context.Context, userID uuid.UUID) (*model.User, error) {
+func (s *UserService) GetUser(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 	const op = "service.user.GetUser"
 
 	u, err := s.repo.GetUser(ctx, userID)
@@ -70,7 +70,7 @@ func (s *Service) GetUser(ctx context.Context, userID uuid.UUID) (*model.User, e
 	return u, nil
 }
 
-func (s *Service) UpdateUser(ctx context.Context, userID uuid.UUID, username, bio *string) (*model.User, error) {
+func (s *UserService) UpdateUser(ctx context.Context, userID uuid.UUID, username, bio *string) (*models.User, error) {
 	const op = "service.user.UpdateUser"
 
 	updated, err := s.repo.UpdateUser(ctx, userID, username, bio)
@@ -78,8 +78,8 @@ func (s *Service) UpdateUser(ctx context.Context, userID uuid.UUID, username, bi
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if s.publisher != nil {
-		if err := s.publisher.PublishUserUpdated(ctx, updated); err != nil {
+	if s.broker != nil {
+		if err := s.broker.PublishUserUpdated(ctx, updated); err != nil {
 			s.log.Error("failed to publish user updated event", zap.String("op", op), zap.Error(err))
 		}
 	}
@@ -87,7 +87,7 @@ func (s *Service) UpdateUser(ctx context.Context, userID uuid.UUID, username, bi
 	return updated, nil
 }
 
-func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+func (s *UserService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	const op = "service.user.DeleteUser"
 
 	err := s.repo.DeleteUser(ctx, userID)
@@ -95,8 +95,8 @@ func (s *Service) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if s.publisher != nil {
-		if err := s.publisher.PublishUserDeleted(ctx, userID); err != nil {
+	if s.broker != nil {
+		if err := s.broker.PublishUserDeleted(ctx, userID); err != nil {
 			s.log.Error("failed to publish user deleted event", zap.String("op", op), zap.Error(err))
 		}
 	}

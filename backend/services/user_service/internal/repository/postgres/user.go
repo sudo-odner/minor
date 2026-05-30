@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/sudo-odner/minor/backend/services/user_service/internal/model"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/models"
 )
 
-func (repo *Repository) CreateUser(ctx context.Context, u *model.User) (*model.User, error) {
+func (repo *Repository) CreateUser(ctx context.Context, u *models.User) (*models.User, error) {
 	const op = "repository.postgres.CreateUser"
 
 	if u.Email == "" {
@@ -35,7 +35,7 @@ func (repo *Repository) CreateUser(ctx context.Context, u *model.User) (*model.U
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return nil, model.ErrAlreadyExists
+			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -43,7 +43,7 @@ func (repo *Repository) CreateUser(ctx context.Context, u *model.User) (*model.U
 	return u, nil
 }
 
-func (repo *Repository) GetUser(ctx context.Context, id uuid.UUID) (*model.User, error) {
+func (repo *Repository) GetUser(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	const op = "repository.postgres.GetUser"
 
 	query := `
@@ -51,7 +51,7 @@ func (repo *Repository) GetUser(ctx context.Context, id uuid.UUID) (*model.User,
 		FROM users
 		WHERE id = $1;
 	`
-	var u model.User
+	var u models.User
 	err := repo.pool.QueryRow(ctx, query, id).Scan(
 		&u.ID,
 		&u.Email,
@@ -63,14 +63,14 @@ func (repo *Repository) GetUser(ctx context.Context, id uuid.UUID) (*model.User,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, model.ErrNotFound
+			return nil, models.ErrNotFound
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &u, nil
 }
 
-func (repo *Repository) UpdateUser(ctx context.Context, id uuid.UUID, username *string, bio *string) (*model.User, error) {
+func (repo *Repository) UpdateUser(ctx context.Context, id uuid.UUID, username *string, bio *string) (*models.User, error) {
 	const op = "repository.postgres.UpdateUser"
 
 	query := `
@@ -82,7 +82,7 @@ func (repo *Repository) UpdateUser(ctx context.Context, id uuid.UUID, username *
 		WHERE id = $3
 		RETURNING id, email, username, avatar_url, bio, create_at, update_at;
 	`
-	var u model.User
+	var u models.User
 	err := repo.pool.QueryRow(ctx, query, username, bio, id).Scan(
 		&u.ID,
 		&u.Email,
@@ -94,11 +94,11 @@ func (repo *Repository) UpdateUser(ctx context.Context, id uuid.UUID, username *
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, model.ErrNotFound
+			return nil, models.ErrNotFound
 		}
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return nil, model.ErrAlreadyExists
+			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -114,7 +114,7 @@ func (repo *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	if res.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return models.ErrNotFound
 	}
 	return nil
 }

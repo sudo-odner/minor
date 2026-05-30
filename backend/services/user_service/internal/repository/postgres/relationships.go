@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/sudo-odner/minor/backend/services/user_service/internal/model"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/models"
 )
 
 func (repo *Repository) SendFriendRequest(ctx context.Context, userID, friendID uuid.UUID) error {
@@ -21,7 +21,7 @@ func (repo *Repository) SendFriendRequest(ctx context.Context, userID, friendID 
 	defer tx.Rollback(ctx)
 
 	// 1. Check actor's perspective
-	var status model.RelationshipStatus
+	var status models.RelationshipStatus
 	queryActor := `
 		SELECT status FROM relationships 
 		WHERE user_id = $1 AND target_id = $2;
@@ -29,16 +29,16 @@ func (repo *Repository) SendFriendRequest(ctx context.Context, userID, friendID 
 	err = tx.QueryRow(ctx, queryActor, userID, friendID).Scan(&status)
 	if err == nil {
 		// Relation already exists
-		if status == model.StatusFriends {
-			return model.ErrAlreadyExists
+		if status == models.StatusFriends {
+			return models.ErrAlreadyExists
 		}
-		if status == model.StatusRequestSent {
-			return model.ErrAlreadyExists
+		if status == models.StatusRequestSent {
+			return models.ErrAlreadyExists
 		}
-		if status == model.StatusBlocked {
-			return model.ErrPermissionDenied
+		if status == models.StatusBlocked {
+			return models.ErrPermissionDenied
 		}
-		if status == model.StatusRequestReceived {
+		if status == models.StatusRequestReceived {
 			// If target already sent a request, this action accepts it!
 			queryAccept := `
 				UPDATE relationships 
@@ -59,15 +59,15 @@ func (repo *Repository) SendFriendRequest(ctx context.Context, userID, friendID 
 	}
 
 	// 2. Check if target blocked actor
-	var targetStatus model.RelationshipStatus
+	var targetStatus models.RelationshipStatus
 	queryTarget := `
 		SELECT status FROM relationships 
 		WHERE user_id = $1 AND target_id = $2;
 	`
 	err = tx.QueryRow(ctx, queryTarget, friendID, userID).Scan(&targetStatus)
 	if err == nil {
-		if targetStatus == model.StatusBlocked {
-			return model.ErrPermissionDenied
+		if targetStatus == models.StatusBlocked {
+			return models.ErrPermissionDenied
 		}
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("%s: check target status failed: %w", op, err)
@@ -86,7 +86,7 @@ func (repo *Repository) SendFriendRequest(ctx context.Context, userID, friendID 
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return model.ErrNotFound
+			return models.ErrNotFound
 		}
 		return fmt.Errorf("%s: insert relationship failed: %w", op, err)
 	}
@@ -98,7 +98,7 @@ func (repo *Repository) SendFriendRequest(ctx context.Context, userID, friendID 
 	return nil
 }
 
-func (repo *Repository) FriendList(ctx context.Context, userID uuid.UUID) ([]*model.Relationship, error) {
+func (repo *Repository) FriendList(ctx context.Context, userID uuid.UUID) ([]*models.Relationship, error) {
 	const op = "repository.postgres.FriendList"
 
 	query := `
@@ -112,9 +112,9 @@ func (repo *Repository) FriendList(ctx context.Context, userID uuid.UUID) ([]*mo
 	}
 	defer rows.Close()
 
-	var list []*model.Relationship
+	var list []*models.Relationship
 	for rows.Next() {
-		var r model.Relationship
+		var r models.Relationship
 		if err := rows.Scan(&r.UserID, &r.TargetID, &r.Status, &r.CreatedAt, &r.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("%s: scan failed: %w", op, err)
 		}
@@ -124,7 +124,7 @@ func (repo *Repository) FriendList(ctx context.Context, userID uuid.UUID) ([]*mo
 	return list, nil
 }
 
-func (repo *Repository) FriendRequestList(ctx context.Context, userID uuid.UUID) ([]*model.Relationship, error) {
+func (repo *Repository) FriendRequestList(ctx context.Context, userID uuid.UUID) ([]*models.Relationship, error) {
 	const op = "repository.postgres.FriendRequestList"
 
 	query := `
@@ -138,9 +138,9 @@ func (repo *Repository) FriendRequestList(ctx context.Context, userID uuid.UUID)
 	}
 	defer rows.Close()
 
-	var list []*model.Relationship
+	var list []*models.Relationship
 	for rows.Next() {
-		var r model.Relationship
+		var r models.Relationship
 		if err := rows.Scan(&r.UserID, &r.TargetID, &r.Status, &r.CreatedAt, &r.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("%s: scan failed: %w", op, err)
 		}
@@ -164,7 +164,7 @@ func (repo *Repository) AcceptFriendRequest(ctx context.Context, actorID, target
 		return fmt.Errorf("%s: update failed: %w", op, err)
 	}
 	if res.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return models.ErrNotFound
 	}
 	return nil
 }
@@ -182,7 +182,7 @@ func (repo *Repository) DenyFriendRequest(ctx context.Context, actorID, targetID
 		return fmt.Errorf("%s: delete failed: %w", op, err)
 	}
 	if res.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return models.ErrNotFound
 	}
 	return nil
 }
@@ -234,7 +234,7 @@ func (repo *Repository) RemoveFriend(ctx context.Context, actorID, targetID uuid
 		return fmt.Errorf("%s: delete failed: %w", op, err)
 	}
 	if res.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return models.ErrNotFound
 	}
 	return nil
 }

@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor/backend/services/user_service/internal/model"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/models"
 )
 
-func (b *Broker) PublishUserCreated(ctx context.Context, u *model.User) error {
+func (b *Broker) PublishUserCreated(ctx context.Context, u *models.User) error {
 	const op = "broker.nuts.PublishUserCreated"
 
 	event := UserCreatedEvent{
@@ -23,7 +23,7 @@ func (b *Broker) PublishUserCreated(ctx context.Context, u *model.User) error {
 	return nil
 }
 
-func (b *Broker) PublishUserUpdated(ctx context.Context, u *model.User) error {
+func (b *Broker) PublishUserUpdated(ctx context.Context, u *models.User) error {
 	const op = "broker.nuts.PublishUserUpdated"
 
 	event := UserUpdatedEvent{
@@ -50,7 +50,7 @@ func (b *Broker) PublishUserDeleted(ctx context.Context, userID uuid.UUID) error
 	return nil
 }
 
-func (b *Broker) PublishRelationshipUpdated(ctx context.Context, userID, targetID uuid.UUID, status model.RelationshipStatus) error {
+func (b *Broker) PublishRelationshipUpdated(ctx context.Context, userID, targetID uuid.UUID, status models.RelationshipStatus) error {
 	const op = "broker.nuts.PublishRelationshipUpdated"
 
 	event := RelationshipUpdatedEvent{
