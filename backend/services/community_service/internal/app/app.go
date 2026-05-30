@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	grpcServ "github.com/sudo-odner/minor/backend/services/community_service/internal/app/grpc"
 	httpServ "github.com/sudo-odner/minor/backend/services/community_service/internal/app/http"
@@ -11,6 +10,8 @@ import (
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/repository/postgres"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/grpc"
+	httpRouter "github.com/sudo-odner/minor/backend/services/community_service/internal/server/http"
+	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/http/handler"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/channel"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/members"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/permissions"
@@ -46,24 +47,30 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// 3. Init services
-	sPermissions := permissions.New(log, repo)
-	sServers := servers.New(log, repo)
-	sRoles := roles.New(log, repo, sPermissions, sServers)
-	sChannels := channel.New(log, repo, broker, sPermissions)
-	sMembres := members.New(log, repo, sPermissions, sServers)
+	permService := permissions.New(log, repo)
+	serversService := servers.New(log, repo)
+	rolesService := roles.New(log, repo, permService, serversService)
+	channelService := channel.New(log, repo, broker, permService)
+	membersService := members.New(log, repo, permService, serversService)
 
-	// Suppress unused warnings for other services if they are not used elsewhere yet
-	_ = sRoles
-	_ = sChannels
-	_ = sMembres
+	// 4. Init HTTP handlers
+	serverHandler := handler.NewServerHandler(log, serversService)
+	channelHandler := handler.NewChannelHandler(log, channelService)
+	memberHandler := handler.NewMemberHandler(log, membersService)
+	roleHandler := handler.NewRoleHandler(log, rolesService)
 
-	// 4. Init gRPC server
-	gRPCHandler := grpc.New(log, sPermissions)
+	// 5. Init HTTP router and server
+	router := httpRouter.NewRouter(log, httpRouter.Handlers{
+		Server:  serverHandler,
+		Channel: channelHandler,
+		Member:  memberHandler,
+		Role:    roleHandler,
+	})
+	httpServer := httpServ.New(&cfg.ServerHTTP, log, router)
+
+	// 6. Init gRPC server
+	gRPCHandler := grpc.New(log, permService)
 	gRPCServer := grpcServ.New(&cfg.ServerGRPC, log, gRPCHandler)
-
-	// 5. Init HTTP server with a dummy router
-	dummyHandler := http.NewServeMux()
-	httpServer := httpServ.New(&cfg.ServerHTTP, log, dummyHandler)
 
 	return &App{
 		cfg:        cfg,
