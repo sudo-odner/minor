@@ -136,7 +136,7 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 func (repo *Repository) UpdateChannel(
 	ctx context.Context,
 	channelID, serverID uuid.UUID,
-	name string,
+	name *string,
 	parentID *uuid.UUID,
 ) (*models.Channel, error) {
 	const op = "repository.postgres.UpdateChannel"
@@ -149,7 +149,7 @@ func (repo *Repository) UpdateChannel(
 	query := `
 		UPDATE channels 
 		SET 
-			name = $1, 
+			name = COALESCE($1, name), 
 			parent_id = CASE 
 				WHEN $2::uuid IS NULL THEN parent_id
 				WHEN $2::uuid = '00000000-0000-0000-0000-000000000000'::uuid THEN NULL
