@@ -1,0 +1,4 @@
+github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
+github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/sudo-odner/minor-shared v0.3.0 h1:WJoIMwjfFqjGG1qAOOsix93raryk081StPa9Mg5JT0U=
+github.com/sudo-odner/minor-shared v0.3.0/go.mod h1:gPAajvJ+IAeRSVYrbOcZD9y2agQzVxB3Wv7N2vkfgDE=

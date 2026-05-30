@@ -10,11 +10,16 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/app"
+	natsBroker "github.com/sudo-odner/minor/backend/services/auth_service/internal/broker/nats"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/config"
-	authHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
-	"github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/middleware/cors"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/postgres"
+	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/redis"
+	authHTTPHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
+	authGRPCHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/grpc/handler/auth"
+	"github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/middleware/cors"
 	authService "github.com/sudo-odner/minor/backend/services/auth_service/internal/service/auth"
 	"go.uber.org/zap"
 )
@@ -28,17 +33,30 @@ func main() {
 	cfg := config.MustLoad()
 	log := setupLogger(envDev)
 
-	storagePath := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s", cfg.PostgreConfig.Host, cfg.PostgreConfig.Port, cfg.PostgreConfig.Username, cfg.PostgreConfig.DBName, os.Getenv("POSTGRES_PASSWORD"), cfg.PostgreConfig.SSLMode)
+	nc, _ := nats.Connect(cfg.NATS.URL)
+	js, _ := jetstream.New(nc)
 
-	dbConn, err := postgres.New(context.Background(), storagePath)
+	publisher := natsBroker.NewAuthPublisher(js)
+
+	storagePath := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.User, cfg.Postgres.DBName, os.Getenv("POSTGRES_PASSWORD"), cfg.Postgres.SSLMode)
+
+	pgConn, err := postgres.New(context.Background(), storagePath)
 	if err != nil {
-		panic("failed to initialize DB connection")
+		panic("failed to initialize Postgres connection")
 	}
+
+	rdb, err := redis.NewRedisClient(cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.Password, 0)
+	if err != nil {
+		panic("failed to initialize Redis connection")
+	}
+
+	redisConn := redis.NewSessionRepo(rdb)
 
 	log.Info("starting authentication service")
 
-	authService := authService.New(dbConn, log)
-	authHandler := authHandler.New(authService, log)
+	authService := authService.New(pgConn, redisConn, publisher, log, cfg.Auth)
+	authHTTPHandler := authHTTPHandler.NewHTTPHandler(authService, log)
+	authGRPCHandler := authGRPCHandler.NewGRPCHandler(authService, log)
 
 	router := chi.NewRouter()
 
@@ -47,21 +65,31 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Route("/api/auth", func(r chi.Router) {
-		r.Post("/register", authHandler.Register(context.Background()))
-		r.Post("/login", authHandler.Login(context.Background()))
-		
-		r.Post("/refresh", authHandler.RefreshToken(context.Background()))
-		r.Post("/logout", authHandler.Logout(context.Background()))
-		
+	router.Route("/api/v1/auth", func(r chi.Router) {
+		r.Post("/register", authHTTPHandler.Register(context.Background()))
+		r.Post("/login", authHTTPHandler.Login(context.Background()))
+
+		r.Post("/refresh", authHTTPHandler.RefreshToken(context.Background()))
+		r.Post("/logout", authHTTPHandler.Logout(context.Background()))
+		// r.Post("/logout-all", authHTTPHandler.LogoutAll(context.Background()))
+
+		r.Post("/verify-internal", authHTTPHandler.VerifyInternal(context.Background()))
 		// r.Post("/forgot-password")
 		// r.Post("/reset-password")
 	})
 
-	application := app.New(log, cfg, router)
+	application := app.New(log, cfg, router, authGRPCHandler)
 
 	go func() {
-		application.HTTPServer.Run()
+		if err = application.HTTPServer.Run(); err != nil {
+			panic(err)
+		}
+	}()
+
+	go func() {
+		if err = application.GRPCServer.Run(); err != nil {
+			panic(err)
+		}
 	}()
 
 	stop := make(chan os.Signal, 1)

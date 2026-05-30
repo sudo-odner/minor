@@ -1,0 +1,18 @@
+env: "local"
+
+client_domain: "http://localhost:5173" #some different client host
+
+psql:
+    username: "someuser"
+    host: "somehost"
+    port: "someport"
+    dbname: "somedbname"
+    sslmode: "disable" #enable
+
+http_server:
+    port: "someport"
+    timeout: 10s
+    idle_timeout: 60s
+    access_token_ttl: 15m
+    refresh_token_ttl: 43200m
+
