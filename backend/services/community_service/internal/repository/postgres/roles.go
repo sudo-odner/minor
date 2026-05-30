@@ -101,11 +101,11 @@ func (repo *Repository) GetMemberRoles(ctx context.Context, serverID, userID uui
 	const op = "repository.postgres.GetMemberRoles"
 
 	query := `
-		SELECT id, server_id, name, permissions, position, created_at 
+		SELECT r.id, r.server_id, r.name, r.permissions, r.position, r.created_at 
 		FROM roles r
 		JOIN members_roles mr ON r.id = mr.role_id
 		WHERE mr.server_id = $1 AND mr.user_id = $2 
-		ORDER BY position DESC;
+		ORDER BY r.position DESC;
 	`
 	rows, err := repo.pool.Query(ctx, query, serverID, userID)
 	if err != nil {

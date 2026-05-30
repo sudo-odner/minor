@@ -29,7 +29,7 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 		r.Route("/servers", func(r chi.Router) {
 			r.Post("/", handlers.Server.CreateServer())
 			r.Get("/", handlers.Server.GetUserServers())
-			r.Route("/{serverID}", func(r chi.Router) {
+			r.Route("/{server_id}", func(r chi.Router) {
 				r.Get("/", handlers.Server.GetServer())
 				r.Patch("/", handlers.Server.UpdateServer())
 				r.Delete("/", handlers.Server.DeleteServer())
@@ -38,7 +38,7 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 				r.Route("/channels", func(r chi.Router) {
 					r.Post("/", handlers.Channel.CreateChannel())
 					r.Get("/", handlers.Channel.GetServerChannels())
-					r.Route("/{channelID}", func(r chi.Router) {
+					r.Route("/{channel_id}", func(r chi.Router) {
 						r.Patch("/", handlers.Channel.UpdateChannel())
 						r.Delete("/", handlers.Channel.DeleteChannel())
 						r.Post("/move", handlers.Channel.MoveChannel())
@@ -49,12 +49,12 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 				r.Route("/members", func(r chi.Router) {
 					r.Post("/", handlers.Member.AddMember())
 					r.Get("/", handlers.Member.GetServerMembers())
-					r.Route("/{userID}", func(r chi.Router) {
+					r.Route("/{user_id}", func(r chi.Router) {
 						r.Get("/", handlers.Member.GetServerMember())
 						r.Delete("/", handlers.Member.RemoveMember())
 						r.Patch("/nickname", handlers.Member.UpdateNickname())
-						r.Route("/roles/{roleID}", func(r chi.Router) {
-							r.Post("/", handlers.Member.AddRoleToMember())
+						r.Route("/roles/{role_id}", func(r chi.Router) {
+							r.Patch("/", handlers.Member.AddRoleToMember())
 							r.Delete("/", handlers.Member.RemoveRoleFromMember())
 						})
 					})
@@ -64,20 +64,16 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 				r.Route("/roles", func(r chi.Router) {
 					r.Post("/", handlers.Role.CreateRole())
 					r.Get("/", handlers.Role.GetServerRoles())
-					r.Route("/{roleID}", func(r chi.Router) {
+					r.Route("/{role_id}", func(r chi.Router) {
 						r.Patch("/", handlers.Role.UpdateRole())
 						r.Delete("/", handlers.Role.DeleteRole())
 					})
 				})
 
 				// Channel permission overrides nested in Server
-				r.Put("/channels/{channelID}/overrides", handlers.Role.ReplaceChannelPermissionOverrides())
+				r.Put("/channels/{channel_id}/overrides", handlers.Role.ReplaceChannelPermissionOverrides())
 			})
 		})
-
-		// Independent Resource GETs
-		r.Get("/channels/{channelID}", handlers.Channel.GetChannel())
-		r.Get("/roles/{roleID}", handlers.Role.GetRole())
 	})
 
 	return r

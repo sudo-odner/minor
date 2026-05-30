@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 )
 
@@ -21,7 +22,7 @@ func (repo *Repository) AddMember(
 	query := `
 		INSERT INTO members (server_id, user_id, nickname, joined_at)
 		VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-		RETURN server_id, user_id, nickname, joined_at;
+		RETURNING server_id, user_id, nickname, joined_at;
 	`
 	var member models.Member
 
@@ -31,6 +32,10 @@ func (repo *Repository) AddMember(
 		&member.Nickname,
 		&member.JoinedAt,
 	); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, models.ErrAlreadyExists
+		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 

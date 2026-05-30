@@ -92,10 +92,10 @@ func (h *ServerHandler) GetServer() http.HandlerFunc {
 		const op = "http.handler.server.GetServer"
 		log := h.log.With(zap.String("op", op))
 
-		serverID, err := ParseUUIDParam(r, "serverID")
+		serverID, err := ParseUUIDParam(r, "server_id")
 		if err != nil {
-			log.Debug("invalid serverID parameter", zap.Error(err))
-			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid serverID")
+			log.Debug("invalid server_id parameter", zap.Error(err))
+			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid server_id")
 			return
 		}
 
@@ -166,10 +166,10 @@ func (h *ServerHandler) UpdateServer() http.HandlerFunc {
 			return
 		}
 
-		serverID, err := ParseUUIDParam(r, "serverID")
+		serverID, err := ParseUUIDParam(r, "server_id")
 		if err != nil {
-			log.Debug("invalid serverID parameter", zap.Error(err))
-			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid serverID")
+			log.Debug("invalid server_id parameter", zap.Error(err))
+			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid server_id")
 			return
 		}
 
@@ -209,10 +209,10 @@ func (h *ServerHandler) DeleteServer() http.HandlerFunc {
 			return
 		}
 
-		serverID, err := ParseUUIDParam(r, "serverID")
+		serverID, err := ParseUUIDParam(r, "server_id")
 		if err != nil {
-			log.Debug("invalid serverID parameter", zap.Error(err))
-			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid serverID")
+			log.Debug("invalid server_id parameter", zap.Error(err))
+			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid server_id")
 			return
 		}
 
