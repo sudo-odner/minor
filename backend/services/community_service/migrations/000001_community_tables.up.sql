@@ -1,13 +1,13 @@
 -- Таблица сервера. Хранит в себе metadata о серверe
 CREATE TABLE servers (
     id         UUID PRIMARY KEY,
-    name       VARCAHR(100) NOT NULL,
-    owner_id   UUID NOT NULL, -- Пользователь который владеет каналом
+    name       VARCHAR(100) NOT NULL,
+    owner_id   UUID NOT NULL, -- Пользователь который владеет сервером
     avatar_url VARCHAR(512),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP 
 );
 
--- Таблица участриков. Связывает пользователей с серверами(+локальное имя на сервере)
+-- Таблица участников. Связывает пользователей с серверами(+локальное имя на сервере)
 CREATE TABLE members (
     server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
     user_id   UUID NOT NULL, 
@@ -31,13 +31,13 @@ CREATE TABLE roles (
 CREATE TABLE members_roles (
     server_id UUID NOT NULL,
     user_id   UUID NOT NULL,
-    role_id   UUID NOT NULL,
+    role_id   UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
 
     PRIMARY KEY (server_id, user_id, role_id),
     FOREIGN KEY (server_id, user_id) REFERENCES members(server_id, user_id) ON DELETE CASCADE
 );
 
--- Каланы и категори. Харнит каналы, где могут групироватся по категории
+-- Каналы и категории. Хранит каналы, где могут группироваться по категории
 CREATE TABLE channels (
     id         UUID PRIMARY KEY,
     server_id  UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
@@ -47,7 +47,7 @@ CREATE TABLE channels (
     parent_id  UUID REFERENCES channels(id) ON DELETE SET NULL,
 
     position   INTEGER NOT NULL DEFAULT 0,
-    created_at TIEMSTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- Для того чтобы быстро сортировать по server_id
 CREATE INDEX idx_channels_server ON channels(server_id);

@@ -28,7 +28,7 @@ BEGIN
             WHERE server_id = p_server_id
                 AND parent_id IS NOT DISTINCT FROM p_old_parent_id
                 AND position > p_old_pos
-                AND psition <= p_new_pos;
+                AND position <= p_new_pos;
         END IF;
     ELSE 
         -- Перенос в другую категорию (смена родителя)
