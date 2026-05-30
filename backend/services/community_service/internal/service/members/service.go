@@ -31,16 +31,16 @@ type ServerService interface {
 type Service struct {
 	log         *zap.Logger
 	repo        Repository
-	sServer     ServerService
 	sPermission PermissionService
+	sServer     ServerService
 }
 
-func New(log *zap.Logger, repo Repository, sServer ServerService, sPermission PermissionService) *Service {
+func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServer ServerService) *Service {
 	return &Service{
 		log:         log,
 		repo:        repo,
-		sServer:     sServer,
 		sPermission: sPermission,
+		sServer:     sServer,
 	}
 }
 
