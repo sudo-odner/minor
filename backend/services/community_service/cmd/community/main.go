@@ -1,28 +1,46 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/sudo-odner/minor/backend/services/community_service/internal/app"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/lib/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
 	// Init config and logger
-	config := config.MustLoad()
-	logger, err := logger.New(logger.Config{
-		Env:         logger.Env(config.Env),
+	cfg := config.MustLoad()
+	logg, err := logger.New(logger.Config{
+		Env:         logger.Env(cfg.Env),
 		ServiceName: "community-service",
 	})
 	if err != nil {
-		log.Fatalf("FATAL: falied init logger: %s", err)
+		log.Fatalf("FATAL: failed init logger: %s", err)
 	}
 
 	// Init application
-	logger.Info("starting init application")
-	application, err := 
+	logg.Info("starting init application")
+	application, err := app.New(cfg, logg)
+	if err != nil {
+		logg.Fatal("failed init application", zap.Error(err))
+	}
 
-	// TODO: Init application
+	// Run application in background
+	go func() {
+		application.Run()
+	}()
 
-	// TODO: Run and Stop app with graceful shutdown
+	// Wait for terminate signal
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+	<-stop
+
+	logg.Info("stopping application")
+	application.Stop(context.Background())
 }
