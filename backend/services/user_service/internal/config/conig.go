@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -11,58 +10,64 @@ import (
 )
 
 type Config struct {
-	Env           string        `yaml:"env" env-required:"true"`
-	PostgreConfig PostgreConfig `yaml:"psql"`
-	ServerConfig  ServerConfig  `yaml:"http_server"`
+	Env        string `env:"ENV" env-required:"true"`
+	ServerHTTP ServerHTTP
+	ServerGRPC ServerGRPC
+	Nuts       Nuts
+	Postgres   Postgres
 }
 
-type PostgreConfig struct {
-	Host     string `yaml:"host"     env:"-"           env-required:"true"`
-	Port     string `yaml:"port"     env:"-"           env-required:"true"`
-	Username string `yaml:"username" env:"-"           env-required:"true"`
-	DBname   string `yaml:"dbname"   env:"-"           env-required:"true"`
-	SSLmode  string `yaml:"sslmode"  env:"-"           env-default:"enable"`
-	Password string `yaml:"-"        env:"PG_PASSWORD" env-required:"true"`
+type ServerHTTP struct {
+	// Required
+	Address string `env:"HTTP_SERVER_ADDRESS" env-required:"true"`
+	// Optional
+	Timeout     time.Duration `env:"HTTP_SERVER_TIMEOUT" env-defalut:"5s"`
+	IdleTimeout time.Duration `env:"HTTP_SERVER_IDLE_TIMEOUT" env-defalut:"20s"`
 }
 
-type ServerConfig struct {
-	Host        string        `yaml:"host"         env-required:"true"`
-	Port        string        `yaml:"port"         env-required:"true"`
-	Timeout     time.Duration `yaml:"timeout"      env-default:"5s"`
-	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
+type ServerGRPC struct {
+	// Required
+	Address string `env:"GRPC_SERVER_ADDRESS" env-required:"true"`
+	// Optional
+	Timeout time.Duration `env:"GRPC_SERVER_TIMEOUT" env-required:"5s"`
 }
 
-func (c *PostgreConfig) DSN() string {
+type Nuts struct {
+	// Required
+	URL string `env:"NUTS_URL" env-required:"true"`
+	// Optional
+	Timeout          time.Duration `env:"NUTS_TIMEOUT" env-defalut:"10s"`
+	MaxReconnects    int           `env:"NUTS_MAX_RECONNECTS" env-defalut:"5"`
+	TimeoutReconnect time.Duration `env:"NUTS_TIMEOUT_RECONNECT" env-defalut:"2s"`
+}
+
+type Postgres struct {
+	// Required
+	Host     string `env:"POSTGRES_HOST" env-required:"true"`
+	Port     int    `env:"POSTGRES_PORT" env-required:"true"`
+	User     string `env:"POSTGRES_USER" env-required:"true"`
+	Password string `env:"POSTGRES_PASSWORD" env-required:"true"`
+	Database string `env:"POSTGRES_DATABASE" env-required:"true"`
+	// Optional
+}
+
+func (p *Postgres) DSN() string {
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		c.Username,
-		c.Password,
-		c.Host,
-		c.Port,
-		c.DBname,
-		c.SSLmode,
+		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		p.User, p.Password,
+		p.Host, p.Port,
+		p.Database,
 	)
 }
 
 func MustLoad() *Config {
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf("fatal load .env file: %s", err.Error())
+		log.Println("DEBUG: '.env' file not found, read from env")
 	}
-
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		log.Fatal("config path is not set")
-	}
-
-	if _, err := os.Stat(configPath); err != nil {
-		log.Fatalf("cannot read config path: %s", err.Error())
-	}
-
 	var cfg Config
 
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("cannot read config: %s", err.Error())
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		log.Fatalf("FATAL: cannot load config: %s", err)
 	}
-
 	return &cfg
 }
