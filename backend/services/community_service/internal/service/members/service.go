@@ -29,18 +29,18 @@ type ServerService interface {
 }
 
 type Service struct {
-	log           *zap.Logger
-	repo          Repository
-	serviceServer ServerService
-	servicePerm   PermissionService
+	log         *zap.Logger
+	repo        Repository
+	sServer     ServerService
+	sPermission PermissionService
 }
 
-func New(log *zap.Logger, repo Repository, serviceServer ServerService, servicePerm PermissionService) *Service {
+func New(log *zap.Logger, repo Repository, sServer ServerService, sPermission PermissionService) *Service {
 	return &Service{
-		log:           log,
-		repo:          repo,
-		serviceServer: serviceServer,
-		servicePerm:   servicePerm,
+		log:         log,
+		repo:        repo,
+		sServer:     sServer,
+		sPermission: sPermission,
 	}
 }
 
@@ -87,7 +87,7 @@ func (s *Service) RemoveMember(
 ) error {
 	const op = "service.member.RemoveMember"
 
-	server, err := s.serviceServer.GetServer(ctx, serverID)
+	server, err := s.sServer.GetServer(ctx, serverID)
 	if err != nil {
 		return fmt.Errorf("%s: failed to get server: %w", op, err)
 	}
@@ -96,7 +96,7 @@ func (s *Service) RemoveMember(
 		return fmt.Errorf("server owner cannnot leave or kick (wihtout transferring ownership) the server: %w", models.ErrImpossible)
 	}
 	if actorID != targetUserID {
-		permissions, err := s.servicePerm.FetchServerPermissions(ctx, actorID, serverID)
+		permissions, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 		if err != nil {
 			return fmt.Errorf("%s: falied to fetch permissions: %w", op, err)
 		}
@@ -116,7 +116,7 @@ func (s *Service) RemoveMember(
 func (s *Service) UpdateNickname(ctx context.Context, actorID, serverID, targetUserID uuid.UUID, nickname string) error {
 	const op = "service.member.UpdateNickname"
 
-	permission, err := s.servicePerm.FetchServerPermissions(ctx, actorID, serverID)
+	permission, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
 		return fmt.Errorf("%s: failed to fetch permissions: %w", op, err)
 	}
@@ -140,12 +140,11 @@ func (s *Service) UpdateNickname(ctx context.Context, actorID, serverID, targetU
 func (s *Service) AddRoleToMember(ctx context.Context, actorID, serverID, targetUserID, roleID uuid.UUID) error {
 	const op = "service.member.AddRoleToMember"
 
-	server, err := s.serviceServer.GetServer(ctx, serverID)
+	permissionsMask, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
-		return fmt.Errorf("%s: failed to get server: %w", op, err)
+		return fmt.Errorf("%s: failed to get permissions: %w", op, err)
 	}
-	// TODO: Пока может только сам валадеелец наанчать роли нужно чуть поменять
-	if actorID != server.OwnerID {
+	if !authz.Has(permissionsMask, authz.PermManageRole) {
 		return models.ErrPermissionDenied
 	}
 
@@ -159,12 +158,11 @@ func (s *Service) AddRoleToMember(ctx context.Context, actorID, serverID, target
 func (s *Service) DeleteRoleToMember(ctx context.Context, actorID, serverID, targetUserID, roleID uuid.UUID) error {
 	const op = "service.member.DeleteRoleToMember"
 
-	server, err := s.serviceServer.GetServer(ctx, serverID)
+	permissionsMask, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
-		return fmt.Errorf("%s: failed to get server: %w", op, err)
+		return fmt.Errorf("%s: failed to get permissions: %w", op, err)
 	}
-	// TODO: Пока может только сам валадеелец наанчать роли нужно чуть поменять
-	if actorID != server.OwnerID {
+	if !authz.Has(permissionsMask, authz.PermManageRole) {
 		return models.ErrPermissionDenied
 	}
 

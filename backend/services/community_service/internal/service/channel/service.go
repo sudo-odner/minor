@@ -20,29 +20,29 @@ type Repository interface {
 }
 
 type Broker interface {
-	PublishChannelCreated(ctx context.Context, serverID uuid.UUID, ch models.Channel) error
-	PublishChannelUpdated(ctx context.Context, serverID uuid.UUID, ch models.Channel) error
+	PublishChannelCreated(ctx context.Context, serverID uuid.UUID, ch *models.Channel) error
+	PublishChannelUpdated(ctx context.Context, serverID uuid.UUID, ch *models.Channel) error
 	PublishChannelDeleted(ctx context.Context, serverID, channelID uuid.UUID) error
 	PublishChannelPositionsUpdated(ctx context.Context, serverID uuid.UUID, channels []models.Channel) error
 }
 
 type PermissionService interface {
-	FetchServerPermission(ctx context.Context, userID, serverID uuid.UUID) (authz.Permission, error)
+	FetchServerPermissions(ctx context.Context, userID, serverID uuid.UUID) (authz.Permission, error)
 }
 
 type Service struct {
-	log    *zap.Logger
-	repo   Repository
-	broker Broker
-	perm   PermissionService
+	log         *zap.Logger
+	repo        Repository
+	broker      Broker
+	sPermission PermissionService
 }
 
-func New(log *zap.Logger, repo Repository, broker Broker, permService PermissionService) *Service {
+func New(log *zap.Logger, repo Repository, broker Broker, sPermission PermissionService) *Service {
 	return &Service{
-		log:    log,
-		repo:   repo,
-		broker: broker,
-		perm:   permService,
+		log:         log,
+		repo:        repo,
+		broker:      broker,
+		sPermission: sPermission,
 	}
 }
 
@@ -58,7 +58,7 @@ func (s *Service) CreateChannel(
 ) (*models.Channel, error) {
 	const op = "service.channel.CreateChannel"
 
-	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	permission, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: falied to fetch permissions: %w", op, err)
 	}
@@ -84,7 +84,7 @@ func (s *Service) CreateChannel(
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	_ = s.broker.PublishChannelCreated(ctx, serverID, *ch)
+	_ = s.broker.PublishChannelCreated(ctx, serverID, ch)
 
 	return ch, nil
 }
@@ -122,7 +122,7 @@ func (s *Service) UpdatedChannel(
 ) (*models.Channel, error) {
 	const op = "service.channel.UpdateChannel"
 
-	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	permission, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to fetch permission: %w", op, err)
 	}
@@ -158,7 +158,7 @@ func (s *Service) UpdatedChannel(
 		return nil, err
 	}
 
-	_ = s.broker.PublishChannelUpdated(ctx, serverID, *updated)
+	_ = s.broker.PublishChannelUpdated(ctx, serverID, updated)
 
 	return updated, nil
 }
@@ -166,7 +166,7 @@ func (s *Service) UpdatedChannel(
 func (s *Service) DeleteChannel(ctx context.Context, actorID, serverID, channelID uuid.UUID) error {
 	const op = "service.channel.DeleteChannel"
 
-	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	permission, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
 		return fmt.Errorf("%s: falied to fetch permission: %w", op, err)
 	}
@@ -199,7 +199,7 @@ func (s *Service) MoveChannel(
 ) error {
 	const op = "server.channel.MoveChannel"
 
-	permission, err := s.perm.FetchServerPermission(ctx, actorID, serverID)
+	permission, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
 		return fmt.Errorf("%s: falied to fetch permissions: %w", op, err)
 	}

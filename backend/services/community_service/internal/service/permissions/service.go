@@ -79,7 +79,7 @@ func (s *Service) FetchPermissions(ctx context.Context, userID, channelID uuid.U
 	serverID := channel.ServerID
 
 	// 2. Получаем глобальный права пользователя
-	permissions, err := s.FetchPermissions(ctx, userID, channelID)
+	permissions, err := s.FetchServerPermissions(ctx, userID, channelID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
