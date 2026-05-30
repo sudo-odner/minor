@@ -87,6 +87,41 @@ services:
       cassandra:
         condition: service_healthy
 
+  community-service-postgres:
+    image: postgres:15-alpine
+    container_name: community-service-postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: community_service
+      POSTGRES_PASSWORD: community_service_master_key
+      POSTGRES_DB: community_service
+    ports:
+      - "5411:5432"
+    volumes:
+      - ./volumes/postgres_data/community:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U discord_admin -d discord_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  community-service-migrator:
+    image: migrate/migrate:v4.17.1
+    container_name: community-service-migrator
+    volumes:
+      - ../backend/services/community_service/migrations:/migrations
+    command:
+      - -path=/migrations
+      - -database=postgres://community_service:community_service_master_key@community-service-postgres:5432/community_service?sslmode=disable
+      - up
+    networks:
+      - app-network
+    depends_on:
+      community-service-postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:15-alpine
     container_name: postgres-db
