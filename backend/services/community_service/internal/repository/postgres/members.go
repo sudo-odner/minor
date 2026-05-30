@@ -109,15 +109,44 @@ func (repo *Repository) GetServerMembers(ctx context.Context, serverID uuid.UUID
 		members = append(members, member)
 	}
 
+	// Fetch all member-role associations for this server in a single query (resolving N+1 query issue)
+	rolesQuery := `
+		SELECT mr.user_id, r.id, r.server_id, r.name, r.permissions, r.position, r.created_at
+		FROM members_roles mr
+		JOIN roles r ON mr.role_id = r.id
+		WHERE mr.server_id = $1
+		ORDER BY r.position DESC;
+	`
+	rolesRows, err := repo.pool.Query(ctx, rolesQuery, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to query member roles: %w", op, err)
+	}
+	defer rolesRows.Close()
+
+	rolesMap := make(map[uuid.UUID][]models.Role)
+	for rolesRows.Next() {
+		var userID uuid.UUID
+		var role models.Role
+		if err := rolesRows.Scan(
+			&userID,
+			&role.ID,
+			&role.ServerID,
+			&role.Name,
+			&role.Permission,
+			&role.Position,
+			&role.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("%s: scan role error: %w", op, err)
+		}
+		rolesMap[userID] = append(rolesMap[userID], role)
+	}
+
 	for i := range members {
-		roles, err := repo.GetMemberRoles(ctx, members[i].ServerID, members[i].UserID)
-		if err != nil {
-			return nil, fmt.Errorf("%s: failed to get member roles for %s: %w", op, members[i].UserID, err)
+		mRoles := rolesMap[members[i].UserID]
+		if mRoles == nil {
+			mRoles = make([]models.Role, 0)
 		}
-		if roles == nil {
-			roles = make([]models.Role, 0)
-		}
-		members[i].Roles = roles
+		members[i].Roles = mRoles
 	}
 
 	return members, nil
