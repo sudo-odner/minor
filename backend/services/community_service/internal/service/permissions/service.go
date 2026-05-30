@@ -78,15 +78,15 @@ func (s *Service) FetchPermissions(ctx context.Context, userID, channelID uuid.U
 	}
 	serverID := channel.ServerID
 
-	// 2. Получаем глобальный права пользователя
-	permissions, err := s.FetchServerPermissions(ctx, userID, channelID)
+	// 2. Получаем глобальные права пользователя
+	permissions, err := s.FetchServerPermissions(ctx, userID, serverID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Интересная лгика но пока хз, нужно мнения поспрашивать так как в теории может будет такая
-	// роль типо супер ролькоторая будет так же с максимальными правами
-	// // Если это owner у него и так все правa
+	// Интересная логика но пока хз, нужно мнения поспрашивать так как в теории может будет такая
+	// роль типа суперроль которая будет так же с максимальными правами
+	// // Если это owner у него и так все права
 	// if permissions == 0xFFFFFFFFFFFFFFFF {
 	// 	return permissions, nil
 	// }
@@ -103,20 +103,23 @@ func (s *Service) FetchPermissions(ctx context.Context, userID, channelID uuid.U
 		}
 	}
 
-	// 4. Накидываем переопределение для всех рольей пользователя
+	// 4. Накидываем переопределение для всех ролей пользователя
 	memberRoles, err := s.repo.GetMemberRoles(ctx, serverID, userID)
 	if err != nil {
 		return 0, err
 	}
 
+	roleMap := make(map[uuid.UUID]bool, len(memberRoles))
+	for _, role := range memberRoles {
+		roleMap[role.ID] = true
+	}
+
 	var rolesAllow, rolesDeny authz.Permission
 	for _, ov := range overwrites {
 		if ov.TargetType == models.OverrideTypeRole && ov.TargetID != serverID {
-			for _, role := range memberRoles {
-				if role.ID == ov.TargetID {
-					rolesAllow |= ov.Allow
-					rolesDeny |= ov.Deny
-				}
+			if roleMap[ov.TargetID] {
+				rolesAllow |= ov.Allow
+				rolesDeny |= ov.Deny
 			}
 		}
 	}

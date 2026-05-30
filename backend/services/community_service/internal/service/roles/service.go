@@ -121,3 +121,21 @@ func (s *Service) ReplaceChannelPermissionOverrides(ctx context.Context, actorID
 
 	return nil
 }
+
+func (s *Service) DeleteRole(ctx context.Context, actorID, serverID, roleID uuid.UUID) error {
+	const op = "service.roles.DeleteRole"
+
+	permissionsMask, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get permissions: %w", op, err)
+	}
+	if !authz.Has(permissionsMask, authz.PermManageRole) {
+		return models.ErrPermissionDenied
+	}
+
+	if err := s.repo.DeleteRole(ctx, roleID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}

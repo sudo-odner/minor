@@ -113,7 +113,7 @@ func (s *Service) GetServerChannel(ctx context.Context, serverID uuid.UUID) ([]m
 	return chs, nil
 }
 
-func (s *Service) UpdatedChannel(
+func (s *Service) UpdateChannel(
 	ctx context.Context,
 	actorID uuid.UUID,
 	channelID, serverID uuid.UUID,

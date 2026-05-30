@@ -155,8 +155,8 @@ func (s *Service) AddRoleToMember(ctx context.Context, actorID, serverID, target
 	return nil
 }
 
-func (s *Service) DeleteRoleToMember(ctx context.Context, actorID, serverID, targetUserID, roleID uuid.UUID) error {
-	const op = "service.member.DeleteRoleToMember"
+func (s *Service) RemoveRoleFromMember(ctx context.Context, actorID, serverID, targetUserID, roleID uuid.UUID) error {
+	const op = "service.member.RemoveRoleFromMember"
 
 	permissionsMask, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)
 	if err != nil {
