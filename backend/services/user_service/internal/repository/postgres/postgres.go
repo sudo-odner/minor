@@ -7,12 +7,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Storage struct {
+type Repository struct {
 	pool *pgxpool.Pool
 }
 
-func New(ctx context.Context, dsn string) (*Storage, error) {
+func New(ctx context.Context, dsn string) (*Repository, error) {
 	const op = "repository.postgres.New"
+
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -22,11 +23,21 @@ func New(ctx context.Context, dsn string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: ping failed: %w", op, err)
 	}
 
-	return &Storage{
+	return &Repository{
 		pool: pool,
 	}, nil
 }
 
-func Close(ctx context.Context, storage *Storage) {
-	storage.pool.Close()
+func (repo *Repository) Ping(ctx context.Context) error {
+	if repo.pool != nil {
+		return repo.pool.Ping(ctx)
+	}
+	return nil
+}
+
+func (repo *Repository) Close(ctx context.Context) error {
+	if repo.pool != nil {
+		repo.pool.Close()
+	}
+	return nil
 }
