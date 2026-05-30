@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
+	userv1 "github.com/sudo-odner/minor-shared/pkg/pb/user/v1"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/config"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -17,9 +17,9 @@ type Server struct {
 	server *grpc.Server
 }
 
-func New(cfg *config.ServerGRPC, log *zap.Logger, handler communityv1.CommunityServiceServer) *Server {
+func New(cfg *config.ServerGRPC, log *zap.Logger, handler userv1.UserServiceServer) *Server {
 	gRPCServer := grpc.NewServer()
-	communityv1.RegisterCommunityServiceServer(gRPCServer, handler)
+	userv1.RegisterUserServiceServer(gRPCServer, handler)
 	return &Server{
 		cfg:    cfg,
 		log:    log,
