@@ -200,8 +200,17 @@ func (repo *Repository) MoveChannel(
 ) error {
 	const op = "repository.postgres.MoveChannel"
 
+	var dbOldParentID *uuid.UUID
+	if oldParentID != nil && *oldParentID != uuid.Nil {
+		dbOldParentID = oldParentID
+	}
+	var dbNewParentID *uuid.UUID
+	if newParentID != nil && *newParentID != uuid.Nil {
+		dbNewParentID = newParentID
+	}
+
 	query := `SELECT move_channel($1, $2, $3, $4, $5, $6)`
-	_, err := repo.pool.Exec(ctx, query, serverID, channelID, oldParentID, newParentID, oldPos, newPos)
+	_, err := repo.pool.Exec(ctx, query, serverID, channelID, dbOldParentID, dbNewParentID, oldPos, newPos)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

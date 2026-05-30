@@ -66,6 +66,10 @@ func (s *Service) CreateChannel(
 		return nil, models.ErrPermissionDenied
 	}
 
+	if typeChannel == models.ChannelTypeCategory && parentID != nil && *parentID != uuid.Nil {
+		return nil, fmt.Errorf("category channels cannot have a parent category: %w", models.ErrImpossible)
+	}
+
 	if parentID != nil && *parentID != uuid.Nil {
 		parent, err := s.repo.GetChannel(ctx, *parentID)
 		if err != nil {
@@ -138,7 +142,14 @@ func (s *Service) UpdateChannel(
 		return nil, models.ErrPermissionDenied
 	}
 
+	if ch.Type == models.ChannelTypeCategory && parentID != nil && *parentID != uuid.Nil {
+		return nil, fmt.Errorf("category channels cannot have a parent category: %w", models.ErrImpossible)
+	}
+
 	if parentID != nil {
+		if *parentID == channelID {
+			return nil, fmt.Errorf("channel cannot be its own parent: %w", models.ErrImpossible)
+		}
 		if *parentID != uuid.Nil {
 			parent, err := s.repo.GetChannel(ctx, *parentID)
 			if err != nil {
@@ -194,8 +205,8 @@ func (s *Service) MoveChannel(
 	ctx context.Context,
 	actorID uuid.UUID,
 	serverID, channelID uuid.UUID,
-	oldParentID, newParentID *uuid.UUID,
-	oldPos, newPos int,
+	newParentID *uuid.UUID,
+	newPos int,
 ) error {
 	const op = "server.channel.MoveChannel"
 
@@ -205,6 +216,41 @@ func (s *Service) MoveChannel(
 	}
 	if !authz.Has(permission, authz.PermManageChannels) {
 		return models.ErrPermissionDenied
+	}
+
+	// Fetch actual current state of the channel to get true oldParentID and oldPos
+	ch, err := s.repo.GetChannel(ctx, channelID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get channel: %w", op, err)
+	}
+	if ch.ServerID != serverID {
+		return fmt.Errorf("channel does not belong to server: %w", models.ErrImpossible)
+	}
+
+	// Retrieve actual oldParentID and oldPos from DB to prevent malicious or out-of-sync moves
+	oldParentID := ch.ParentID
+	oldPos := ch.Position
+
+	if ch.Type == models.ChannelTypeCategory && newParentID != nil && *newParentID != uuid.Nil {
+		return fmt.Errorf("category channels cannot have a parent category: %w", models.ErrImpossible)
+	}
+
+	if newParentID != nil {
+		if *newParentID == channelID {
+			return fmt.Errorf("channel cannot be its own parent: %w", models.ErrImpossible)
+		}
+		if *newParentID != uuid.Nil {
+			parent, err := s.repo.GetChannel(ctx, *newParentID)
+			if err != nil {
+				return fmt.Errorf("%s: new parent category not found: %w", op, err)
+			}
+			if parent.ServerID != serverID {
+				return fmt.Errorf("new parent category must belong to the same server: %w", models.ErrImpossible)
+			}
+			if parent.Type != models.ChannelTypeCategory {
+				return fmt.Errorf("new parent channel must be a category: %w", models.ErrImpossible)
+			}
+		}
 	}
 
 	if err := s.repo.MoveChannel(ctx, serverID, channelID, oldParentID, newParentID, oldPos, newPos); err != nil {
