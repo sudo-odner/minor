@@ -144,3 +144,36 @@ func (repo *Repository) DeleteServer(ctx context.Context, serverID uuid.UUID) er
 	}
 	return nil
 }
+
+func (repo *Repository) GetUserServers(ctx context.Context, userID uuid.UUID) ([]models.Server, error) {
+	const op = "repository.postgres.GetUserServers"
+
+	query := `
+		SELECT s.id, s.name, s.owner_id, s.avatar_url, s.created_at
+		FROM servers s
+		JOIN members m ON s.id = m.server_id
+		WHERE m.user_id = $1;
+	`
+	rows, err := repo.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: query failed: %w", op, err)
+	}
+	defer rows.Close()
+
+	var servers []models.Server
+	for rows.Next() {
+		var server models.Server
+		if err := rows.Scan(
+			&server.ID,
+			&server.Name,
+			&server.OwnerID,
+			&server.AvatarURL,
+			&server.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("%s: scan failed: %w", op, err)
+		}
+		servers = append(servers, server)
+	}
+
+	return servers, nil
+}

@@ -14,6 +14,7 @@ type Repository interface {
 	GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error)
 	UpdateServer(ctx context.Context, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error)
 	DeleteServer(ctx context.Context, serverID uuid.UUID) error
+	GetUserServers(ctx context.Context, userID uuid.UUID) ([]models.Server, error)
 }
 
 type Service struct {
@@ -53,23 +54,52 @@ func (s *Service) GetServer(ctx context.Context, serverID uuid.UUID) (*models.Se
 	return server, nil
 }
 
-func (s *Service) UpdateServer(ctx context.Context, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error) {
+func (s *Service) UpdateServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error) {
 	const op = "service.server.UpdateServer"
 
-	server, err := s.repo.UpdateServer(ctx, serverID, name, nil)
+	server, err := s.repo.GetServer(ctx, serverID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return server, nil
+	if server.OwnerID != actorID {
+		return nil, models.ErrPermissionDenied
+	}
+
+	updated, err := s.repo.UpdateServer(ctx, serverID, name, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return updated, nil
 }
 
-func (s *Service) DeleteServer(ctx context.Context, serverID uuid.UUID) error {
+func (s *Service) DeleteServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID) error {
 	const op = "service.server.DeleteServer"
+
+	server, err := s.repo.GetServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if server.OwnerID != actorID {
+		return models.ErrPermissionDenied
+	}
 
 	if err := s.repo.DeleteServer(ctx, serverID); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
+}
+
+func (s *Service) GetUserServers(ctx context.Context, userID uuid.UUID) ([]models.Server, error) {
+	const op = "service.server.GetUserServers"
+
+	serversList, err := s.repo.GetUserServers(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return serversList, nil
 }
