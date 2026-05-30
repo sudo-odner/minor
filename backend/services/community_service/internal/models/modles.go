@@ -20,6 +20,7 @@ type Member struct {
 	UserID   uuid.UUID
 	Nickname *string
 	JoinedAt time.Time
+	Roles    []Role
 }
 
 type ChannelType int

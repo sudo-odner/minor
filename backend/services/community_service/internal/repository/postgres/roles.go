@@ -25,7 +25,7 @@ func (repo *Repository) CreateRole(
 	}
 
 	query := `
-		INSERT INTO roles (id, server_id, name, permission, position, created_at)
+		INSERT INTO roles (id, server_id, name, permissions, position, created_at)
 		VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(position), 0) + 1 FROM roles WHERE server_id = $2), CURRENT_TIMESTAMP)
 		RETURNING id, server_id, name, permissions, position, created_at;
 	`

@@ -40,10 +40,26 @@ type AddMemberRequest struct {
 }
 
 type MemberResponse struct {
-	ServerID string  `json:"server_id"`
-	UserID   string  `json:"user_id"`
-	Nickname *string `json:"nickname,omitempty"`
-	JoinedAt string  `json:"joined_at"`
+	ServerID string         `json:"server_id"`
+	UserID   string         `json:"user_id"`
+	Nickname *string        `json:"nickname,omitempty"`
+	JoinedAt string         `json:"joined_at"`
+	Roles    []RoleResponse `json:"roles"`
+}
+
+func mapRolesToResponse(roles []models.Role) []RoleResponse {
+	if roles == nil {
+		return []RoleResponse{}
+	}
+	res := make([]RoleResponse, len(roles))
+	for i, r := range roles {
+		res[i] = RoleResponse{
+			ID:       r.ID.String(),
+			Name:     r.Name,
+			Position: r.Position,
+		}
+	}
+	return res
 }
 
 func (h *MemberHandler) AddMember() http.HandlerFunc {
@@ -83,6 +99,7 @@ func (h *MemberHandler) AddMember() http.HandlerFunc {
 			UserID:   m.UserID.String(),
 			Nickname: m.Nickname,
 			JoinedAt: m.JoinedAt.Format(time.RFC3339),
+			Roles:    mapRolesToResponse(m.Roles),
 		})
 	}
 }
@@ -113,6 +130,7 @@ func (h *MemberHandler) GetServerMembers() http.HandlerFunc {
 				UserID:   membersList[i].UserID.String(),
 				Nickname: membersList[i].Nickname,
 				JoinedAt: membersList[i].JoinedAt.Format(time.RFC3339),
+				Roles:    mapRolesToResponse(membersList[i].Roles),
 			}
 		}
 		render.JSON(w, r, res)
@@ -150,6 +168,7 @@ func (h *MemberHandler) GetServerMember() http.HandlerFunc {
 			UserID:   m.UserID.String(),
 			Nickname: m.Nickname,
 			JoinedAt: m.JoinedAt.Format(time.RFC3339),
+			Roles:    mapRolesToResponse(m.Roles),
 		})
 	}
 }

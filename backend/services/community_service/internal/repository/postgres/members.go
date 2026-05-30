@@ -33,8 +33,13 @@ func (repo *Repository) AddMember(
 		&member.JoinedAt,
 	); err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return nil, models.ErrAlreadyExists
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				return nil, models.ErrAlreadyExists
+			}
+			if pgErr.Code == "23503" {
+				return nil, models.ErrNotFound
+			}
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -63,6 +68,15 @@ func (repo *Repository) GetServerMember(ctx context.Context, serverID, userID uu
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	roles, err := repo.GetMemberRoles(ctx, serverID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to get member roles: %w", op, err)
+	}
+	if roles == nil {
+		roles = make([]models.Role, 0)
+	}
+	member.Roles = roles
 
 	return &member, nil
 }
@@ -93,6 +107,17 @@ func (repo *Repository) GetServerMembers(ctx context.Context, serverID uuid.UUID
 			return nil, fmt.Errorf("%s: scan error: %w", op, err)
 		}
 		members = append(members, member)
+	}
+
+	for i := range members {
+		roles, err := repo.GetMemberRoles(ctx, members[i].ServerID, members[i].UserID)
+		if err != nil {
+			return nil, fmt.Errorf("%s: failed to get member roles for %s: %w", op, members[i].UserID, err)
+		}
+		if roles == nil {
+			roles = make([]models.Role, 0)
+		}
+		members[i].Roles = roles
 	}
 
 	return members, nil
@@ -147,6 +172,15 @@ func (repo *Repository) AddRoleToMember(ctx context.Context, serverID, userID, r
 	`
 	_, err := repo.pool.Exec(ctx, query, serverID, userID, roleID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23503" {
+				return models.ErrNotFound
+			}
+			if pgErr.Code == "23505" {
+				return models.ErrAlreadyExists
+			}
+		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
