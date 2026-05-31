@@ -23,9 +23,9 @@ type ServerGRPC struct {
 }
 
 type Redis struct {
-	// REQUIRED
+	// Required
 	Url string `env:"REDIS_URL" env-required:"true"`
-	// OPTIONAL
+	// Optional
 	PoolSize     int           `env:"REDIS_POOL_SIZE" env-default:"10"`
 	MinIdleConns int           `env:"REDIS_MIN_IDLE_CONNS" env-default:"3"`
 	DialTimeout  time.Duration `env:"REDIS_DIAL_TIMEOUT" env-default:"5s"`
@@ -34,12 +34,12 @@ type Redis struct {
 }
 
 type Nuts struct {
-	// REQUIRED
-	Url string `env:"NATS_URL" env-required:"true"`
-	// OPTIONAL
-	Timeout       time.Duration `env:"NATS_TIMEOUT" env-default:"10s"`
-	MaxReconnects int           `env:"NATS_MAX_RECONNECTS" env-default:"5"`
-	ReconnectWait time.Duration `env:"NATS_RECONNECT_WAIT" env-default:"2s"`
+	// Required
+	URL string `env:"NUTS_URL" env-required:"true"`
+	// Optional
+	Timeout          time.Duration `env:"NUTS_TIMEOUT" env-defalut:"10s"`
+	MaxReconnects    int           `env:"NUTS_MAX_RECONNECTS" env-defalut:"5"`
+	TimeoutReconnect time.Duration `env:"NUTS_TIMEOUT_RECONNECT" env-defalut:"2s"`
 }
 
 func MustLoad() *Config {
@@ -55,4 +55,3 @@ func MustLoad() *Config {
 
 	return &cfg
 }
-
