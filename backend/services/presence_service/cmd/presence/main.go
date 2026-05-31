@@ -18,7 +18,7 @@ func main() {
 	cfg := config.MustLoad()
 	logg, err := logger.New(logger.Config{
 		Env:         logger.Env(cfg.Env),
-		ServiceName: "community-service",
+		ServiceName: "presence-service",
 	})
 	if err != nil {
 		log.Fatalf("FATAL: failed init logger: %s", err)
