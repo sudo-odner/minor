@@ -6,57 +6,58 @@ import (
 
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/models"
-	"go.uber.org/zap"
 )
 
-type PushProvider interface {
-	Send(ctx context.Context, userID string, title, body string) error
+// EmailProvider — наш новый интерфейс вместо Push
+type EmailProvider interface {
+	Send(ctx context.Context, toEmail string, title, body string) error
+}
+
+// UserClient — интерфейс gRPC клиента к User Service
+type UserClient interface {
+	GetUserEmail(ctx context.Context, userID string) (string, error)
+	GetUserName(ctx context.Context, userID string) (string, error)
 }
 
 type Notifier struct {
-	log *zap.Logger
-	presenceClient *presence.Client
-	pushProvider PushProvider
+	presenceClient *presence.Client // из прошлого примера
+	userClient     UserClient       // Добавили связь с User Service
+	emailProvider  EmailProvider
 }
 
-func NewNotifier(presenceClient *presence.Client, pushProvider PushProvider) *Notifier {
+func NewNotifier(presenceClient *presence.Client, userClient UserClient, emailProvider EmailProvider) *Notifier {
 	return &Notifier{
 		presenceClient: presenceClient,
-		pushProvider: pushProvider,
+		userClient:     userClient,
+		emailProvider:  emailProvider,
 	}
 }
 
-func (n *Notifier) HandlerChatMessage(ctx context.Context, event models.ChatMessageCreated) error {
-	log := n.log.With(
-		zap.String("op", "notifier"),
-	)
-	
-	isOnline, err := n.presenceClient.IsUserOnline(ctx, event.AuthorID)
-	if err != nil {
-		return fmt.Errorf("failed to check presence: %w", err)
-	}
-
+func (n *Notifier) HandleChatMessage(ctx context.Context, event models.ChatMessageCreated) error {
+	isOnline, _ := n.presenceClient.IsUserOnline(ctx, event.AuthorID)
 	if isOnline {
-		log.Info("user is online, skipping push", zap.String("user", event.AuthorID))
 		return nil
 	}
 
-	title := "New Message"
-	body := fmt.Sprintf("User %s: %s", event.AuthorID, truncate(event.Content, 50))
-
-	err = n.pushProvider.Send(ctx, event.AuthorID, title, body)
+	email, err := n.userClient.GetUserEmail(ctx, event.AuthorID)
 	if err != nil {
-		return fmt.Errorf("push delivery failed: %w", err)
+		return err
 	}
 
-	log.Info("push sent successfully", zap.String("user", event.AuthorID))
-	return nil
+	// Используем твою логику текста, но через интерфейс
+	title := "Оповещение о сообщении в Minor"
+	body := fmt.Sprintf("Здравствуйте!\n\nВ канале появилось новое сообщение:\n%s", event.Content)
+
+	return n.emailProvider.Send(ctx, email, title, body)
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-
-	return s[:max] + "..."
+// Добавляем обработку события входа (если прилетит из NATS)
+func (n *Notifier) HandleLoginEvent(ctx context.Context, userID, ip string) error {
+    email, _ := n.userClient.GetUserEmail(ctx, userID)
+    userName, _ := n.userClient.GetUserName(ctx, userID)
+    
+    title := "Оповещение о входе в Minor"
+    body := fmt.Sprintf("Здравствуйте, %s!\n\nБыл выполнен вход в ваш аккаунт.\nIP-адрес: %s", userName, ip)
+    
+    return n.emailProvider.Send(ctx, email, title, body)
 }
