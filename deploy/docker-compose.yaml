@@ -184,6 +184,27 @@ services:
         condition: service_healthy
 
   # SERVICES
+
+  auth_service:
+    build:
+      context: ../backend/services/auth_service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      # middleware
+      - "traefik.http.middlewares.auth-verify.forwardauth.address=http://auth-service:8081/api/v1/auth/verify-internal"
+      - "traefik.http.middlewares.auth-verify.forwardauth.authResponseHeaders=X-User-ID"
+      - "traefik.http.middlewares.auth-verify.forwardauth.trustForwardHeader=true"
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    networks:
+      - minor-network
+
   community_service:
     build:
       context: ../..
@@ -282,6 +303,24 @@ services:
       user-postgres:
         condition: service_healthy
 
+  gateway_service:
+    build:
+      context: ../backend/services/gateway_service
+      dockerfile: Dockerfile
+    container_name: gateway-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gateway.rule=PathPrefix(`/gateway`)"
+      - "traefik.http.routers.gateway.entrypoints=web"
+      - "traefik.http.routers.gateway.middlewares=auth-verify"
+      - "traefik.http.services.gateway.loadbalancer.server.port=8085"
+    ports:
+      - "8085:8085"
+    env_file:
+      - .env
+    networks:
+      - minor-network
+
   presence_service:
     build:
       context: ../..
@@ -309,6 +348,24 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
+
+  notification_service:
+    build:
+      context: ../backend/services/notification_service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    # labels:
+    #     - "traefik.enable=true"
+    #     - "traefik.http.routers.notifications.rule=PathPrefix(`/api/v1/notifications`)"
+    #     - "traefik.http.routers.notifications.entrypoints=web"
+    #     - "traefik.http.routers.notifications.middlewares=auth-verify"
+    #     - "traefik.http.services.notifications.loadbalancer.server.port=8087"
+    ports:
+      - "8087:8087"
+    env_file:
+      - .env
+    networks:
+      - minor-network
 
 # NETWORKS
 networks:
