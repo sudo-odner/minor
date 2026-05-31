@@ -1,23 +1,14 @@
 FROM golang:1.26.0-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
+COPY minor-shared /src/minor-shared
+COPY minor/backend /src/minor/backend
 
-COPY go.mod go.sum ./
-
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main cmd/server/main.go
+WORKDIR /src/minor/backend/services/community_service
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/community/main.go
 
 FROM alpine:latest
-
 WORKDIR /root/
-
-COPY --from=builder /app/main .
-
-EXPOSE 8016
-
+COPY --from=builder /src/minor/backend/services/community_service/main .
+EXPOSE 8011
 CMD ["./main"]
-
-

@@ -80,8 +80,8 @@ services:
 
   message-cassandra-migrator:
     build:
-      context: ../backend/services/message_service
-      dockerfile: migrator.Dockerfile
+      context: ../..
+      dockerfile: minor/backend/services/message_service/migrator.Dockerfile
     container_name: message-service-migrator
     environment:
       - CASSANDRA_HOSTS=cassandra-db
@@ -139,12 +139,12 @@ services:
       - ../backend/services/user_service/migrations:/migrations
     command:
       - -path=/migrations
-      - -database=postgres://user_service:user_service_master_key@user-postgres:5484/user_service?sslmode=disable
+      - -database=postgres://user_service:user_service_master_key@user-postgres:5432/user_service?sslmode=disable
       - up
     networks:
       - minor-network
     depends_on:
-      community-postgres:
+      user-postgres:
         condition: service_healthy
 
   community-postgres:
@@ -156,7 +156,7 @@ services:
       POSTGRES_PASSWORD: community_service_master_key
       POSTGRES_DB: community_service
     ports:
-      - "5483:5432"
+      - "5482:5432"
     volumes:
       - ./volumes/postgres_data/community:/var/lib/postgresql/data
     networks:
@@ -175,7 +175,7 @@ services:
       - ../backend/services/community_service/migrations:/migrations
     command:
       - -path=/migrations
-      - -database=postgres://community_service:community_service_master_key@community-postgres:5483/community_service?sslmode=disable
+      - -database=postgres://community_service:community_service_master_key@community-postgres:5432/community_service?sslmode=disable
       - up
     networks:
       - minor-network
@@ -184,133 +184,131 @@ services:
         condition: service_healthy
 
   # SERVICES
-  # auth_service:
-  #   build:
-  #     context: ../backend/services/auth_service
-  #     dockerfile: Dockerfile
-  #   container_name: auth-service
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`)"
-  #     - "traefik.http.routers.auth.entrypoints=web"
-  #     # middleware
-  #     - "traefik.http.middlewares.auth-verify.forwardauth.address=http://auth-service:8081/api/v1/auth/verify-internal"
-  #     - "traefik.http.middlewares.auth-verify.forwardauth.authResponseHeaders=X-User-ID"
-  #     - "traefik.http.middlewares.auth-verify.forwardauth.trustForwardHeader=true"
-  #   ports:
-  #     - "8081:8081"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
-  #
-  # community_service:
-  #   build:
-  #     context: ../backend/services/community_service
-  #     dockerfile: Dockerfile
-  #   container_name: community-service
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.routers.community.rule=PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/channels`)"
-  #     - "traefik.http.routers.community.entrypoints=web"
-  #     - "traefik.http.routers.community.middlewares=auth-verify"
-  #     - "traefik.http.services.community.loadbalancer.server.port=8082"
-  #   ports:
-  #     - "8082:8082"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
-  #
-  # message_service:
-  #   build:
-  #     context: ../backend/services/message_service
-  #     dockerfile: Dockerfile
-  #   container_name: message-service
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.routers.messages.rule=PathPrefix(`/api/v1/messages`)"
-  #     - "traefik.http.routers.messages.entrypoints=web"
-  #     - "traefik.http.routers.messages.middlewares=auth-verify"
-  #     - "traefik.http.services.messages.loadbalancer.server.port=8083"
-  #   ports:
-  #     - "8083:8083"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
-  #
-  # user_service:
-  #   build:
-  #     context: ../backend/services/user_service
-  #     dockerfile: Dockerfile
-  #   container_name: user-service
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.routers.users.rule=PathPrefix(`/api/v1/users`)"
-  #     - "traefik.http.routers.users.entrypoints=web"
-  #     - "traefik.http.routers.users.middlewares=auth-verify"
-  #     - "traefik.http.services.users.loadbalancer.server.port=8084"
-  #   ports:
-  #     - "8084:8084"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
-  #
-  # gateway_service:
-  #   build:
-  #     context: ../backend/services/gateway_service
-  #     dockerfile: Dockerfile
-  #   container_name: gateway-service
-  #   labels:
-  #     - "traefik.enable=true"
-  #     - "traefik.http.routers.gateway.rule=PathPrefix(`/gateway`)"
-  #     - "traefik.http.routers.gateway.entrypoints=web"
-  #     - "traefik.http.routers.gateway.middlewares=auth-verify"
-  #     - "traefik.http.services.gateway.loadbalancer.server.port=8085"
-  #   ports:
-  #     - "8085:8085"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
-  #
-  # presence_service:
-  #   build:
-  #     context: ../backend/services/presence_service
-  #     dockerfile: Dockerfile
-  #   container_name: presence-service
-  #   # labels:
-  #   #     - "traefik.enable=true"
-  #   #     - "traefik.http.routers.presence.rule=PathPrefix(`/api/v1/presence`)"
-  #   #     - "traefik.http.routers.presence.entrypoints=web"
-  #   #     - "traefik.http.routers.presence.middlewares=auth-verify"
-  #   #     - "traefik.http.services.presence.loadbalancer.server.port=8086"
-  #   ports:
-  #     - "8086:8086"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
-  #
-  # notification_service:
-  #   build:
-  #     context: ../backend/services/notification_service
-  #     dockerfile: Dockerfile
-  #   container_name: notification-service
-  #   # labels:
-  #   #     - "traefik.enable=true"
-  #   #     - "traefik.http.routers.notifications.rule=PathPrefix(`/api/v1/notifications`)"
-  #   #     - "traefik.http.routers.notifications.entrypoints=web"
-  #   #     - "traefik.http.routers.notifications.middlewares=auth-verify"
-  #   #     - "traefik.http.services.notifications.loadbalancer.server.port=8087"
-  #   ports:
-  #     - "8087:8087"
-  #   env_file:
-  #     - .env
-  #   networks:
-  #     - minor-network
+  community_service:
+    build:
+      context: ../..
+      dockerfile: minor/backend/services/community_service/Dockerfile
+    container_name: community-service
+    ports:
+      - "8082:8082"
+      - "50082:50082"
+    environment:
+      - ENV=local
+      - HTTP_SERVER_ADDRESS=0.0.0.0:8082
+      - GRPC_SERVER_ADDRESS=0.0.0.0:50082
+      - NUTS_URL=nats://nats:4222
+      - POSTGRES_HOST=community-postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=community_service
+      - POSTGRES_PASSWORD=community_service_master_key
+      - POSTGRES_DATABASE=community_service
+    # env_file:
+    #   - ../backend/services/community_service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.community.rule=PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/channels`)"
+      - "traefik.http.routers.community.entrypoints=web"
+      - "traefik.http.routers.community.middlewares=auth-verify"
+      - "traefik.http.services.community.loadbalancer.server.port=8082"
+    networks:
+      - minor-network
+    depends_on:
+      community-postgres:
+        condition: service_healthy
+
+  message_service:
+    build:
+      context: ../..
+      dockerfile: minor/backend/services/message_service/server.Dockerfile
+    container_name: message-service
+    ports:
+      - "8083:8083"
+    environment:
+      - ENV=local
+      - HTTP_SERVER_ADDRESS=0.0.0.0:8083
+      - CASSANDRA_HOST=cassandra-db
+      - CASSANDRA_KEYSPACE=chat
+      - REDIS_URL=redis://redis-cache:6379
+      - NATS_URL=nats://nats:4222
+      - GRPC_CLIENT_USER_TARGET=user-service:50084
+      - GRPC_CLIENT_COMMUNITY_TARGET=community-service:50082
+    # env_file:
+    #   - ../backend/services/message_service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.messages.rule=PathPrefix(`/api/v1/messages`)"
+      - "traefik.http.routers.messages.entrypoints=web"
+      - "traefik.http.routers.messages.middlewares=auth-verify"
+      - "traefik.http.services.messages.loadbalancer.server.port=8083"
+    networks:
+      - minor-network
+    depends_on:
+      cassandra:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  user_service:
+    build:
+      context: ../..
+      dockerfile: minor/backend/services/user_service/Dockerfile
+    container_name: user-service
+    ports:
+      - "8084:8084"
+      - "50084:50084"
+    environment:
+      - ENV=local
+      - HTTP_SERVER_ADDRESS=0.0.0.0:8084
+      - GRPC_SERVER_ADDRESS=0.0.0.0:50084
+      - NUTS_URL=nats://nats:4222
+      - POSTGRES_HOST=user-postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=user_service
+      - POSTGRES_PASSWORD=user_service_master_key
+      - POSTGRES_DATABASE=user_service
+    # env_file:
+    #   - ../backend/services/user_service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/api/v1/users`)"
+      - "traefik.http.routers.users.entrypoints=web"
+      - "traefik.http.routers.users.middlewares=auth-verify"
+      - "traefik.http.services.users.loadbalancer.server.port=8084"
+    networks:
+      - minor-network
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+
+  presence_service:
+    build:
+      context: ../..
+      dockerfile: minor/backend/services/presence_service/Dockerfile
+    container_name: presence-service
+    ports:
+      - "50086:50086"
+    environment:
+      - ENV=local
+      - GRPC_SERVER_ADDRESS=0.0.0.0:50086
+      - REDIS_URL=redis://redis-cache:6379
+      - NUTS_URL=nats://nats:4222
+    # env_file:
+    #   - ../backend/services/presence_service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.presence.rule=PathPrefix(`/api/v1/presence`)"
+      - "traefik.http.routers.presence.entrypoints=web"
+      - "traefik.http.routers.presence.middlewares=auth-verify"
+      - "traefik.http.services.presence.loadbalancer.server.port=8086"
+    networks:
+      - minor-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
 
 # NETWORKS
 networks:

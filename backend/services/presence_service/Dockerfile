@@ -1,24 +1,14 @@
 FROM golang:1.26.0-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
+COPY minor-shared /src/minor-shared
+COPY minor/backend /src/minor/backend
 
-COPY go.mod go.sum ./
-
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main cmd/presence/main.go
-
+WORKDIR /src/minor/backend/services/presence_service
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/presence/main.go
 
 FROM alpine:latest
-
 WORKDIR /root/
-
-COPY --from=builder /app/main .
-
-EXPOSE 8013
-
+COPY --from=builder /src/minor/backend/services/presence_service/main .
+EXPOSE 50086
 CMD ["./main"]
-
-

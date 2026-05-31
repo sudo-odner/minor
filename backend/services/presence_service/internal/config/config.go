@@ -19,7 +19,7 @@ type ServerGRPC struct {
 	// Required
 	Address string `env:"GRPC_SERVER_ADDRESS" env-required:"true"`
 	// Optional
-	Timeout time.Duration `env:"GRPC_SERVER_TIMEOUT" env-required:"5s"`
+	Timeout time.Duration `env:"GRPC_SERVER_TIMEOUT" env-default:"5s"`
 }
 
 type Redis struct {
@@ -37,9 +37,9 @@ type Nuts struct {
 	// Required
 	URL string `env:"NUTS_URL" env-required:"true"`
 	// Optional
-	Timeout          time.Duration `env:"NUTS_TIMEOUT" env-defalut:"10s"`
-	MaxReconnects    int           `env:"NUTS_MAX_RECONNECTS" env-defalut:"5"`
-	TimeoutReconnect time.Duration `env:"NUTS_TIMEOUT_RECONNECT" env-defalut:"2s"`
+	Timeout          time.Duration `env:"NUTS_TIMEOUT" env-default:"10s"`
+	MaxReconnects    int           `env:"NUTS_MAX_RECONNECTS" env-default:"5"`
+	TimeoutReconnect time.Duration `env:"NUTS_TIMEOUT_RECONNECT" env-default:"2s"`
 }
 
 func MustLoad() *Config {
