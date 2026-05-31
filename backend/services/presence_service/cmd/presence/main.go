@@ -2,97 +2,45 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/chi/v5"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/app"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/config"
-	authHandler "github.com/sudo-odner/minor/backend/services/presence_service/internal/http-server/handler/auth"
-	"github.com/sudo-odner/minor/backend/services/presence_service/internal/http-server/middleware/cors"
-	"github.com/sudo-odner/minor/backend/services/presence_service/internal/repository/postgres"
-	authService "github.com/sudo-odner/minor/backend/services/presence_service/internal/service/auth"
+	"github.com/sudo-odner/minor/backend/services/presence_service/internal/lib/logger"
 	"go.uber.org/zap"
 )
 
-const (
-	envDev  = "dev"
-	envProd = "prod"
-)
-
 func main() {
+	// Init config and logger
 	cfg := config.MustLoad()
-	log := setupLogger(envDev)
-
-	storagePath := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s", cfg.PostgreConfig.Host, cfg.PostgreConfig.Port, cfg.PostgreConfig.Username, cfg.PostgreConfig.DBName, os.Getenv("POSTGRES_PASSWORD"), cfg.PostgreConfig.SSLMode)
-
-	dbConn, err := postgres.New(context.Background(), storagePath)
+	logg, err := logger.New(logger.Config{
+		Env:         logger.Env(cfg.Env),
+		ServiceName: "presence-service",
+	})
 	if err != nil {
-		panic("failed to initialize DB connection")
+		log.Fatalf("FATAL: failed init logger: %s", err)
 	}
 
-	log.Info("starting authentication service")
+	// Init application
+	logg.Info("starting init application")
+	application, err := app.New(cfg, logg)
+	if err != nil {
+		logg.Fatal("failed init application", zap.Error(err))
+	}
 
-	authService := authService.New(dbConn, log)
-	authHandler := authHandler.New(authService, log)
-
-	router := chi.NewRouter()
-
-	router.Use(middleware.RequestID)
-	router.Use(cors.NewCORS)
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
-
-	router.Route("/auth-service", func(r chi.Router) {
-		r.Post("/register", authHandler.Register(context.Background()))
-		r.Post("/login", authHandler.Login(context.Background()))
-	})
-
-	// router.Route("/token", func(r chi.Router) {
-	// 	r.Post("/refresh")
-	// })
-
-	application := app.New(log, cfg, router)
-
+	// Run application in background
 	go func() {
-		application.HTTPServer.Run()
+		application.Run()
 	}()
 
+	// Wait for terminate signal
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+	<-stop
 
-	signal := <-stop
-
-	log.Info("stopping application", zap.String("signal", signal.String()))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	application.HTTPServer.Stop(ctx)
-
-	log.Info("application stopped")
-}
-
-func setupLogger(env string) *zap.Logger {
-	var log *zap.Logger
-	var err error
-
-	switch env {
-	case envDev:
-		log, err = zap.NewDevelopment()
-		if err != nil {
-			panic("failed to initialize development logger")
-		}
-	case envProd:
-		log, err = zap.NewProduction()
-		if err != nil {
-			panic("failed to initialize production logger")
-		}
-	}
-
-	return log
+	logg.Info("stopping application")
+	application.Stop(context.Background())
 }
