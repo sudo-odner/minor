@@ -16,9 +16,9 @@ func (s *ServerAPI) SetStatus(
 
 	userID := req.GetUserId()
 	status := models.UserStatus(req.GetStatus())
-	statusInfo := req.GetStatusInfo()
+	customStatus := req.GetCutsomStatus()
 
-	err := s.presenceService.SetStatus(ctx, userID, status, statusInfo)
+	err := s.presenceService.SetStatus(ctx, userID, status, customStatus)
 	if err != nil {
 		s.log.Error("failed to set status", zap.String("op", op), zap.Error(err))
 		return &presencev1.SetStatusResponse{Success: false}, err
