@@ -8,7 +8,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
-	github.com/sudo-odner/minor-shared v0.6.0
+	github.com/sudo-odner/minor-shared v0.6.1
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
@@ -17,6 +17,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
+	github.com/go-chi/chi v1.5.5 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
