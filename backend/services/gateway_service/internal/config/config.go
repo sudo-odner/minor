@@ -10,34 +10,32 @@ import (
 )
 
 type Config struct {
-	Env           string        `yaml:"env"`
-	ClientDomain  string        `yaml:"client_domain"`
-	PostgreConfig `yaml:"psql"`
-	ServerConfig  `yaml:"http_server"`
-	TokenConfig
+	App      AppConfig      `yaml:"app"`
+	GRPC     GRPCConfig     `yaml:"grpc"`
+	Redis    RedisConfig    `yaml:"redis"`
+	NATS     NATSConfig     `yaml:"nats"`
 }
 
-type PostgreConfig struct {
-	Username string `yaml:"username"`
+type AppConfig struct {
+	Name    string `yaml:"name"`
+	Version string `yaml:"version"`
+	Env     string `yaml:"env"`
+}
+
+type GRPCConfig struct {
+	Port int `yaml:"port"`
+}
+
+type RedisConfig struct {
 	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	DBName   string `yaml:"dbname"`
-	SSLMode  string `yaml:"sslmode"`
+	Port     int `yaml:"port"`
+	Password string `yaml:"password"`
+	DB       string `yaml:"db"`
 }
 
-type TokenConfig struct {
-	AccessSecret    []byte
-	RefreshSecret   []byte
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-}
-
-type ServerConfig struct {
-	Port            string        `yaml:"port"`
-	Timeout         time.Duration `yaml:"timeout"`
-	IdleTimeout     time.Duration `yaml:"idle_timeout"`
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
+type NATSConfig struct {
+	URL        string `yaml:"url"`
+	StreamName string `yaml:"stream_name"`
 }
 
 func MustLoad() *Config {
@@ -60,12 +58,11 @@ func MustLoad() *Config {
 		log.Fatalf("cannot read config: %s", err.Error())
 	}
 
-	cfg.TokenConfig = TokenConfig{
-		AccessSecret: []byte(getEnv("accessSecret", "default_access_secret")),
-		RefreshSecret: []byte(getEnv("refreshSecret", "default_refresh_secret")),
-		AccessTokenTTL: parseDuration(getEnv("accessTokenDuration", "15m")),
-		RefreshTokenTTL: parseDuration(getEnv("refreshTokenDuration", "168h")),
-	}
+	// cfg.Auth = AuthConfig{
+	// 	JWTSecret:    []byte(getEnv("accessSecret", "default_access_secret")),
+	// 	AccessTokenTTL:  parseDuration(getEnv("accessTokenDuration", "15m")),
+	// 	RefreshTokenTTL: parseDuration(getEnv("refreshTokenDuration", "168h")),
+	// }
 
 	return &cfg
 }
