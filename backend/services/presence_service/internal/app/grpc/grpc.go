@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
+	presencev1 "github.com/sudo-odner/minor-shared/pkg/pb/presence/v1"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/config"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -17,9 +17,9 @@ type Server struct {
 	server *grpc.Server
 }
 
-func New(cfg *config.ServerGRPC, log *zap.Logger, handler communityv1.CommunityServiceServer) *Server {
+func New(cfg *config.ServerGRPC, log *zap.Logger, handler presencev1.PresenceServiceServer) *Server {
 	gRPCServer := grpc.NewServer()
-	communityv1.RegisterCommunityServiceServer(gRPCServer, handler)
+	presencev1.RegisterPresenceServiceServer(gRPCServer, handler)
 	return &Server{
 		cfg:    cfg,
 		log:    log,
