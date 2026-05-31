@@ -10,7 +10,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
-	github.com/sudo-odner/minor-shared v0.4.0
+	github.com/sudo-odner/minor-shared v0.5.2
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )

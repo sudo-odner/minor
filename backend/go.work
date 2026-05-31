@@ -11,3 +11,5 @@ use (
 
 	./shared/
 )
+
+replace github.com/sudo-odner/minor-shared => ../../minor-shared

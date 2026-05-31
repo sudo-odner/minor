@@ -49,8 +49,7 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/sudo-odner/minor-shared v0.3.1 h1:hPlrO0AeEN5Rc7T/T230+XL6/DMqeWUHUiMEpt41pe0=
-github.com/sudo-odner/minor-shared v0.3.1/go.mod h1:gPAajvJ+IAeRSVYrbOcZD9y2agQzVxB3Wv7N2vkfgDE=
+github.com/sudo-odner/minor-shared v0.5.2 h1:he/BercN1JmWXNWTVe2mAHzHpJaf/fxvUWikhHok9r0=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/otel v1.43.0 h1:mYIM03dnh5zfN7HautFE4ieIig9amkNANT+xcVxAj9I=
