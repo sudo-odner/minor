@@ -6,7 +6,7 @@ import (
 	"net"
 
 	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
-	"github.com/sudo-odner/minor/backend/services/community_service/internal/config"
+	"github.com/sudo-odner/minor/backend/services/presence_service/internal/config"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
