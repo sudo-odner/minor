@@ -14,10 +14,15 @@ const (
 	EnvProd  Env = "prod"
 )
 
-func New(env Env) (*zap.Logger, error) {
+type Config struct {
+	Env         Env
+	ServiceName string
+}
+
+func New(cfg Config) (*zap.Logger, error) {
 	var zapCfg zap.Config
 
-	switch env {
+	switch cfg.Env {
 	case EnvLocal, EnvDev:
 		zapCfg = zap.NewDevelopmentConfig()
 		zapCfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
@@ -25,7 +30,7 @@ func New(env Env) (*zap.Logger, error) {
 		zapCfg = zap.NewProductionConfig()
 		zapCfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 	default:
-		return nil, fmt.Errorf("unknown env: %s", env)
+		return nil, fmt.Errorf("unknown env: %s", cfg.Env)
 	}
 
 	logger, err := zapCfg.Build()
@@ -33,5 +38,5 @@ func New(env Env) (*zap.Logger, error) {
 		return nil, err
 	}
 
-	return logger, nil
+	return logger.With(zap.String("service", cfg.ServiceName)), err
 }
