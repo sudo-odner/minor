@@ -15,7 +15,7 @@ require (
 	github.com/nats-io/nats.go v1.52.0
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/rs/cors v1.11.1
-	github.com/sudo-odner/minor-shared v0.5.2
+	github.com/sudo-odner/minor-shared v0.6.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.52.0
 	google.golang.org/grpc v1.81.1

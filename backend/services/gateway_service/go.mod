@@ -8,7 +8,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
-	github.com/sudo-odner/minor-shared v0.5.2
+	github.com/sudo-odner/minor-shared v0.6.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
