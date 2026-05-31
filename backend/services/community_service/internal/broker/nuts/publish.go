@@ -6,16 +6,15 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sudo-odner/minor-shared/pkg/events"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 )
 
-// Хз поидее разные логики и если что то поменяется то будет окей. Но не совсем увререн в каком это враианте будет
-// Поидее можно их объеденить Created и Updated
 func (b *Broker) PublishChannelCreated(ctx context.Context, serverID uuid.UUID, channel *models.Channel) error {
 	const op = "broker.nuts.PublishChannelCreated"
 
-	if err := b.publish(SubjectChannelCreated, ChannelEvent{
-		ServerID: serverID.String(),
+	if err := b.publish(events.SubjectChannelCreated, events.ChannelEvent{
+		ServerID: serverID,
 		Channel:  toChannelDTO(channel),
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -27,8 +26,8 @@ func (b *Broker) PublishChannelCreated(ctx context.Context, serverID uuid.UUID, 
 func (b *Broker) PublishChannelUpdated(ctx context.Context, serverID uuid.UUID, channel *models.Channel) error {
 	const op = "broker.nuts.PublishChannelUpdated"
 
-	if err := b.publish(SubjectChannelUpdated, ChannelEvent{
-		ServerID: serverID.String(),
+	if err := b.publish(events.SubjectChannelUpdated, events.ChannelEvent{
+		ServerID: serverID,
 		Channel:  toChannelDTO(channel),
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -40,9 +39,9 @@ func (b *Broker) PublishChannelUpdated(ctx context.Context, serverID uuid.UUID, 
 func (b *Broker) PublishChannelDeleted(ctx context.Context, serverID, channelID uuid.UUID) error {
 	const op = "broker.nuts.PublishChannelDeleted"
 
-	if err := b.publish(SubjectChannelDeleted, ChannelDeletedEvent{
-		ServerID:  serverID.String(),
-		ChannelID: channelID.String(),
+	if err := b.publish(events.SubjectChannelDeleted, events.ChannelDeletedEvent{
+		ServerID:  serverID,
+		ChannelID: channelID,
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -57,16 +56,16 @@ func (b *Broker) PublishChannelPositionsUpdated(
 ) error {
 	const op = "broker.nuts.PublishChannelPositionsUpdated"
 
-	layouts := make([]ShortChannelDTO, len(channels))
+	layouts := make([]events.ShortChannelDTO, len(channels))
 	for i, ch := range channels {
 		layouts[i] = toShortChannelDTO(ch)
 	}
 
-	event := ChannelPositionUpdateEvent{
-		ServerID: serverID.String(),
+	event := events.ChannelPositionUpdateEvent{
+		ServerID: serverID,
 		Channels: layouts,
 	}
-	if err := b.publish(SubjectChannelPositionsUpdated, event); err != nil {
+	if err := b.publish(events.SubjectChannelPositionsUpdated, event); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

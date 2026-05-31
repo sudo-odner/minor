@@ -6,22 +6,20 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sudo-odner/minor-shared/pkg/events"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
 func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) error {
 	const op = "broker.nuts.PublishMessageCreated"
 
-	event := MessageCreatedEvent{
-		MessageID: msg.MessageID.String(),
-		ChannelID: msg.ChannelID.String(),
-		UserID:    msg.UserID.String(),
+	event := events.MessageCreatedEvent{
+		MessageID: msg.MessageID,
+		ChannelID: msg.ChannelID,
+		AuthorID:  msg.UserID,
 		Content:   msg.Content,
+		ReplyTo:   msg.ReplyTo,
 		CreatedAt: msg.CreatedAt,
-	}
-	if msg.ReplyTo != nil {
-		replyTo := msg.ReplyTo.String()
-		event.ReplyTo = &replyTo
 	}
 
 	data, err := json.Marshal(event)
@@ -29,7 +27,7 @@ func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) 
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := b.conn.Publish(SubjectMessageCreated, data); err != nil {
+	if err := b.conn.Publish(events.SubjectMessageCreated, data); err != nil {
 		return fmt.Errorf("%s: message not publish: %w", op, err)
 	}
 
@@ -39,9 +37,9 @@ func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) 
 func (b *Broker) PublishMessageDeleted(ctx context.Context, channelID, messageID uuid.UUID) error {
 	const op = "broker.nuts.PublishMessageDeleted"
 
-	event := MessageDeletedEvent{
-		MessageID: messageID.String(),
-		ChannelID: channelID.String(),
+	event := events.MessageDeletedEvent{
+		MessageID: messageID,
+		ChannelID: channelID,
 	}
 
 	data, err := json.Marshal(event)
@@ -49,7 +47,7 @@ func (b *Broker) PublishMessageDeleted(ctx context.Context, channelID, messageID
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := b.conn.Publish(SubjectMessageDeleted, data); err != nil {
+	if err := b.conn.Publish(events.SubjectMessageDeleted, data); err != nil {
 		return fmt.Errorf("%s: failed publish message: %w", op, err)
 	}
 

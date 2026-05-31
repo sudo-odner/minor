@@ -5,22 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/sudo-odner/minor-shared/pkg/events"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/models"
 )
-
-type PresenceStatusUpdatedEvent struct {
-	UserID       string            `json:"user_id"`
-	Status       models.UserStatus `json:"status"`
-	CustomStatus string            `json:"custom_status"`
-	LastActiveAt int64             `json:"last_active_at"`
-}
 
 func (b *Broker) PublishPresenceStatusUpdated(ctx context.Context, p *models.Presence) error {
 	const op = "broker.nuts.PublishPresenceStatusUpdated"
 
-	event := PresenceStatusUpdatedEvent{
+	event := events.PresenceStatusUpdatedEvent{
 		UserID:       p.UserID,
-		Status:       p.Status,
+		Status:       int32(p.Status),
 		CustomStatus: p.CustomStatus,
 		LastActiveAt: p.LastActiveAt,
 	}
@@ -30,7 +24,7 @@ func (b *Broker) PublishPresenceStatusUpdated(ctx context.Context, p *models.Pre
 		return fmt.Errorf("%s: marshal failed: %w", op, err)
 	}
 
-	err = b.conn.Publish(SubjectPresenceStatusUpdated, data)
+	err = b.conn.Publish(events.SubjectPresenceStatusUpdated, data)
 	if err != nil {
 		return fmt.Errorf("%s: publish failed: %w", op, err)
 	}

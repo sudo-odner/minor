@@ -6,18 +6,20 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sudo-odner/minor-shared/pkg/events"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/models"
 )
 
 func (b *Broker) PublishUserCreated(ctx context.Context, u *models.User) error {
 	const op = "broker.nuts.PublishUserCreated"
 
-	event := UserCreatedEvent{
+	event := events.UserCreatedEvent{
 		UserID:   u.ID.String(),
-		Username: u.Username, Email: u.Email,
+		Username: u.Username,
+		Email:    u.Email,
 	}
 
-	if err := b.publish(SubjectUserCreated, event); err != nil {
+	if err := b.publish(events.SubjectUserCreated, event); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -26,14 +28,14 @@ func (b *Broker) PublishUserCreated(ctx context.Context, u *models.User) error {
 func (b *Broker) PublishUserUpdated(ctx context.Context, u *models.User) error {
 	const op = "broker.nuts.PublishUserUpdated"
 
-	event := UserUpdatedEvent{
+	event := events.UserUpdatedEvent{
 		UserID:    u.ID.String(),
 		Username:  u.Username,
 		AvatarURL: u.AvatarURL,
 		Bio:       u.Bio,
 	}
 
-	if err := b.publish(SubjectUserUpdated, event); err != nil {
+	if err := b.publish(events.SubjectUserUpdated, event); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -42,7 +44,7 @@ func (b *Broker) PublishUserUpdated(ctx context.Context, u *models.User) error {
 func (b *Broker) PublishUserDeleted(ctx context.Context, userID uuid.UUID) error {
 	const op = "broker.nuts.PublishUserDeleted"
 
-	if err := b.publish(SubjectUserDeleted, UserDeletedEvent{
+	if err := b.publish(events.SubjectUserDeleted, events.UserDeletedEvent{
 		UserID: userID.String(),
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -53,13 +55,13 @@ func (b *Broker) PublishUserDeleted(ctx context.Context, userID uuid.UUID) error
 func (b *Broker) PublishRelationshipUpdated(ctx context.Context, userID, targetID uuid.UUID, status models.RelationshipStatus) error {
 	const op = "broker.nuts.PublishRelationshipUpdated"
 
-	event := RelationshipUpdatedEvent{
+	event := events.RelationshipUpdatedEvent{
 		UserID:   userID.String(),
 		TargetID: targetID.String(),
 		Status:   int16(status),
 	}
 
-	if err := b.publish(SubjectRelationshipUpdated, event); err != nil {
+	if err := b.publish(events.SubjectRelationshipUpdated, event); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -68,12 +70,12 @@ func (b *Broker) PublishRelationshipUpdated(ctx context.Context, userID, targetI
 func (b *Broker) PublishRelationshipDeleted(ctx context.Context, userID, targetID uuid.UUID) error {
 	const op = "broker.nuts.PublishRelationshipDeleted"
 
-	event := RelationshipDeletedEvent{
+	event := events.RelationshipDeletedEvent{
 		UserID:   userID.String(),
 		TargetID: targetID.String(),
 	}
 
-	if err := b.publish(SubjectRelationshipDeleted, event); err != nil {
+	if err := b.publish(events.SubjectRelationshipDeleted, event); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
