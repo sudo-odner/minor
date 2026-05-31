@@ -47,7 +47,7 @@ func (c *NotificationConsumer) Start(ctx context.Context) error {
 			return
 		}
 		
-		err := c.notifier.HandlerChatMessage(ctx, event)
+		err := c.notifier.HandleChatMessage(ctx, event)
 		if err != nil {
 			log.Warn("gRPC error: %w", zap.Error(err))
 			msg.Nak()
