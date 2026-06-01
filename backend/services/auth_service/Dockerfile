@@ -10,15 +10,12 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main cmd/auth/main.go
 
-
 FROM alpine:latest
 
 WORKDIR /root/
 
 COPY --from=builder /app/main .
 
-EXPOSE 8010
+EXPOSE 8081
 
 CMD ["./main"]
-
-

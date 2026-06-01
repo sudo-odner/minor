@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 )
 
-type Payload struct {
-	Op int             `json:"op"` // Код операции (1-сообщение, 2-статус, 3-печать)
-	T  string          `json:"t"`  // Тип события (MESSAGE_CREATE, etc)
-	D  json.RawMessage `json:"d"`  // Данные
+type WSPayload struct {
+    Op int             `json:"op"` // 1-Dispatch (Событие), 2-Heartbeat, 3-Typing
+    T  string          `json:"t"`  // Название события (MESSAGE_CREATE, PRESENCE_UPDATE)
+    D  json.RawMessage `json:"d"`  // Данные события
 }

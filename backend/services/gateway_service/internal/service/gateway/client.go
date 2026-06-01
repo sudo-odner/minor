@@ -1,32 +1,91 @@
 package gateway
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+
 	"github.com/gorilla/websocket"
 	"github.com/nats-io/nats.go"
+	presencev1 "github.com/sudo-odner/minor-shared/pkg/pb/presence/v1"
+	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/models"
 )
 
 type Client struct {
-	UserID   string
-	Conn     *websocket.Conn
-	Send     chan []byte
-	Hub      *Hub
-	NatsConn *nats.Conn
+	UserID string
+	Conn   *websocket.Conn
+	// Send — буферизированный канал для исходящих сообщений.
+	// Все, что попадает сюда, WritePump отправит в сокет.
+	Send           chan []byte
+	hub            *Hub
+	natsConn       *nats.Conn
+	presenceClient presencev1.PresenceServiceClient
+}
+
+type TypingData struct {
+	ChannelID string `json:"channel_id"`
+}
+
+// NewClient создает новый экземпляр клиента
+func NewClient(
+	userID string,
+	conn *websocket.Conn,
+	hub *Hub,
+	nats *nats.Conn,
+	presence presencev1.PresenceServiceClient,
+) *Client {
+	return &Client{
+		UserID: userID,
+		Conn:   conn,
+		// Создаем буферизированный канал на 256 сообщений.
+		// Это позволяет серверу подготовить пачку сообщений для клиента,
+		// даже если у клиента медленный интернет, не блокируя работу всего Hub.
+		Send:           make(chan []byte, 256),
+		hub:            hub,
+		natsConn:       nats,
+		presenceClient: presence,
+	}
 }
 
 func (c *Client) ReadPump() {
 	defer func() {
-		c.Hub.Unregister(c.UserID)
+		c.hub.Unregister(c.UserID)
+
+		// Правильный вызов gRPC метода для установки статуса OFFLINE
+		_, err := c.presenceClient.SetStatus(context.Background(), &presencev1.SetStatusRequest{
+			UserId: c.UserID,
+			Status: presencev1.UserStatus_USER_STATUS_OFFLINE, // Используем константу из proto
+		})
+		if err != nil {
+			// Логируем ошибку, если не удалось уведомить Presence Service
+			fmt.Printf("failed to set offline status: %v\n", err)
+		}
+
 		c.Conn.Close()
 	}()
 
 	for {
-		_, message, err := c.Conn.ReadMessage()
+		_, payload, err := c.Conn.ReadMessage()
 		if err != nil {
 			break
 		}
-		// Если юзер прислал статус "печатаю", просто шлем в Core NATS
-		// Это асинхронное взаимодействие из вашего списка
-		c.NatsConn.Publish("user.typing", message)
+
+		var wsMsg models.WSPayload
+		json.Unmarshal(payload, &wsMsg)
+
+		// Если пришло событие "печатает"
+		if wsMsg.Op == 3 {
+			// 2. Распаковываем содержимое поля D в структуру TypingData
+			var data TypingData
+			if err := json.Unmarshal(wsMsg.D, &data); err != nil {
+				// обработка ошибки
+				continue
+			}
+
+			// 3. Теперь используем data.ChannelID
+			subject := fmt.Sprintf("user.typing.%s", data.ChannelID)
+			c.natsConn.Publish(subject, payload)
+		}
 	}
 }
 

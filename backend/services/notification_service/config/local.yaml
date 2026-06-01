@@ -1,18 +1,29 @@
-env: "local"
+app:
+  name: "notification-service"
+  env: "dev"
+  version: "1.0.0"
 
-client_domain: "http://localhost:5173" #some different client host
+nats:
+  url: "nats://nats:4222"
+  stream: "CHAT_STREAM"
+  subject: "chat.message.>"
+  durable_name: "notification_service_worker"
 
-psql:
-    username: "someuser"
-    host: "somehost"
-    port: "someport"
-    dbname: "somedbname"
-    sslmode: "disable" #enable
+clients:
+  presence_service:
+    address: "presence_service:50051"
+    timeout: "2s"
+  user_service:
+    address: "user_service:50051"
+    timeout: "2s"
 
-http_server:
-    port: "someport"
-    timeout: 10s
-    idle_timeout: 60s
-    access_token_ttl: 15m
-    refresh_token_ttl: 43200m
+smtp:
+  host: "smtp.gmail.com"
+  port: 587
+  user: "stepan41kr@gmail.com"
+  password: "${SMTP_PASS}" 
+  from: "Minor Messenger <stepan41kr@gmail.com>"
 
+logger:
+  level: "info"
+  format: "json"

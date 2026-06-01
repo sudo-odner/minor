@@ -8,7 +8,7 @@ import (
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/models"
-	"github.com/sudo-odner/minor/backend/shared/pkg/events"
+	"github.com/sudo-odner/minor-shared/pkg/events"
 )
 
 type AuthPublisher struct {
