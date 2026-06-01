@@ -11,7 +11,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/broker"
-	"github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
+	presenceClient "github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
+	userClient "github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/lib/mail"
 	notifyService "github.com/sudo-odner/minor/backend/services/notification_service/internal/service/notifier"
@@ -25,20 +26,10 @@ const (
 
 func main() {
 	cfg := config.MustLoad()
-	log := setupLogger(cfg.Env)
-
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		natsURL = "nats://nats:4222"
-	}
-
-	presenceAddr := os.Getenv("PRESENCE_GRPC_ADDR")
-	if presenceAddr == "" {
-		presenceAddr = "presence_service:50051"
-	}
+	log := setupLogger(cfg.App.Env)
 
 	// 3. Подключение к NATS
-	nc, err := nats.Connect(natsURL,
+	nc, err := nats.Connect(cfg.Nats.URL,
 		nats.MaxReconnects(10),
 		nats.ReconnectWait(2*time.Second),
 	)
@@ -52,34 +43,41 @@ func main() {
 		log.Fatal("failed to init JetStream", zap.Error(err))
 	}
 
+	initStreams(context.Background(), js, log)
+
 	// 4. Инициализация gRPC клиента к Presence Service
-	pClient, err := presence.NewPresenceClient(presenceAddr)
+	presenceClient, err := presenceClient.NewPresenceClient(cfg.GRPC.PresenceService.Address)
 	if err != nil {
 		log.Fatal("failed to connect to presence service", zap.Error(err))
 	}
-	defer pClient.Close()
+	defer presenceClient.Close()
 
-	uClient, _ := user.NewUserClient(userAddr)
+	userClient, _ := userClient.NewUserClient(cfg.GRPC.PresenceService.Address)
 
 	// 5. Сборка слоев (Dependency Injection)
 	// Доставка (заглушка Firebase/Email)
 	emailProvider := mail.NewSMTPProvider()
 
 	// Бизнес-логика
-	notifierSvc := notifyService.NewNotifier(pClient, emailProvider)
+	notifierSvc := notifyService.NewNotifier(presenceClient, userClient, emailProvider)
 
 	// Воркер (Консьюмер NATS)
 	notificationConsumer := broker.NewNotificationConsumer(log, js, notifierSvc)
 
-	// 6. Контекст для Graceful Shutdown (п. 5.2 ТЗ)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// 7. Запуск Воркера в отдельной горутине
 	go func() {
-		log.Info("starting notification consumer...")
-		if err := notificationConsumer.Start(ctx); err != nil {
-			log.Error("consumer stopped with error", zap.Error(err))
+		if err := notificationConsumer.StartChatConsumer(ctx); err != nil {
+			log.Error("chat consumer error", zap.Error(err))
+		}
+	}()
+
+	// Поток 2: Auth (регистрация и логин)
+	go func() {
+		if err := notificationConsumer.StartAuthConsumer(ctx); err != nil {
+			log.Error("auth consumer error", zap.Error(err))
 		}
 	}()
 
@@ -90,7 +88,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	healthSrv := &http.Server{Addr: ":8081", Handler: mux}
+	healthSrv := &http.Server{Addr: cfg.HTTP.Port, Handler: mux}
 	go func() {
 		if err := healthSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("health server error", zap.Error(err))
@@ -130,4 +128,29 @@ func setupLogger(env string) *zap.Logger {
 	}
 
 	return log
+}
+
+func initStreams(ctx context.Context, js jetstream.JetStream, logger *zap.Logger) {
+	// Список потоков, которые нам нужны
+	streams := []jetstream.StreamConfig{
+		{
+			Name:     "CHAT_STREAM",
+			Subjects: []string{"chat.message.>"},
+		},
+		{
+			Name:     "AUTH_STREAM",
+			Subjects: []string{"auth.user.>"},
+		},
+	}
+
+	for _, cfg := range streams {
+		_, err := js.CreateOrUpdateStream(ctx, cfg)
+		if err != nil {
+			logger.Fatal("failed to create stream", 
+				zap.String("stream", cfg.Name), 
+				zap.Error(err),
+			)
+		}
+		logger.Info("stream initialized", zap.String("stream", cfg.Name))
+	}
 }
