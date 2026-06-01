@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sudo-odner/minor-shared/pkg/events"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
-	"github.com/sudo-odner/minor/backend/services/notification_service/internal/models"
 )
 
 // EmailProvider — наш новый интерфейс вместо Push
@@ -33,31 +33,47 @@ func NewNotifier(presenceClient *presence.Client, userClient UserClient, emailPr
 	}
 }
 
-func (n *Notifier) HandleChatMessage(ctx context.Context, event models.ChatMessageCreated) error {
-	isOnline, _ := n.presenceClient.IsUserOnline(ctx, event.AuthorID)
-	if isOnline {
-		return nil
-	}
+func (n *Notifier) HandleRegistration(ctx context.Context, event events.UserRegisteredEvent) error {
+	title := "Добро пожаловать в Minor!"
+	body := fmt.Sprintf("Здравствуйте, %s!\n\nВы успешно зарегистрировались. Ваш ID: %s", 
+		event.Email, event.UserID)
 
-	email, err := n.userClient.GetUserEmail(ctx, event.AuthorID)
-	if err != nil {
-		return err
-	}
+	return n.emailProvider.Send(ctx, event.Email, title, body)
+}
 
-	// Используем твою логику текста, но через интерфейс
-	title := "Оповещение о сообщении в Minor"
-	body := fmt.Sprintf("Здравствуйте!\n\nВ канале появилось новое сообщение:\n%s", event.Content)
+// HandleLogin отправляет уведомление о входе
+func (n *Notifier) HandleLogin(ctx context.Context, event events.UserLoginSuccessEvent) error {
+	// Сначала узнаем email и имя через gRPC, так как в событии Login их обычно нет (только ID)
+	email, _ := n.userClient.GetUserEmail(ctx, event.UserID)
+	username, _ := n.userClient.GetUserName(ctx, event.UserID)
+
+	title := "Новый вход в аккаунт"
+	body := fmt.Sprintf("Привет, %s!\n\nВ твой аккаунт вошли.\nIP: %s\nВремя: %s", 
+		username, event.IP, event.Timestamp.Format("15:04:05 02.01.2006"))
 
 	return n.emailProvider.Send(ctx, email, title, body)
 }
 
-// Добавляем обработку события входа (если прилетит из NATS)
-func (n *Notifier) HandleLoginEvent(ctx context.Context, userID, ip string) error {
-    email, _ := n.userClient.GetUserEmail(ctx, userID)
-    userName, _ := n.userClient.GetUserName(ctx, userID)
-    
-    title := "Оповещение о входе в Minor"
-    body := fmt.Sprintf("Здравствуйте, %s!\n\nБыл выполнен вход в ваш аккаунт.\nIP-адрес: %s", userName, ip)
-    
-    return n.emailProvider.Send(ctx, email, title, body)
+func (n *Notifier) HandleChatMessage(ctx context.Context, event events.MessageCreatedEvent) error {
+	// 1. Проверяем статус (Online/Offline)
+	// Используем AuthorID или RecipientID из твоего события
+	isOnline, err := n.presenceClient.IsUserOnline(ctx, event.AuthorID.String())
+	if err != nil {
+		return err
+	}
+
+	if isOnline {
+		return nil
+	}
+
+	// 2. Получаем данные и шлем письмо
+	email, err := n.userClient.GetUserEmail(ctx, event.AuthorID.String())
+	if err != nil {
+		return err
+	}
+
+	title := "Новое сообщение в Minor"
+	body := fmt.Sprintf("Вам пришло сообщение: %s", event.Content)
+
+	return n.emailProvider.Send(ctx, email, title, body)
 }
