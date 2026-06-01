@@ -31,34 +31,22 @@ func main() {
 	log := setupLogger(cfg.App.Env)
 
 	// 2. Параметры конфигурации (обычно берутся из env/config.yaml)
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		natsURL = "nats://nats:4222"
-	}
-	authAddr := os.Getenv("AUTH_GRPC_ADDR")
-	if authAddr == "" {
-		authAddr = "auth-service:50051"
-	}
-	presenceAddr := os.Getenv("PRESENCE_GRPC_ADDR")
-	if presenceAddr == "" {
-		presenceAddr = "presence-service:50052"
-	}
 
 	// 3. Подключение к gRPC сервисам
-	authConn, err := grpc.Dial(authAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	authConn, err := grpc.Dial(cfg.GRPC.AuthService.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to connect auth service", zap.Error(err))
 	}
 	authClient := authv1.NewAuthServiceClient(authConn)
 
-	presenceConn, err := grpc.Dial(presenceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	presenceConn, err := grpc.Dial(cfg.GRPC.PresenceService.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to connect presence service", zap.Error(err))
 	}
 	presenceClient := presencev1.NewPresenceServiceClient(presenceConn)
 
 	// 4. Подключение к NATS
-	nc, err := nats.Connect(natsURL, nats.MaxReconnects(10), nats.ReconnectWait(time.Second*2))
+	nc, err := nats.Connect(cfg.NATS.URL, nats.MaxReconnects(10), nats.ReconnectWait(time.Second*2))
 	if err != nil {
 		log.Fatal("failed to connect to NATS", zap.Error(err))
 	}
@@ -101,7 +89,7 @@ func main() {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    cfg.HTTP.Port,
 		Handler: r,
 	}
 
