@@ -2,84 +2,55 @@ package config
 
 import (
 	"log"
-	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 type Config struct {
-	App      AppConfig      `yaml:"app"`
-	GRPC     GRPCConfig     `yaml:"grpc"`
-	Redis    RedisConfig    `yaml:"redis"`
-	NATS     NATSConfig     `yaml:"nats"`
+	App   AppConfig
+	HTTP  HTTPConfig
+	GRPC  GRPCConfig
+	NATS  NATSConfig
 }
 
 type AppConfig struct {
-	Name    string `yaml:"name"`
-	Version string `yaml:"version"`
-	Env     string `yaml:"env"`
+	// Name    string `env:"name"`
+	// Version string `env:"version"`
+	Env string `env:"ENV"`
+}
+
+type HTTPConfig struct {
+	Port string `env:"HTTP_PORT"`
+	Timeout time.Duration `env:"HTTP_TIMEOUT"`
+	IdleTimeout time.Duration `env:"HTTP_IDLE_TIMEOUT"`
 }
 
 type GRPCConfig struct {
-	Port int `yaml:"port"`
-}
-
-type RedisConfig struct {
-	Host     string `yaml:"host"`
-	Port     int `yaml:"port"`
-	Password string `yaml:"password"`
-	DB       string `yaml:"db"`
+	AuthService struct {
+		Address string        `env:"AUTH_GRPC_ADDR"`
+	}
+	PresenceService struct {
+		Address string        `env:"PRESENCE_GRPC_ADDR"`
+	}
 }
 
 type NATSConfig struct {
-	URL        string `yaml:"url"`
-	StreamName string `yaml:"stream_name"`
+	URL        string `env:"NATS_URL"`
+	StreamName string `env:"NATS_STREAM_NAME"`
 }
 
 func MustLoad() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error loading env variables: %s", err.Error())
-	}
-
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		log.Fatalf("config path is not set")
-	}
-
-	if _, err := os.Stat(configPath); err != nil {
-		log.Fatalf("config file does not exist: %s", err.Error())
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("DEBUG: not found .env file, read form env")
+	// }
 
 	var cfg Config
 
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("cannot read config: %s", err.Error())
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		log.Fatalf("ERROR: cannot read config: %s", err)
 	}
-
-	// cfg.Auth = AuthConfig{
-	// 	JWTSecret:    []byte(getEnv("accessSecret", "default_access_secret")),
-	// 	AccessTokenTTL:  parseDuration(getEnv("accessTokenDuration", "15m")),
-	// 	RefreshTokenTTL: parseDuration(getEnv("refreshTokenDuration", "168h")),
-	// }
 
 	return &cfg
-}
-
-func getEnv(key, defaultValue string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
-}
-
-func parseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		log.Printf("invalid duration %s, using default 15m", s)
-		return 15 * time.Minute
-	}
-
-	return d
 }
