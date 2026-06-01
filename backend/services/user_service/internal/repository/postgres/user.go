@@ -118,3 +118,33 @@ func (repo *Repository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	}
 	return nil
 }
+
+func (repo *Repository) GetUsernameByID(ctx context.Context, userID string) (string, error) {
+	query := `SELECT username FROM users WHERE id = $1`
+	
+	var username string
+	err := repo.pool.QueryRow(ctx, query, userID).Scan(&username)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", fmt.Errorf("user not found")
+		}
+		return "", err
+	}
+	
+	return username, nil
+}
+
+func (repo *Repository) GetEmailByID(ctx context.Context, userID string) (string, error) {
+	query := `SELECT email FROM users WHERE id = $1`
+	
+	var email string
+	err := repo.pool.QueryRow(ctx, query, userID).Scan(&email)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", fmt.Errorf("user not found")
+		}
+		return "", err
+	}
+	
+	return email, nil
+}
