@@ -2,109 +2,76 @@ package config
 
 import (
 	"log"
-	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 type Config struct {
-	App      AppConfig      `yaml:"app"`
-	HTTP     HTTPConfig     `yaml:"htttp"`
-	GRPC     GRPCConfig     `yaml:"grpc"`
-	Postgres PostgresConfig `yaml:"postgres"`
-	Redis    RedisConfig    `yaml:"redis"`
-	NATS     NATSConfig     `yaml:"nats"`
-	Auth     AuthConfig     `yaml:"auth"`
+	App      AppConfig
+	HTTP     HTTPConfig   
+	GRPC     GRPCConfig     
+	Postgres PostgresConfig 
+	Redis    RedisConfig
+	NATS     NATSConfig
+	Auth     AuthConfig
 }
 
 type AppConfig struct {
-	Name    string `yaml:"name"`
-	Version string `yaml:"version"`
-	Env     string `yaml:"env"`
+	Name    string `env:"NAME"`
+	Version string `env:"VERSION"`
+	Env     string `env:"ENV"`
 }
 
 type HTTPConfig struct {
-	Port           string        `yaml:"port"`
-	Timeout        time.Duration `yaml:"timeout"`
-	IdleTimeout    time.Duration `yaml:"idle_timeout"`
-	AllowedOrigins []string      `yaml:"allowed_origins"`
+	Port           string        `env:"HTTP_PORT"`
+	Timeout        time.Duration `env:"HTTP_TIMEOUT"`
+	IdleTimeout    time.Duration `env:"HTTP_IDLE_TIMEOUT"`
+	// AllowedOrigins []string      `env:"allowed_origins"`
 }
 
 type GRPCConfig struct {
-	Port int `yaml:"port"`
+	Port int `env:"GRPC_SERVER_PORT"`
 }
 
 type PostgresConfig struct {
-	Host        string `yaml:"host"`
-	Port        int `yaml:"port"`
-	User        string `yaml:"user"`
-	DBName      string `yaml:"db_name"`
-	SSLMode     string `yaml:"sslmode"`
-	MaxPoolSize string `yaml:"max_pool_size"`
+	Host        string `env:"POSTGRES_HOST"`
+	Port        int `env:"POSTGRES_PORT"`
+	User        string `env:"POSTGRES_USER"`
+	DBName      string `env:"POSTGRES_DB_NAME"`
+	SSLMode     string `env:"POSTGRES_SSLMODE"`
+	MaxPoolSize string `env:"POSTGRES_MAX_POOL_SIZE"`
 }
 
 type RedisConfig struct {
-	Host     string `yaml:"host"`
-	Port     int `yaml:"port"`
-	Password string `yaml:"password"`
-	DB       string `yaml:"db"`
+	Host     string `env:"REDIS_HOST"`
+	Port     int `env:"REDIS_PORT"`
+	Password string `env:"REDIS_PASSWORD"`
+	DB       string `env:"REDIS_DB"`
 }
 
 type NATSConfig struct {
-	URL        string `yaml:"url"`
-	StreamName string `yaml:"stream_name"`
+	URL        string `env:"NATS_URL"`
+	StreamName string `env:"NATS_STREAM_NAME"`
 }
 
 type AuthConfig struct {
-	JWTSecret       string        `yaml:"jwt_secret"`
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
+	JWTSecret       string        `env:"JWT_SECRET"`
+	AccessTokenTTL  time.Duration `env:"ACCESS_TOKEN_TTL"`
+	RefreshTokenTTL time.Duration `env:"REFRESH_TOKEN_TTL"`
 }
 
 func MustLoad() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error loading env variables: %s", err.Error())
-	}
-
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		log.Fatalf("config path is not set")
-	}
-
-	if _, err := os.Stat(configPath); err != nil {
-		log.Fatalf("config file does not exist: %s", err.Error())
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("DEBUG: not found .env file, read form env")
+	// }
 
 	var cfg Config
 
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("cannot read config: %s", err.Error())
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		log.Fatalf("ERROR: cannot read config: %s", err)
 	}
-
-	// cfg.Auth = AuthConfig{
-	// 	JWTSecret:    []byte(getEnv("accessSecret", "default_access_secret")),
-	// 	AccessTokenTTL:  parseDuration(getEnv("accessTokenDuration", "15m")),
-	// 	RefreshTokenTTL: parseDuration(getEnv("refreshTokenDuration", "168h")),
-	// }
 
 	return &cfg
-}
-
-func getEnv(key, defaultValue string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
-}
-
-func parseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		log.Printf("invalid duration %s, using default 15m", s)
-		return 15 * time.Minute
-	}
-
-	return d
 }
