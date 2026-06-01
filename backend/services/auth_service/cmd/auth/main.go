@@ -17,8 +17,8 @@ import (
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/postgres"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/redis"
-	authHTTPHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
 	authGRPCHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/grpc/handler/auth"
+	authHTTPHandler "github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/handler/auth"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/server/http/middleware/cors"
 	authService "github.com/sudo-odner/minor/backend/services/auth_service/internal/service/auth"
 	"go.uber.org/zap"
@@ -33,8 +33,29 @@ func main() {
 	cfg := config.MustLoad()
 	log := setupLogger(envDev)
 
-	nc, _ := nats.Connect(cfg.NATS.URL)
-	js, _ := jetstream.New(nc)
+	var nc *nats.Conn
+	var err error
+	natsURL := cfg.NATS.URL // Убедись, что тут nats://minor-nats:4222
+
+	for i := 0; i < 10; i++ {
+		nc, err = nats.Connect(natsURL)
+		if err == nil {
+			break
+		}
+		log.Info("NATS not ready yet (attempt %d): %v", zap.Int("attempt", i+1), zap.String("error", err.Error()))
+		time.Sleep(time.Second * 2)
+	}
+
+	// 2. ЕСЛИ ПОСЛЕ ЦИКЛА nc ВСЕ ЕЩЕ NIL - ВЫХОДИМ С ОШИБКОЙ
+	if err != nil || nc == nil {
+		log.Error("Fatal: could not connect to NATS: %v", zap.Error(err))
+	}
+
+	// 3. Теперь вызываем JetStream. Теперь nc точно НЕ nil.
+	js, err := jetstream.New(nc)
+	if err != nil {
+		log.Error("Fatal: could not initialize JetStream: %v", zap.Error(err))
+	}
 
 	publisher := natsBroker.NewAuthPublisher(js)
 
