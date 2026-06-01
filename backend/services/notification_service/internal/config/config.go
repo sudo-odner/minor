@@ -2,87 +2,65 @@ package config
 
 import (
 	"log"
-	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 type Config struct {
-	Env           string        `yaml:"env"`
-	ClientDomain  string        `yaml:"client_domain"`
-	PostgreConfig `yaml:"psql"`
-	ServerConfig  `yaml:"http_server"`
-	TokenConfig
+	App     AppConfig
+	HTTP 	HTTPConfig
+	Nats    NatsConfig    
+	GRPC GRPCConfig 
+	SMTP    SMTPConfig    
 }
 
-type PostgreConfig struct {
-	Username string `yaml:"username"`
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	DBName   string `yaml:"dbname"`
-	SSLMode  string `yaml:"sslmode"`
+type AppConfig struct {
+	// Name string `yaml:"name"`
+	Env  string `env:"ENV"`
 }
 
-type TokenConfig struct {
-	AccessSecret    []byte
-	RefreshSecret   []byte
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
+type HTTPConfig struct {
+	Port string `env:"HTTP_PORT"`
+	Timeout time.Duration `env:"HTTP_TIMEOUT"`
+	IdleTimeout time.Duration `env:"HTTP_IDLE_TIMEOUT"`
 }
 
-type ServerConfig struct {
-	Port            string        `yaml:"port"`
-	Timeout         time.Duration `yaml:"timeout"`
-	IdleTimeout     time.Duration `yaml:"idle_timeout"`
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
+type NatsConfig struct {
+	URL         string `env:"NATS_URL"`
+	Stream      string `env:"NATS_STREAM"`
+	// Subject     string `env:"subject"`
+	// DurableName string `env:"durable_name"`
+}
+
+type GRPCConfig struct {
+	PresenceService struct {
+		Address string        `env:"PRESENCE_GRPC_ADDR"`
+	} 
+	UserService struct {
+		Address string        `env:"USER_GRPC_ADDR"`
+	} 
+}
+
+type SMTPConfig struct {
+	Host     string `env:"SMTP_HOST"`
+	Port     int    `env:"SMTP_PORT"`
+	User     string `env:"SMTP_USER"`
+	Password string `env:"SMTP_PASS"`
+	From     string `env:"SMTP_FROM"`
 }
 
 func MustLoad() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error loading env variables: %s", err.Error())
-	}
-
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		log.Fatalf("config path is not set")
-	}
-
-	if _, err := os.Stat(configPath); err != nil {
-		log.Fatalf("config file does not exist: %s", err.Error())
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("DEBUG: not found .env file, read form env")
+	// }
 
 	var cfg Config
 
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("cannot read config: %s", err.Error())
-	}
-
-	cfg.TokenConfig = TokenConfig{
-		AccessSecret: []byte(getEnv("accessSecret", "default_access_secret")),
-		RefreshSecret: []byte(getEnv("refreshSecret", "default_refresh_secret")),
-		AccessTokenTTL: parseDuration(getEnv("accessTokenDuration", "15m")),
-		RefreshTokenTTL: parseDuration(getEnv("refreshTokenDuration", "168h")),
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		log.Fatalf("ERROR: cannot read config: %s", err)
 	}
 
 	return &cfg
-}
-
-func getEnv(key, defaultValue string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
-}
-
-func parseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		log.Printf("invalid duration %s, using default 15m", s)
-		return 15 * time.Minute
-	}
-
-	return d
 }
