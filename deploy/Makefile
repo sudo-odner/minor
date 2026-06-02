@@ -3,8 +3,7 @@ build:
 	docker-compose up -d --build
 	
 stop:
-	docker stop $$(docker ps -a -q)
-	docker rm $$(docker ps -a -q)
+	docker-compose down -v
 
 service ?= *
 
