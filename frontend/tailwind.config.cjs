@@ -1,12 +1,11 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-    content: ["./src/**/*.{js,jsx,ts,tsx}"],
-    theme: {
-        extend: {
-            colors: {
-                'klein-blue': '#002FA7',
-            },
-        },
-    },
-    plugins: [],
-};
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}", // Убедись, что расширения верные!
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
