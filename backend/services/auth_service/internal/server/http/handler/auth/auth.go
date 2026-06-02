@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
@@ -18,7 +19,8 @@ type AuthHTTPService interface {
 	Login(ctx context.Context, loginUser *models.LoginUser, ip, userAgent string) (user *models.AuthResponse, err error)
 	Register(ctx context.Context, registerUser *models.RegisterUser) (user *models.AuthResponse, err error)
 	Logout(ctx context.Context, refreshToken string) (err error)
-	VerifyAccessToken(ctx context.Context, token string) (*models.Claims, error)
+	VerifyToken(ctx context.Context, token string) (*models.Claims, error)
+	RefreshAccessToken(ctx context.Context, oldRefreshToken string) (*models.AuthResponse, error)
 }
 
 type AuthHTTPHandler struct {
@@ -66,7 +68,7 @@ func (ah *AuthHTTPHandler) Login(ctx context.Context) http.HandlerFunc {
 			// 	return
 			// }
 
-			log.Error("login failed", zap.Error(err))
+			log.Warn("login failed", zap.Error(err))
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, map[string]string{"error": "internal server error"})
 			return
@@ -101,7 +103,7 @@ func (ah *AuthHTTPHandler) Register(ctx context.Context) http.HandlerFunc {
 
 		err := render.DecodeJSON(r.Body, &regUser)
 		if err != nil {
-			log.Error("failed to decode request body", zap.Error(err))
+			log.Warn("failed to decode request body", zap.Error(err))
 
 			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, "failed to decode body")
@@ -111,7 +113,7 @@ func (ah *AuthHTTPHandler) Register(ctx context.Context) http.HandlerFunc {
 
 		normalizedUser, err := ah.authService.Register(ctx, &regUser)
 		if err != nil {
-			log.Error("failed to register user", zap.Error(err))
+			log.Warn("failed to register user", zap.Error(err))
 
 			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, "failed to register user")
@@ -141,7 +143,7 @@ func (ah *AuthHTTPHandler) Logout(ctx context.Context) http.HandlerFunc {
 
 		refreshToken, err := r.Cookie("refresh_token")
 		if err != nil {
-			log.Error("failed to get refresh cookie", zap.Error(err))
+			log.Warn("failed to get refresh cookie", zap.Error(err))
 
 			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, "failed to get refresh cookie")
@@ -152,7 +154,7 @@ func (ah *AuthHTTPHandler) Logout(ctx context.Context) http.HandlerFunc {
 		ctx := r.Context()
 		err = ah.authService.Logout(ctx, refreshToken.Value)
 		if err != nil {
-			log.Error("failed to logout", zap.Error(err))
+			log.Warn("failed to logout", zap.Error(err))
 
 			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, "failed to logout")
@@ -168,16 +170,72 @@ func (ah *AuthHTTPHandler) Logout(ctx context.Context) http.HandlerFunc {
 
 func (ah *AuthHTTPHandler) RefreshToken(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO: RefreshToken
+		const op = "http.AuthHandler.Refresh"
+		ctx := r.Context()
+
+		// 1. Достаем Refresh Token из HttpOnly куки
+		cookie, err := r.Cookie("refresh_token")
+		if err != nil {
+			ah.log.Warn("refresh attempt without cookie", zap.String("op", op))
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]string{"error": "refresh token not found"})
+			return
+		}
+
+		// 2. Вызываем сервис для ротации
+		res, err := ah.authService.RefreshAccessToken(ctx, cookie.Value)
+		if err != nil {
+			ah.log.Error("refresh failed", zap.Error(err), zap.String("op", op))
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]string{"error": "session expired"})
+			return
+		}
+
+		// 3. Устанавливаем НОВУЮ куку (с новым UUID)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    res.RefreshToken,
+			Path:     "/", // Чтобы была доступна всему домену (для /verify-internal)
+			Expires:  time.Now().Add(30 * 24 * time.Hour),
+			HttpOnly: true,
+			Secure:   false, // В продакшене true (HTTPS)
+			SameSite: http.SameSiteLaxMode,
+		})
+
+		// 4. Возвращаем новый Access Token в JSON
+		render.Status(r, http.StatusOK)
+		render.JSON(w, r, map[string]interface{}{
+			"access_token": res.AccessToken,
+			"user":         res.User,
+		})
 	}
 }
 
 func (ah *AuthHTTPHandler) VerifyInternal(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		const path = "http.handler.auth.VerifyInternal"
+
+		log := ah.log.With(
+			zap.String("path", path),
+			zap.String("req-id", middleware.GetReqID(r.Context())),
+		)
+
+		log.Info("trying to verify internal")
+
 		authHeader := r.Header.Get("Authorization")
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 
-		claims, err := ah.authService.VerifyAccessToken(r.Context(), token)
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
+
+		if token == "" {
+			log.Warn("verify-internal: no token provided")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := ah.authService.VerifyToken(r.Context(), token)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
