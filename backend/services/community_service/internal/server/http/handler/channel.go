@@ -16,7 +16,7 @@ type ChannelService interface {
 	CreateChannel(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, name string, typeChannel models.ChannelType, parentID *uuid.UUID) (*models.Channel, error)
 	GetChannel(ctx context.Context, channelID uuid.UUID) (*models.Channel, error)
 	GetServerChannel(ctx context.Context, serverID uuid.UUID) ([]models.Channel, error)
-	UpdateChannel(ctx context.Context, actorID uuid.UUID, channelID, serverID uuid.UUID, name *string, parentID *uuid.UUID) (*models.Channel, error)
+	UpdateChannel(ctx context.Context, actorID uuid.UUID, channelID, serverID uuid.UUID, name string, parentID *uuid.UUID) (*models.Channel, error)
 	DeleteChannel(ctx context.Context, actorID, serverID, channelID uuid.UUID) error
 	MoveChannel(ctx context.Context, actorID uuid.UUID, serverID, channelID uuid.UUID, newParentID *uuid.UUID, newPos int) error
 }
@@ -44,7 +44,7 @@ type ChannelResponse struct {
 	ServerID  string  `json:"server_id"`
 	Name      string  `json:"name"`
 	Type      int     `json:"type"`
-	ParentID  *string `json:"parent_id,omitempty"`
+	ParentID  string `json:"parent_id,omitempty"`
 	Position  int     `json:"position"`
 	CreatedAt string  `json:"created_at"`
 }
@@ -87,10 +87,10 @@ func (h *ChannelHandler) CreateChannel() http.HandlerFunc {
 			return
 		}
 
-		var parentID *string
+		var parentID string
 		if ch.ParentID != nil && *ch.ParentID != uuid.Nil {
 			pid := ch.ParentID.String()
-			parentID = &pid
+			parentID = pid
 		}
 		render.Status(r, http.StatusCreated)
 		render.JSON(w, r, ChannelResponse{
@@ -126,10 +126,10 @@ func (h *ChannelHandler) GetServerChannels() http.HandlerFunc {
 
 		res := make([]ChannelResponse, len(channels))
 		for i := range channels {
-			var parentID *string
+			var parentID string
 			if channels[i].ParentID != nil && *channels[i].ParentID != uuid.Nil {
 				pid := channels[i].ParentID.String()
-				parentID = &pid
+				parentID = pid
 			}
 			res[i] = ChannelResponse{
 				ID:        channels[i].ID.String(),
@@ -164,10 +164,10 @@ func (h *ChannelHandler) GetChannel() http.HandlerFunc {
 			return
 		}
 
-		var parentID *string
+		var parentID string
 		if ch.ParentID != nil && *ch.ParentID != uuid.Nil {
 			pid := ch.ParentID.String()
-			parentID = &pid
+			parentID = pid
 		}
 		render.JSON(w, r, ChannelResponse{
 			ID:        ch.ID.String(),
@@ -182,7 +182,7 @@ func (h *ChannelHandler) GetChannel() http.HandlerFunc {
 }
 
 type UpdateChannelRequest struct {
-	Name     *string    `json:"name"`
+	Name     string    `json:"name"`
 	ParentID *uuid.UUID `json:"parent_id"`
 }
 
@@ -226,10 +226,10 @@ func (h *ChannelHandler) UpdateChannel() http.HandlerFunc {
 			return
 		}
 
-		var parentID *string
+		var parentID string
 		if ch.ParentID != nil && *ch.ParentID != uuid.Nil {
 			pid := ch.ParentID.String()
-			parentID = &pid
+			parentID = pid
 		}
 		render.JSON(w, r, ChannelResponse{
 			ID:        ch.ID.String(),

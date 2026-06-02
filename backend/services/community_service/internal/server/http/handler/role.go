@@ -17,7 +17,7 @@ type RoleService interface {
 	CreateRole(ctx context.Context, actorID, serverID uuid.UUID, name string, permissions authz.Permission) (*models.Role, error)
 	GetRole(ctx context.Context, roleID uuid.UUID) (*models.Role, error)
 	GetServerRoles(ctx context.Context, serverID uuid.UUID) ([]models.Role, error)
-	UpdateRole(ctx context.Context, actorID, serverID, roleID uuid.UUID, name *string, permission *authz.Permission) (*models.Role, error)
+	UpdateRole(ctx context.Context, actorID, serverID, roleID uuid.UUID, name string, permission *authz.Permission) (*models.Role, error)
 	DeleteRole(ctx context.Context, actorID, serverID, roleID uuid.UUID) error
 	ReplaceChannelPermissionOverrides(ctx context.Context, actorID, serverID, channelID uuid.UUID, overrides []models.ChannelPermissionOverride) error
 }
@@ -163,7 +163,7 @@ func (h *RoleHandler) GetRole() http.HandlerFunc {
 }
 
 type UpdateRoleRequest struct {
-	Name        *string           `json:"name"`
+	Name        string           `json:"name"`
 	Permissions *authz.Permission `json:"permissions"`
 }
 

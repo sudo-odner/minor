@@ -15,7 +15,7 @@ import (
 type ServerService interface {
 	CreateServer(ctx context.Context, name string, ownerID uuid.UUID, avatarURL string) (*models.Server, error)
 	GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error)
-	UpdateServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error)
+	UpdateServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, name string, avatarURL string) (*models.Server, error)
 	DeleteServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID) error
 	GetUserServers(ctx context.Context, userID uuid.UUID) ([]models.Server, error)
 }
@@ -50,6 +50,8 @@ func (h *ServerHandler) CreateServer() http.HandlerFunc {
 		const op = "http.handler.server.CreateServer"
 		log := h.log.With(zap.String("op", op))
 
+		h.log.Info("start creating server")
+		
 		actorID, err := ParseUserID(r)
 		if err != nil {
 			log.Debug("unauthorized request", zap.Error(err))
@@ -150,8 +152,8 @@ func (h *ServerHandler) GetUserServers() http.HandlerFunc {
 }
 
 type UpdateServerRequest struct {
-	Name      *string `json:"name"`
-	AvatarURL *string `json:"avatar_url"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 func (h *ServerHandler) UpdateServer() http.HandlerFunc {

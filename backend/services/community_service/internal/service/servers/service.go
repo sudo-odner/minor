@@ -12,7 +12,7 @@ import (
 type Repository interface {
 	CreateServerWithDefaultSetup(ctx context.Context, name string, ownerID uuid.UUID, avatarURL string) (*models.Server, error)
 	GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error)
-	UpdateServer(ctx context.Context, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error)
+	UpdateServer(ctx context.Context, serverID uuid.UUID, name string, avatarURL string) (*models.Server, error)
 	DeleteServer(ctx context.Context, serverID uuid.UUID) error
 	GetUserServers(ctx context.Context, userID uuid.UUID) ([]models.Server, error)
 }
@@ -54,7 +54,7 @@ func (s *Service) GetServer(ctx context.Context, serverID uuid.UUID) (*models.Se
 	return server, nil
 }
 
-func (s *Service) UpdateServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, name *string, avatarURL *string) (*models.Server, error) {
+func (s *Service) UpdateServer(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, name string, avatarURL string) (*models.Server, error) {
 	const op = "service.server.UpdateServer"
 
 	server, err := s.repo.GetServer(ctx, serverID)
@@ -66,7 +66,7 @@ func (s *Service) UpdateServer(ctx context.Context, actorID uuid.UUID, serverID 
 		return nil, models.ErrPermissionDenied
 	}
 
-	updated, err := s.repo.UpdateServer(ctx, serverID, name, nil)
+	updated, err := s.repo.UpdateServer(ctx, serverID, name, "")
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

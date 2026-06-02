@@ -10,8 +10,8 @@ import (
 func NewCORS(h http.Handler) http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{http.MethodPost, http.MethodGet, http.MethodDelete, http.MethodPut, http.MethodPatch},
-		AllowedHeaders: []string{"Origin", "Content-Type", "Authorization", "cache-control"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
 		AllowCredentials: true,
 		MaxAge: 120,
 	})

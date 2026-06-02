@@ -13,6 +13,7 @@ type Config struct {
 	Env        string `env:"ENV" env-required:"true"`
 	ServerHTTP ServerHTTP
 	ServerGRPC ServerGRPC
+	GRPCClients GRPCClients
 	Nuts       Nuts
 	Postgres   Postgres
 }
@@ -27,9 +28,13 @@ type ServerHTTP struct {
 
 type ServerGRPC struct {
 	// Required
-	Address string `env:"GRPC_SERVER_ADDRESS" env-required:"true"`
+	Address string `env:"GRPC_SERVER_ADDRESS"`
 	// Optional
 	Timeout time.Duration `env:"GRPC_SERVER_TIMEOUT" env-default:"5s"`
+}
+
+type GRPCClients struct {
+	Address string `env:"USER_GRPC_CLIENT_ADDRESS"`
 }
 
 type Nuts struct {

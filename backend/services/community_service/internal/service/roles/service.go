@@ -15,7 +15,7 @@ type Repository interface {
 	GetRole(ctx context.Context, roleID uuid.UUID) (*models.Role, error)
 	GetServerRoles(ctx context.Context, serverID uuid.UUID) ([]models.Role, error)
 	GetMemberRoles(ctx context.Context, serverID, userID uuid.UUID) ([]models.Role, error)
-	UpdateRole(ctx context.Context, roleID uuid.UUID, name *string, permissions *authz.Permission) (*models.Role, error)
+	UpdateRole(ctx context.Context, roleID uuid.UUID, name string, permissions *authz.Permission) (*models.Role, error)
 	DeleteRole(ctx context.Context, roleID uuid.UUID) error
 	ReplaceChannelPermissionOverrides(ctx context.Context, channelID uuid.UUID, overrides []models.ChannelPermissionOverride) error
 }
@@ -85,7 +85,7 @@ func (s *Service) GetServerRoles(ctx context.Context, serverID uuid.UUID) ([]mod
 	return roles, nil
 }
 
-func (s *Service) UpdateRole(ctx context.Context, actorID, serverID, roleID uuid.UUID, name *string, permission *authz.Permission) (*models.Role, error) {
+func (s *Service) UpdateRole(ctx context.Context, actorID, serverID, roleID uuid.UUID, name string, permission *authz.Permission) (*models.Role, error) {
 	const op = "service.roles.UpdateRole"
 
 	permissionsMask, err := s.sPermission.FetchServerPermissions(ctx, actorID, serverID)

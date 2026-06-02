@@ -136,7 +136,7 @@ func (repo *Repository) GetServerChannels(ctx context.Context, serverID uuid.UUI
 func (repo *Repository) UpdateChannel(
 	ctx context.Context,
 	channelID, serverID uuid.UUID,
-	name *string,
+	name string,
 	parentID *uuid.UUID,
 ) (*models.Channel, error) {
 	const op = "repository.postgres.UpdateChannel"
