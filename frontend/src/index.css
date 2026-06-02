@@ -1,18 +1,69 @@
+/* 1. Обязательные директивы Tailwind */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 2. Глобальные настройки отображения */
 :root {
-  background-color: white;
-  color: #1a1a1a;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Поддержка системной темы (светлая/темная) */
+  color-scheme: light dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Растягиваем приложение на весь экран */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* Предотвращаем отскок скролла на мобилках */
+  overscroll-behavior: none; 
 }
 
 body {
-  background-color: white;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-color: #313338; /* Темный фон Discord по умолчанию */
+}
+
+/* 3. Кастомные скроллбары в стиле Discord */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e1f22;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #111214;
+}
+
+/* Утилита для скрытия скроллбара, если нужно */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 4. Фикс для огромных иконок и SVG */
+svg {
+  display: block;
+  vertical-align: middle;
+  /* Если Tailwind не загрузится, это не даст иконке занять весь экран */
+  max-width: 100%;
+  max-height: 100%;
 }

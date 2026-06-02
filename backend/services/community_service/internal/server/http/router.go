@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/http/handler"
+	// "github.com/sudo-odner/minor/backend/services/community_service/internal/server/middleware/cors"
 	"go.uber.org/zap"
 )
 
@@ -20,6 +21,7 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
+	// r.Use(cors.NewCORS)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -28,7 +30,7 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 		// Server endpoints
 		r.Route("/servers", func(r chi.Router) {
 			r.Post("/", handlers.Server.CreateServer())
-			r.Get("/", handlers.Server.GetUserServers())
+			r.Get("/@me", handlers.Server.GetUserServers())
 			r.Route("/{server_id}", func(r chi.Router) {
 				r.Get("/", handlers.Server.GetServer())
 				r.Patch("/", handlers.Server.UpdateServer())

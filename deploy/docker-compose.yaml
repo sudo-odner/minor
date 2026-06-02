@@ -1,4 +1,26 @@
 services:
+    frontend:
+        build:
+            context: ../frontend/ # Путь к папке с React проектом
+            dockerfile: Dockerfile
+        container_name: minor-frontend
+        restart: unless-stopped
+        volumes:
+            - ../frontend:/app:z # Проброс кода для Hot Reload
+            - /app/node_modules # Изоляция модулей внутри контейнера
+        environment:
+            - VITE_API_URL=http://localhost/api/v1
+        networks:
+            - minor-network
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+            - "traefik.http.routers.frontend.entrypoints=web"
+            # Убедись, что здесь НЕТ middleware auth-verify (иначе сайт не откроется без токена)
+            - "traefik.http.routers.frontend.priority=1" 
+            - "traefik.http.services.frontend.loadbalancer.server.port=5173"
+        depends_on:
+            - traefik
     # API Gateway
     socket-proxy:
         image: tecnativa/docker-socket-proxy
@@ -135,9 +157,9 @@ services:
         container_name: auth-postgres-db
         restart: unless-stopped
         environment:
-            POSTGRES_USER: auth-admin
-            POSTGRES_PASSWORD: secret-password
-            POSTGRES_DB: auth-service
+            POSTGRES_USER: auth_service
+            POSTGRES_PASSWORD: auth_service_master_key
+            POSTGRES_DB: auth_service
         ports:
             - "5432:5432"
         volumes:
@@ -145,10 +167,25 @@ services:
         networks:
             - minor-network
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U auth-admin -d auth-service"]
+            test: ["CMD-SHELL", "pg_isready -U auth_service -d auth_service"]
             interval: 10s
             timeout: 5s
             retries: 5
+
+    auth-migrator:
+        image: migrate/migrate:v4.17.1
+        container_name: auth-migrator
+        volumes:
+            - ../backend/services/auth_service/migrations:/migrations:z
+        command:
+            - -path=/migrations
+            - -database=postgres://auth_service:auth_service_master_key@auth-postgres:5432/auth_service?sslmode=disable
+            - up
+        networks:
+            - minor-network
+        depends_on:
+            auth-postgres:
+                condition: service_healthy
 
     user-postgres:
         image: postgres:15-alpine
@@ -247,8 +284,8 @@ services:
         networks:
             - minor-network
         depends_on:
-            auth-postgres:
-                condition: service_healthy
+            auth-migrator:
+                condition: service_completed_successfully
             redis:
                 condition: service_healthy
             nats:
@@ -276,7 +313,7 @@ services:
         #   - ../backend/services/community_service/.env
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.community.rule=PathPrefix(`/api/v1/servers`) || PathPrefix(`/api/v1/channels`)"
+            - "traefik.http.routers.community.rule=PathPrefix(`/api/v1/servers`)"
             - "traefik.http.routers.community.entrypoints=web"
             - "traefik.http.routers.community.middlewares=auth-verify"
             - "traefik.http.services.community.loadbalancer.server.port=8082"
@@ -303,7 +340,7 @@ services:
             - GRPC_CLIENT_USER_TARGET=user-service:50084
             - GRPC_CLIENT_COMMUNITY_TARGET=community-service:50082
         env_file:
-          - ../backend/services/message_service/.env
+            - ../backend/services/message_service/.env
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.messages.rule=PathPrefix(`/api/v1/messages`)"
@@ -339,7 +376,7 @@ services:
             - POSTGRES_PASSWORD=user_service_master_key
             - POSTGRES_DATABASE=user_service
         env_file:
-          - ../backend/services/user_service/.env
+            - ../backend/services/user_service/.env
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.users.rule=PathPrefix(`/api/v1/users`)"
@@ -368,7 +405,7 @@ services:
             - "traefik.enable=true"
             - "traefik.http.routers.gateway.rule=PathPrefix(`/gateway`)"
             - "traefik.http.routers.gateway.entrypoints=web"
-            - "traefik.http.routers.gateway.middlewares=auth-verify"
+            # - "traefik.http.routers.gateway.middlewares=auth-verify"
             - "traefik.http.services.gateway.loadbalancer.server.port=8085"
         # ports:
         #     - "8080:8080"
@@ -396,7 +433,7 @@ services:
             - REDIS_URL=redis://redis-cache:6379
             - NUTS_URL=nats://nats:4222
         env_file:
-          - ../backend/services/presence_service/.env
+            - ../backend/services/presence_service/.env
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.presence.rule=PathPrefix(`/api/v1/presence`)"

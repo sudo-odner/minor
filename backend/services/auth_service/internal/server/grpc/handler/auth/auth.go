@@ -9,7 +9,7 @@ import (
 )
 
 type AuthGRPCService interface {
-	VerifyAccessToken(ctx context.Context, token string) (*models.Claims, error)
+	VerifyToken(ctx context.Context, token string) (*models.Claims, error)
 }
 
 type AuthGRPCHandler struct {
@@ -25,8 +25,17 @@ func NewGRPCHandler(authService AuthGRPCService, log *zap.Logger) *AuthGRPCHandl
 	}
 }
 
-func (gh *AuthGRPCHandler) VerifyAccessToken(ctx context.Context, req *authv1.VerifyTokenRequest) (*authv1.VerifyTokenResponse, error) {
-	claims, err := gh.authService.VerifyAccessToken(ctx, req.AccessToken)
+func (gh *AuthGRPCHandler) VerifyToken(ctx context.Context, req *authv1.VerifyTokenRequest) (*authv1.VerifyTokenResponse, error) {
+	const path = "grpc.handler.VerifyAccessToken"
+
+	log := gh.log.With(
+		zap.String("path", path),
+		zap.String("access-token", req.AccessToken),
+	)
+
+	log.Info("starting verify token")
+	
+	claims, err := gh.authService.VerifyToken(ctx, req.AccessToken)
 
 	if err != nil {
 		return &authv1.VerifyTokenResponse{

@@ -15,7 +15,7 @@ type App struct {
 	port       int
 }
 
-func New(log *zap.Logger, authService authv1.AuthServiceServer, port int,) *App {
+func New(log *zap.Logger, authService authv1.AuthServiceServer, port int) *App {
 	gServer := grpc.NewServer()
 
 	authv1.RegisterAuthServiceServer(gServer, authService)

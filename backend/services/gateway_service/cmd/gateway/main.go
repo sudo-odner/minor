@@ -95,7 +95,7 @@ func main() {
 
 	// 8. ЗАПУСК
 	go func() {
-		log.Info("Gateway Service started", zap.String("port", "8080"))
+		log.Info("Gateway Service started", zap.String("port", cfg.HTTP.Port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("server error", zap.Error(err))
 		}

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -61,9 +61,9 @@ func (p *Postgres) DSN() string {
 }
 
 func MustLoad() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Println("DEBUG: '.env' file not found, read from env")
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("DEBUG: '.env' file not found, read from env")
+	// }
 	var cfg Config
 
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
