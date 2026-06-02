@@ -147,7 +147,7 @@ func (as *AuthService) Register(ctx context.Context, newUser *models.RegisterUse
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = as.eventPublisher.PublishUserRegistered(ctx, &models.User{ID: id, Email: newUser.Email})
+	err = as.eventPublisher.PublishUserRegistered(ctx, &models.User{ID: id, Email: newUser.Email, Username: newUser.Username, IsActive: true})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
