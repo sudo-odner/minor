@@ -301,16 +301,16 @@ services:
         #     - "50052:50052"
         environment:
             - ENV=local
-            - HTTP_SERVER_ADDRESS=0.0.0.0:8082
-            - GRPC_SERVER_ADDRESS=0.0.0.0:50052
+            - HTTP_SERVER_ADDRESS=:8082
+            - GRPC_SERVER_ADDRESS=:50051
             - NUTS_URL=nats://nats:4222
             - POSTGRES_HOST=community-postgres-db
             - POSTGRES_PORT=5432
             - POSTGRES_USER=community_service
             - POSTGRES_PASSWORD=community_service_master_key
             - POSTGRES_DATABASE=community_service
-        # env_file:
-        #   - ../backend/services/community_service/.env
+        env_file:
+          - ../backend/services/community_service/.env
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.community.rule=PathPrefix(`/api/v1/servers`)"
@@ -332,13 +332,13 @@ services:
         #     - "8083:8083"
         environment:
             - ENV=local
-            - HTTP_SERVER_ADDRESS=0.0.0.0:8083
+            - HTTP_SERVER_ADDRESS=:8083
             - CASSANDRA_HOST=cassandra-db
             - CASSANDRA_KEYSPACE=chat
             - REDIS_URL=redis://redis-cache:6379
             - NATS_URL=nats://nats:4222
-            - GRPC_CLIENT_USER_TARGET=user-service:50084
-            - GRPC_CLIENT_COMMUNITY_TARGET=community-service:50082
+            - GRPC_CLIENT_USER_TARGET=user-service:50051
+            - GRPC_CLIENT_COMMUNITY_TARGET=community-service:50051
         env_file:
             - ../backend/services/message_service/.env
         labels:
@@ -367,8 +367,8 @@ services:
         #     - "50054:50054"
         environment:
             - ENV=local
-            - HTTP_SERVER_ADDRESS=0.0.0.0:8084
-            - GRPC_SERVER_ADDRESS=0.0.0.0:50054
+            - HTTP_SERVER_ADDRESS=:8084
+            - GRPC_SERVER_ADDRESS=:50051
             - NUTS_URL=nats://nats:4222
             - POSTGRES_HOST=user-postgres-db
             - POSTGRES_PORT=5432
@@ -429,7 +429,7 @@ services:
         #     - "50056:50056"
         environment:
             - ENV=local
-            - GRPC_SERVER_ADDRESS=0.0.0.0:50056
+            - GRPC_SERVER_ADDRESS=:50051
             - REDIS_URL=redis://redis-cache:6379
             - NUTS_URL=nats://nats:4222
         env_file:
