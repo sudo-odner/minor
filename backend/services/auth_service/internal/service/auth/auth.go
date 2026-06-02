@@ -16,15 +16,15 @@ import (
 
 var (
 	ErrUserAlreadyExists = errors.New("user with this email already exists")
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("token has expired")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrExpiredToken      = errors.New("token has expired")
 )
 
 // NATS interface
 type EventPublisher interface {
 	PublishUserRegistered(ctx context.Context, user *models.User) error
 	PublishLoginSuccess(ctx context.Context, userID, ip, userAgent string) error
-    PublishUserLoggedOut(ctx context.Context, userID, tokenID string) error
+	PublishUserLoggedOut(ctx context.Context, userID, tokenID string) error
 }
 
 // Redis interface
@@ -47,16 +47,16 @@ type AuthService struct {
 	sessionRepository SessionRepository
 	eventPublisher    EventPublisher
 	log               *zap.Logger
-	authConfig       config.AuthConfig
+	authConfig        config.AuthConfig
 }
 
 func New(authRepository AuthRepository, sessionRepository SessionRepository, eventPublisher EventPublisher, log *zap.Logger, tokenConfig config.AuthConfig) *AuthService {
 	return &AuthService{
-		authRepository: authRepository,
+		authRepository:    authRepository,
 		sessionRepository: sessionRepository,
-		eventPublisher: eventPublisher,
-		log:            log,
-		authConfig: tokenConfig,
+		eventPublisher:    eventPublisher,
+		log:               log,
+		authConfig:        tokenConfig,
 	}
 }
 
@@ -92,16 +92,16 @@ func (as *AuthService) Login(ctx context.Context, newUser *models.LoginUser, ip,
 	}
 
 	err = as.eventPublisher.PublishLoginSuccess(ctx, user.ID.String(), ip, userAgent)
-    if err != nil {
-        log.Error("failed to publish login event", zap.Error(err))
-    }
+	if err != nil {
+		log.Warn("failed to publish login event", zap.Error(err))
+	}
 
 	return &models.AuthResponse{
 		User: &models.NormalizedUser{
 			ID:    user.ID,
 			Email: user.Email,
 		},
-		AccessToken:   accessToken,
+		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
 }
@@ -122,7 +122,7 @@ func (as *AuthService) Register(ctx context.Context, newUser *models.RegisterUse
 
 	id, err := uuid.NewV7()
 	if err != nil {
-		log.Error("%s: %w", zap.String("path:", op), zap.Error(err))
+		log.Warn("%s: %w", zap.String("path:", op), zap.Error(err))
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
@@ -130,7 +130,7 @@ func (as *AuthService) Register(ctx context.Context, newUser *models.RegisterUse
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = as.authRepository.Create(ctx, &models.User{ID: id, Email: newUser.Email, PasswordHash: string(hashedPassword)})
+	err = as.authRepository.Create(ctx, &models.User{ID: id, Email: newUser.Email, Username: newUser.Username, PasswordHash: string(hashedPassword)})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -154,22 +154,22 @@ func (as *AuthService) Register(ctx context.Context, newUser *models.RegisterUse
 
 	return &models.AuthResponse{
 		User:         &models.NormalizedUser{ID: id, Email: newUser.Email},
-		AccessToken:   accessToken,
+		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
 }
 
 func (as *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	const path = "service.auth.Logout"
-	
+
 	log := as.log.With(
 		zap.String("path", path),
 	)
-	
+
 	userID, err := as.sessionRepository.GetUserIDByRefreshToken(ctx, refreshToken)
 	if err != nil {
 		log.Warn("logout attempted with non-existent token", zap.String("token", refreshToken))
-		return nil 
+		return nil
 	}
 
 	err = as.sessionRepository.DeleteRefreshToken(ctx, refreshToken)
@@ -180,7 +180,7 @@ func (as *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	// Это позволит Gateway Service мгновенно разорвать WebSocket соединение
 	err = as.eventPublisher.PublishUserLoggedOut(ctx, userID, refreshToken)
 	if err != nil {
-		log.Error("failed to publish logout event", zap.Error(err))
+		log.Warn("failed to publish logout event", zap.Error(err))
 	}
 
 	log.Info("user logged out successfully", zap.String("user_id", userID))
@@ -188,19 +188,23 @@ func (as *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (as *AuthService) RefreshAccessToken(ctx context.Context, oldRefreshToken string) (*models.AuthResponse, error) {
+	const path = "service.auth.RefreshAccessToken"
+
+	log := as.log.With(
+		zap.String("path", path),
+		zap.String("old_token", oldRefreshToken),
+	)
+
+	log.Info("trying to get token")
+
 	userID, err := as.sessionRepository.GetUserIDByRefreshToken(ctx, oldRefreshToken)
 	if err != nil {
 		return nil, errors.New("session expired or invalid")
 	}
 
-	_ = as.sessionRepository.DeleteRefreshToken(ctx, oldRefreshToken)
-
 	user, err := as.authRepository.GetByID(ctx, userID)
 	if err != nil {
 		return nil, errors.New("user not found")
-	}
-	if !user.IsActive {
-		return nil, errors.New("user account is disabled")
 	}
 
 	newAccessToken, err := jwt.GenerateAccessToken(as.authConfig, user)
@@ -213,15 +217,12 @@ func (as *AuthService) RefreshAccessToken(ctx context.Context, oldRefreshToken s
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	err = as.sessionRepository.SetRefreshToken(
-		ctx, 
-		user.ID.String(), 
-		newRefreshToken.String(), 
-		as.authConfig.RefreshTokenTTL,
-	)
+	err = as.sessionRepository.SetRefreshToken(ctx, user.ID.String(), newRefreshToken.String(), as.authConfig.RefreshTokenTTL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save new session: %w", err)
+		return nil, err
 	}
+
+	_ = as.sessionRepository.DeleteRefreshToken(ctx, oldRefreshToken)
 
 	return &models.AuthResponse{
 		User:         &models.NormalizedUser{ID: user.ID, Email: user.Email},
