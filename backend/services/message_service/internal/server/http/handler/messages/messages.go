@@ -175,11 +175,11 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 				return
 			}
 			beforeID = &parsedUUID
-		} else {
-			log.Debug("'before_id' not found")
-			handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "'before_id' parameter is required")
-			return
-		}
+		} // else {
+		// 	log.Debug("'before_id' not found")
+		// 	handler.RenderError(w, r, http.StatusBadRequest, handler.CodeInvalidRequset, "'before_id' parameter is required")
+		// 	return
+		// }
 
 		msgs, err := mh.messageService.GetMessages(r.Context(), userID, channelID, limit, beforeID)
 		if err != nil {

@@ -88,13 +88,13 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 	// TODO: add logger middlaware
 	router := chi.NewRouter()
-	router.Route("/", func(r chi.Router) {
+	router.Route("/api/v1/messages", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("ok"))
 		})
 
-		r.Route("/channels/{channel_id}/messages", func(r chi.Router) {
+		r.Route("/{channel_id}", func(r chi.Router) {
 			r.Post("/", handler.SendMessage())
 			r.Get("/", handler.GetMessages())
 			r.Get("/{message_id}", handler.GetMessage())

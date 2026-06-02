@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -65,9 +65,9 @@ type GRPCClient struct {
 }
 
 func MustLoad() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Println("DEBUG: not found .env file, read form env")
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("DEBUG: not found .env file, read form env")
+	// }
 
 	var cfg Config
 

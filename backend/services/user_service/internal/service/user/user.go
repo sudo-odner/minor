@@ -125,3 +125,16 @@ func (s *UserService) GetBatchProfiles(ctx context.Context, userIDs []string) (m
 
 	return profiles, nil
 }
+
+func (s *UserService) HandleRegistration(ctx context.Context, userID, email, username string) error {
+	s.log.Info("handling registration event from nats", zap.String("user_id", userID))
+
+	id, _ := uuid.Parse(userID)
+	// Вызываем репозиторий, чтобы создать профиль в базе User Service
+	_, err := s.repo.CreateUser(ctx, &models.User{ID: id, Email: email, Username: username})
+	if err != nil {
+		return fmt.Errorf("service.user.HandleRegistration: %w", err)
+	}
+
+	return nil
+}

@@ -87,7 +87,7 @@ func (b *Broker) publish(subject string, v any) error {
 		return fmt.Errorf("marshal falied for subject %s: %w", subject, err)
 	}
 
-	if err := b.conn.Publish(subject, data); err != nil {
+	if _, err := b.JS.Publish(context.Background(), subject, data); err != nil {
 		return fmt.Errorf("publish to nats failed for subject %s: %w", subject, err)
 	}
 

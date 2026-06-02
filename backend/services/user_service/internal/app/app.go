@@ -21,6 +21,7 @@ type App struct {
 	log        *zap.Logger
 	repository *postgres.Repository
 	broker     *nuts.Broker
+	consumer   *nuts.UserConsumer
 	httpServer *httpServer.Server
 	grpcServer *grpcServ.Server
 	ErrChan    chan error
@@ -54,6 +55,9 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	uHandler := handler.NewUserHandler(log, usrService)
 	fHandler := handler.NewFriendHandler(log, frnService)
 
+	// consumer
+	userConsumer := nuts.NewUserConsumer(log, broker.JS, usrService)
+
 	// 5. Initialize HTTP Router
 	router := httpRouter.NewRouter(log, httpRouter.Handlers{
 		User:   uHandler,
@@ -72,6 +76,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		repository: repo,
 		broker:     broker,
 		httpServer: server,
+		consumer:   userConsumer,
 		grpcServer: gRPCServer,
 		ErrChan:    make(chan error, 1),
 	}, nil
@@ -88,10 +93,17 @@ func (a *App) Run() {
 	}()
 
 	// go func() {
- //        if err := a.broker.(ctx); err != nil {
- //            logger.Fatal("nats consumer failed", zap.Error(err))
- //        }
- //    }()
+	//        if err := a.broker.(ctx); err != nil {
+	//            logger.Fatal("nats consumer failed", zap.Error(err))
+	//        }
+	//    }()
+
+	go func() {
+		a.log.Info("starting nats consumer")
+		if err := a.consumer.Start(context.Background()); err != nil {
+			a.log.Error("nats consumer failed", zap.Error(err))
+		}
+	}()
 
 	// Start HTTP server
 	if err := a.httpServer.Run(); err != nil {

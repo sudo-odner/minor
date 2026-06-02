@@ -85,11 +85,15 @@ func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]m
 	dbMembers, err := s.repo.GetServerMembers(ctx, serverID)
     if err != nil { return nil, err }
 
+    fmt.Println("members:", dbMembers)
+    
     // 2. Собираем все UserID в один срез
     userIDs := make([]string, len(dbMembers))
     for i, m := range dbMembers {
         userIDs[i] = m.UserID.String()
     }
+
+    fmt.Println("IDs: ", userIDs)
 
     // 3. Делаем ОДИН gRPC вызов в User Service за именами и аватарами
     profiles, err := s.userClient.GetBatchProfiles(ctx, userIDs)

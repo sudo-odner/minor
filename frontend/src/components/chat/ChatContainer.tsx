@@ -73,7 +73,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
       {/* Список сообщений */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {messages.map((msg) => (
-          <div key={msg.id} className="flex items-start space-x-3 hover:bg-[#2e3035] -mx-4 px-4 py-1 group">
+          <div key={msg.message_id} className="flex items-start space-x-3 hover:bg-[#2e3035] -mx-4 px-4 py-1 group">
             <div className="w-10 h-10 bg-gray-600 rounded-full shrink-0 flex items-center justify-center font-bold">
               {msg.username?.[0].toUpperCase() || 'U'}
             </div>
@@ -83,7 +83,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
                   {msg.username || 'Аноним'}
                 </span>
                 <span className="text-xs text-gray-400">
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(msg.create_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <p className="text-gray-300 whitespace-pre-wrap">{msg.content}</p>
