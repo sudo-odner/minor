@@ -26,7 +26,7 @@ func GenerateAccessToken(cfg config.AuthConfig, user *models.User) (accessToken 
 		},
 	}
 
-	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString(cfg.JWTSecret)
+	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString([]byte(cfg.JWTSecret))
 	if err != nil {
 		return "", fmt.Errorf("failed to generate access token: %w", err)
 	}
@@ -40,7 +40,7 @@ func ValidateAccessToken(cfg config.AuthConfig, tokenString string) (*models.Cla
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 
-		return cfg.JWTSecret, nil
+		return []byte(cfg.JWTSecret), nil
 	})
 
 	if err != nil {
