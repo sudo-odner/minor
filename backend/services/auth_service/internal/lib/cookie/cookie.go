@@ -9,7 +9,7 @@ func SetCookie(w http.ResponseWriter, refreshToken string) {
 	refreshCookie := &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
-		Path:     "/secure/refresh",
+		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 		Secure:   false,
