@@ -15,6 +15,7 @@ import (
 
 type UserService interface {
 	GetUser(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
 }
 
 type ServerAPI struct {
@@ -64,4 +65,19 @@ func (s *ServerAPI) GetUserProfile(
 		CreatedAt: u.CreateAt.Format(time.RFC3339),
 		UpdatedAt: u.UpdateAt.Format(time.RFC3339),
 	}, nil
+}
+
+func (h *ServerAPI) GetBatchProfiles(ctx context.Context, req *userv1.GetBatchProfilesRequest) (*userv1.GetBatchProfilesResponse, error) {
+    h.log.Info("gRPC: GetBatchProfiles called", zap.Int("count", len(req.UserIds)))
+
+    // 1. Вызываем сервис пользователей, чтобы достать данные из Postgres
+    // profilesMap должен быть map[string]*userv1.UserProfile
+    profilesMap, err := h.userService.GetBatchProfiles(ctx, req.UserIds)
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to get profiles: %v", err)
+    }
+
+    return &userv1.GetBatchProfilesResponse{
+        Profiles: profilesMap,
+    }, nil
 }

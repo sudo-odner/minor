@@ -38,11 +38,13 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// 2. Initialize Nats Broker
-	broker, err := nuts.New(&cfg.Nuts)
+	broker, err := nuts.New(&cfg.Nuts, log)
 	if err != nil {
 		_ = repo.Close(ctx)
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	// communityPub := broker.NewPublisher(natsBroker.JS)
 
 	// 3. Initialize Services
 	usrService := userService.New(log, repo, broker)
@@ -84,6 +86,12 @@ func (a *App) Run() {
 			a.log.Error("failed to run gRPC server", zap.String("op", op), zap.Error(err))
 		}
 	}()
+
+	// go func() {
+ //        if err := a.broker.(ctx); err != nil {
+ //            logger.Fatal("nats consumer failed", zap.Error(err))
+ //        }
+ //    }()
 
 	// Start HTTP server
 	if err := a.httpServer.Run(); err != nil {

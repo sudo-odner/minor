@@ -70,7 +70,7 @@ func (repo *Repository) GetUser(ctx context.Context, id uuid.UUID) (*models.User
 	return &u, nil
 }
 
-func (repo *Repository) UpdateUser(ctx context.Context, id uuid.UUID, username *string, bio *string) (*models.User, error) {
+func (repo *Repository) UpdateUser(ctx context.Context, id uuid.UUID, username string, bio string) (*models.User, error) {
 	const op = "repository.postgres.UpdateUser"
 
 	query := `
@@ -147,4 +147,26 @@ func (repo *Repository) GetEmailByID(ctx context.Context, userID string) (string
 	}
 	
 	return email, nil
+}
+
+func (r *Repository) GetUsersByIDs(ctx context.Context, userIDs []string) ([]models.User, error) {
+	// Используем ANY($1) для передачи слайса строк в Postgres
+	query := `SELECT id, username, avatar_url FROM users WHERE id = ANY($1)`
+
+	rows, err := r.pool.Query(ctx, query, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.AvatarURL); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	return users, nil
 }
