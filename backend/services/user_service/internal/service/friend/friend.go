@@ -93,7 +93,7 @@ func (s *FriendService) FriendList(ctx context.Context, userID uuid.UUID) ([]*mo
 		previews = append(previews, &models.RelationshipPreview{
 			UserID:    r.TargetID,
 			Username:  u.Username,
-			AvatarURL: u.AvatarURL,
+			AvatarURL: *u.AvatarURL,
 			Status:    r.Status,
 		})
 	}
@@ -119,7 +119,7 @@ func (s *FriendService) FriendRequestList(ctx context.Context, userID uuid.UUID)
 		previews = append(previews, &models.RelationshipPreview{
 			UserID:    r.TargetID,
 			Username:  u.Username,
-			AvatarURL: u.AvatarURL,
+			AvatarURL: *u.AvatarURL,
 			Status:    r.Status,
 		})
 	}

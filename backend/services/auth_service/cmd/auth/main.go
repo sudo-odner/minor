@@ -94,7 +94,7 @@ func main() {
 		r.Post("/logout", authHTTPHandler.Logout(context.Background()))
 		// r.Post("/logout-all", authHTTPHandler.LogoutAll(context.Background()))
 
-		r.Post("/verify-internal", authHTTPHandler.VerifyInternal(context.Background()))
+		r.HandleFunc("/verify-internal", authHTTPHandler.VerifyInternal(context.Background()))
 		// r.Post("/forgot-password")
 		// r.Post("/reset-password")
 	})

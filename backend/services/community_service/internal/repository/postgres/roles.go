@@ -135,7 +135,7 @@ func (repo *Repository) GetMemberRoles(ctx context.Context, serverID, userID uui
 func (repo *Repository) UpdateRole(
 	ctx context.Context,
 	roleID uuid.UUID,
-	name *string,
+	name string,
 	permissions *authz.Permission,
 ) (*models.Role, error) {
 	const op = "repository.postgres.UpdateRole"

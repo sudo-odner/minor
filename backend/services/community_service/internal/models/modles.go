@@ -16,11 +16,13 @@ type Server struct {
 }
 
 type Member struct {
-	ServerID uuid.UUID
-	UserID   uuid.UUID
-	Nickname *string
-	JoinedAt time.Time
-	Roles    []Role
+    UserID    uuid.UUID `json:"userId"`
+    ServerID  uuid.UUID `json:"serverId"`
+    Nickname  *string   `json:"nickname"` // Указатель для обработки NULL
+    Username  string    `json:"username"`  // <-- ПРОВЕРЬ ЭТОТ ТЕГ
+    AvatarURL string    `json:"avatarUrl"` // <-- И ЭТОТ
+    JoinedAt  time.Time `json:"joinedAt"`
+    Roles     []Role    `json:"roles"`
 }
 
 type ChannelType int

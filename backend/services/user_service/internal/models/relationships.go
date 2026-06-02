@@ -42,6 +42,6 @@ type Relationship struct {
 type RelationshipPreview struct {
 	UserID    uuid.UUID
 	Username  string
-	AvatarURL *string
+	AvatarURL string
 	Status    RelationshipStatus
 }

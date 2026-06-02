@@ -6,18 +6,23 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
+	userv1 "github.com/sudo-odner/minor-shared/pkg/pb/user/v1"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 	"go.uber.org/zap"
 )
 
 type Repository interface {
-	AddMember(ctx context.Context, serverID uuid.UUID, userID uuid.UUID, nickname *string) (*models.Member, error)
+	AddMember(ctx context.Context, serverID uuid.UUID, userID uuid.UUID, nickname string) (*models.Member, error)
 	GetServerMember(ctx context.Context, serverID, userID uuid.UUID) (*models.Member, error)
 	GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]models.Member, error)
 	RemoveMember(ctx context.Context, serverID, userID uuid.UUID) error
 	UpdateMemberNickname(ctx context.Context, serverID, userID uuid.UUID, nickname string) error
 	AddRoleToMember(ctx context.Context, serverID, userID, roleID uuid.UUID) error
 	RemoveRoleFromMember(ctx context.Context, serverID, userID, roleID uuid.UUID) error
+}
+
+type UserClient interface {
+    GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
 }
 
 type PermissionService interface {
@@ -31,20 +36,22 @@ type ServerService interface {
 type Service struct {
 	log         *zap.Logger
 	repo        Repository
+	userClient UserClient
 	sPermission PermissionService
 	sServer     ServerService
 }
 
-func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServer ServerService) *Service {
+func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServer ServerService, userClient UserClient) *Service {
 	return &Service{
 		log:         log,
 		repo:        repo,
 		sPermission: sPermission,
 		sServer:     sServer,
+		userClient: userClient,
 	}
 }
 
-func (s *Service) AddMember(ctx context.Context, serverID, userID uuid.UUID, nickname *string) (*models.Member, error) {
+func (s *Service) AddMember(ctx context.Context, serverID, userID uuid.UUID, nickname string) (*models.Member, error) {
 	const op = "service.member.AddMember"
 
 	// Только у когдо есть модерация
@@ -71,12 +78,40 @@ func (s *Service) GetServerMember(ctx context.Context, serverID, userID uuid.UUI
 func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]models.Member, error) {
 	const op = "service.member.GetServerMembers"
 
-	ms, err := s.repo.GetServerMembers(ctx, serverID)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
+	log := s.log.With(
+		zap.String("op", op),
+	)
 
-	return ms, nil
+	dbMembers, err := s.repo.GetServerMembers(ctx, serverID)
+    if err != nil { return nil, err }
+
+    // 2. Собираем все UserID в один срез
+    userIDs := make([]string, len(dbMembers))
+    for i, m := range dbMembers {
+        userIDs[i] = m.UserID.String()
+    }
+
+    // 3. Делаем ОДИН gRPC вызов в User Service за именами и аватарами
+    profiles, err := s.userClient.GetBatchProfiles(ctx, userIDs)
+    if err != nil {
+        log.Warn("Failed to get profiles from User Service: %v", zap.Error(err))
+    }
+
+    fmt.Println(profiles)
+
+    // 4. Склеиваем данные (Enrichment)
+    for i := range dbMembers {
+        uid := dbMembers[i].UserID.String()
+        if profile, ok := profiles[uid]; ok {
+            dbMembers[i].Username = profile.Username   
+            dbMembers[i].AvatarURL = profile.AvatarUrl 
+        } else {
+            // Если профиль не найден в User Service, запишем хоть что-то для отладки
+            dbMembers[i].Username = "User-" + uid[:4] 
+        }
+    }
+
+    return dbMembers, nil
 }
 
 func (s *Service) RemoveMember(

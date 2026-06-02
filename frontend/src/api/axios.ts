@@ -3,7 +3,7 @@ import axios from 'axios';
 // Базовая конфигурация
 export const api = axios.create({
   // baseURL: '/', // Мы за Traefik, поэтому корень (или /api/v1 если всё там)
-  baseURL: '/',
+  baseURL: '/api/v1',
   withCredentials: true, // ОБЯЗАТЕЛЬНО для передачи HttpOnly Cookies
   headers: {
     'Content-Type': 'application/json',

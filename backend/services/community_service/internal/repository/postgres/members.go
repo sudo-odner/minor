@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -15,7 +16,7 @@ func (repo *Repository) AddMember(
 	ctx context.Context,
 	serverID uuid.UUID,
 	userID uuid.UUID,
-	nickname *string,
+	nickname string,
 ) (*models.Member, error) {
 	const op = "repository.postgres.AddMember"
 
@@ -98,13 +99,19 @@ func (repo *Repository) GetServerMembers(ctx context.Context, serverID uuid.UUID
 	var members []models.Member
 	for rows.Next() {
 		var member models.Member
+		var nick sql.NullString
 		if err := rows.Scan(
 			&member.ServerID,
 			&member.UserID,
-			&member.Nickname,
+			&nick,
 			&member.JoinedAt,
 		); err != nil {
 			return nil, fmt.Errorf("%s: scan error: %w", op, err)
+		}
+		if nick.Valid {
+			member.Nickname = &nick.String // Предполагается, что в модели это *string
+		} else {
+			member.Nickname = nil
 		}
 		members = append(members, member)
 	}
@@ -176,7 +183,7 @@ func (repo *Repository) UpdateMemberNickname(
 	const op = "repository.postgres.UpdateMemberNickname"
 
 	query := `
-		UPDATE members 
+		UPDATE members
 		SET nickname = NULLIF($1, '')
 		WHERE server_id = $2 AND user_id = $3;
 	`

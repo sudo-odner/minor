@@ -12,6 +12,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/grpc"
 	httpRouter "github.com/sudo-odner/minor/backend/services/community_service/internal/server/http"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/http/handler"
+	userClient "github.com/sudo-odner/minor/backend/services/community_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/channel"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/members"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/permissions"
@@ -46,12 +47,19 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// grpc clients
+	userAddr := cfg.GRPCClients.Address // например "user-service:50051"
+	userGRPCClient, err := userClient.NewUserClient(userAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init user client: %w", err)
+	}
+
 	// 3. Init services
 	permService := permissions.New(log, repo)
 	serversService := servers.New(log, repo)
 	rolesService := roles.New(log, repo, permService, serversService)
 	channelService := channel.New(log, repo, broker, permService)
-	membersService := members.New(log, repo, permService, serversService)
+	membersService := members.New(log, repo, permService, serversService, userGRPCClient)
 
 	// 4. Init HTTP handlers
 	serverHandler := handler.NewServerHandler(log, serversService)
@@ -61,10 +69,10 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 	// 5. Init HTTP router and server
 	router := httpRouter.NewRouter(log, httpRouter.Handlers{
-		Server:  serverHandler,
-		Channel: channelHandler,
-		Member:  memberHandler,
-		Role:    roleHandler,
+		Server:  *serverHandler,
+		Channel: *channelHandler,
+		Member:  *memberHandler,
+		Role:    *roleHandler,
 	})
 	httpServer := httpServ.New(&cfg.ServerHTTP, log, router)
 

@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/app"
+	// "github.com/sudo-odner/minor/backend/services/user_service/internal/broker/nuts"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/lib/logger"
 	"go.uber.org/zap"

@@ -14,7 +14,7 @@ type Repository interface {
 	CreateChannel(ctx context.Context, serverID uuid.UUID, name string, typeChannel models.ChannelType, parentID *uuid.UUID) (*models.Channel, error)
 	GetChannel(ctx context.Context, channelID uuid.UUID) (*models.Channel, error)
 	GetServerChannels(ctx context.Context, serverID uuid.UUID) ([]models.Channel, error)
-	UpdateChannel(ctx context.Context, channelID, serverID uuid.UUID, name *string, parentID *uuid.UUID) (*models.Channel, error)
+	UpdateChannel(ctx context.Context, channelID, serverID uuid.UUID, name string, parentID *uuid.UUID) (*models.Channel, error)
 	DeleteChannel(ctx context.Context, channelID uuid.UUID) error
 	MoveChannel(ctx context.Context, serverID, channelID uuid.UUID, oldParentID, newParentID *uuid.UUID, oldPos, newPos int) error
 }
@@ -121,7 +121,7 @@ func (s *Service) UpdateChannel(
 	ctx context.Context,
 	actorID uuid.UUID,
 	channelID, serverID uuid.UUID,
-	name *string,
+	name string,
 	parentID *uuid.UUID,
 ) (*models.Channel, error) {
 	const op = "service.channel.UpdateChannel"

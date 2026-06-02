@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
@@ -13,7 +15,7 @@ import (
 )
 
 type MemberService interface {
-	AddMember(ctx context.Context, serverID, userID uuid.UUID, nickname *string) (*models.Member, error)
+	AddMember(ctx context.Context, serverID, userID uuid.UUID, nickname string) (*models.Member, error)
 	GetServerMember(ctx context.Context, serverID, userID uuid.UUID) (*models.Member, error)
 	GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]models.Member, error)
 	RemoveMember(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, targetUserID uuid.UUID) error
@@ -36,15 +38,17 @@ func NewMemberHandler(log *zap.Logger, memberService MemberService) *MemberHandl
 
 type AddMemberRequest struct {
 	UserID   uuid.UUID `json:"user_id"`
-	Nickname *string   `json:"nickname,omitempty"`
+	Nickname string    `json:"nickname,omitempty"`
 }
 
 type MemberResponse struct {
-	ServerID string         `json:"server_id"`
-	UserID   string         `json:"user_id"`
-	Nickname *string        `json:"nickname,omitempty"`
-	JoinedAt string         `json:"joined_at"`
-	Roles    []RoleResponse `json:"roles"`
+	ServerID  string         `json:"server_id"`
+	UserID    string         `json:"user_id"`
+	Nickname  *string        `json:"nickname,omitempty"`
+	Username  *string        `json:"username"`
+	AvatarURL *string        `json:"avatar_url,omitempty"`
+	JoinedAt  string         `json:"joined_at"`
+	Roles     []RoleResponse `json:"roles"`
 }
 
 func mapRolesToResponse(roles []models.Role) []RoleResponse {
@@ -67,40 +71,55 @@ func (h *MemberHandler) AddMember() http.HandlerFunc {
 		const op = "http.handler.member.AddMember"
 		log := h.log.With(zap.String("op", op))
 
-		serverID, err := ParseUUIDParam(r, "server_id")
+		serverIDStr := chi.URLParam(r, "server_id")
+		serverID, err := uuid.Parse(serverIDStr)
 		if err != nil {
-			log.Debug("invalid server_id", zap.Error(err))
-			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid server_id")
+			log.Warn("invalid server_id", zap.Error(err))
+			RenderError(w, r, http.StatusBadRequest, CodeInternalServerError, "invalid_server_id")
 			return
 		}
 
+		// 2. КРИТИЧНО: Берем User ID из заголовка, который проставил Traefik/Auth
+		userIDStr := r.Header.Get("X-User-ID")
+		if userIDStr == "" {
+			log.Error("X-User-ID header is missing")
+			RenderError(w, r, http.StatusUnauthorized, CodeInternalServerError, "unauthorized")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			log.Error("invalid user_id from header", zap.Error(err))
+			RenderError(w, r, http.StatusInternalServerError, CodeInternalServerError, "internal_error")
+			return
+		}
+
+		// 3. Пытаемся декодировать тело (необязательно)
 		var req AddMemberRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Debug("failed to decode body", zap.Error(err))
-			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "invalid request body")
+		err = json.NewDecoder(r.Body).Decode(&req)
+		// Если тело пустое (EOF), это НЕ ошибка, просто идем дальше
+		if err != nil && err.Error() != "EOF" {
+			log.Warn("failed to decode body", zap.Error(err))
+			RenderError(w, r, http.StatusBadRequest, CodeInternalServerError, "invalid_request_body")
 			return
 		}
 
-		if req.UserID == uuid.Nil {
-			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "user_id is required")
-			return
-		}
-
-		m, err := h.memberService.AddMember(r.Context(), serverID, req.UserID, req.Nickname)
+		// 4. Вызываем сервис. Используем userID из заголовка!
+		// Если в req.Nickname пусто, сервис использует username по умолчанию
+		_, err = h.memberService.AddMember(r.Context(), serverID, userID, req.Nickname)
 		if err != nil {
+			if strings.Contains(err.Error(), "already exists") {
+				h.log.Warn("user already a member", zap.String("user_id", userID.String()))
+				// Вместо 500 отдаем 409 (Конфликт) или 400
+				RenderError(w, r, http.StatusConflict, "already_member", "You are already a member of this server")
+				return
+			}
 			log.Error("failed to add member", zap.Error(err))
-			RenderModelError(w, r, err, "internal server error")
+			RenderError(w, r, http.StatusInternalServerError, CodeInternalServerError, "failed_to_join")
 			return
 		}
 
-		render.Status(r, http.StatusCreated)
-		render.JSON(w, r, MemberResponse{
-			ServerID: m.ServerID.String(),
-			UserID:   m.UserID.String(),
-			Nickname: m.Nickname,
-			JoinedAt: m.JoinedAt.Format(time.RFC3339),
-			Roles:    mapRolesToResponse(m.Roles),
-		})
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 
@@ -128,6 +147,8 @@ func (h *MemberHandler) GetServerMembers() http.HandlerFunc {
 			res[i] = MemberResponse{
 				ServerID: membersList[i].ServerID.String(),
 				UserID:   membersList[i].UserID.String(),
+				Username: &membersList[i].Username,
+				AvatarURL: &membersList[i].AvatarURL,
 				Nickname: membersList[i].Nickname,
 				JoinedAt: membersList[i].JoinedAt.Format(time.RFC3339),
 				Roles:    mapRolesToResponse(membersList[i].Roles),
@@ -166,6 +187,8 @@ func (h *MemberHandler) GetServerMember() http.HandlerFunc {
 		render.JSON(w, r, MemberResponse{
 			ServerID: m.ServerID.String(),
 			UserID:   m.UserID.String(),
+			Username: &m.Username,
+			AvatarURL: &m.AvatarURL,
 			Nickname: m.Nickname,
 			JoinedAt: m.JoinedAt.Format(time.RFC3339),
 			Roles:    mapRolesToResponse(m.Roles),

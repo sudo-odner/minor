@@ -100,8 +100,8 @@ func (repo *Repository) GetServer(ctx context.Context, serverID uuid.UUID) (*mod
 func (repo *Repository) UpdateServer(
 	ctx context.Context,
 	serverID uuid.UUID,
-	name *string,
-	avatarURL *string,
+	name string,
+	avatarURL string,
 ) (*models.Server, error) {
 	const op = "repository.postgres.UpdateServer"
 

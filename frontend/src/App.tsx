@@ -1,24 +1,35 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Контексты
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
-// Импорт страниц
+// Страницы и Лейауты
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MainLayout from './layouts/MainLayout';
 
-// Компонент для защиты приватных маршрутов
-// Если пользователь не залогинен, его перекинет на /login
+/**
+ * ProtectedRoute - Охранник роутов.
+ * 1. Пока isLoading = true (идет запрос /refresh), показываем спиннер.
+ * 2. Если не авторизован - редирект на /login.
+ * 3. Если авторизован - рендерим дочерние компоненты.
+ */
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Если мы еще проверяем куку — ничего не делаем, показываем пустой экран или лоадер
   if (isLoading) {
-    return <div className="h-screen bg-[#313338]" />; 
+    return (
+      <div className="h-screen w-full bg-[#313338] flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5865f2]"></div>
+          <span className="text-gray-400 text-sm font-medium animate-pulse">Загрузка Minor...</span>
+        </div>
+      </div>
+    );
   }
 
-  // Только когда загрузка завершена, решаем: пускать или нет
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -26,6 +37,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+/**
+ * AppContent - Внутренняя часть приложения, где доступен роутинг.
+ * Вынесена отдельно, чтобы можно было использовать useAuth внутри.
+ */
 const AppContent: React.FC = () => {
   return (
     <BrowserRouter>
@@ -34,33 +49,45 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Защищенные маршруты (наш мессенджер) */}
-        <Route 
-          path="/" 
+        {/* Защищенные маршруты (Вся основная логика мессенджера) */}
+        <Route
+          path="/"
           element={
             <ProtectedRoute>
               <MainLayout>
-                {/* Внутри MainLayout мы будем отображать сообщения */}
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <h2 className="text-2xl font-bold mb-2">Добро пожаловать в Minor!</h2>
-                  <p>Выберите канал, чтобы начать общение.</p>
+                {/* 
+                  Этот контент отображается в центре MainLayout (в блоке {children}), 
+                  если не выбран конкретный канал. 
+                */}
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 select-none">
+                  <div className="w-24 h-24 bg-[#35363c] rounded-full flex items-center justify-center mb-6 shadow-inner">
+                    <span className="text-5xl opacity-50">👋</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    Добро пожаловать в Minor!
+                  </h2>
+                  <p className="text-gray-400 max-w-sm leading-relaxed">
+                    Выберите сервер слева или вступите в сообщество по ID, чтобы начать общение с друзьями.
+                  </p>
                 </div>
               </MainLayout>
             </ProtectedRoute>
-          } 
+          }
         />
 
-        {/* Редирект со всех неизвестных путей на главную */}
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* Редирект со всех остальных путей на главную */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
 };
 
+/**
+ * App - Корневой компонент.
+ * Порядок провайдеров важен: Сокету нужен токен из AuthContext.
+ */
 function App() {
   return (
-    // Важно: AuthProvider должен быть выше SocketProvider, 
-    // так как сокету нужен токен из AuthContext
     <AuthProvider>
       <SocketProvider>
         <AppContent />

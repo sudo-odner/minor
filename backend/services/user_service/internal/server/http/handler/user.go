@@ -15,7 +15,7 @@ import (
 type UserService interface {
 	CreateUser(ctx context.Context, userID uuid.UUID, username, bio string) (*models.User, error)
 	GetUser(ctx context.Context, userID uuid.UUID) (*models.User, error)
-	UpdateUser(ctx context.Context, userID uuid.UUID, username, bio *string) (*models.User, error)
+	UpdateUser(ctx context.Context, userID uuid.UUID, username, bio string) (*models.User, error)
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -141,8 +141,8 @@ func (h *UserHandler) GetUser() http.HandlerFunc {
 }
 
 type UpdateUserRequest struct {
-	Username *string `json:"username"`
-	Bio      *string `json:"bio"`
+	Username string `json:"username"`
+	Bio      string `json:"bio"`
 }
 
 func (h *UserHandler) UpdateUser() http.HandlerFunc {
