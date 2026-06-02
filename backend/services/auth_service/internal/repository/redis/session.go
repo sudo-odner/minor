@@ -42,6 +42,7 @@ func (r *RedisSessionRepo) SetRefreshToken(ctx context.Context, userID string, t
 func (r *RedisSessionRepo) GetUserIDByRefreshToken(ctx context.Context, tokenID string) (string, error) {
 	tokenKey := fmt.Sprintf(refreshPrefix, tokenID)
 	userID, err := r.client.Get(ctx, tokenKey).Result()
+	fmt.Println(tokenKey, userID)
 	if err == redis.Nil {
 		return "", fmt.Errorf("session not found")
 	}
