@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Импортируем навигатор
+import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/axios';
-import { useAuth } from '../context/AuthContext'; // Импортируем наш хук
+import { useAuth } from '../context/AuthContext';
 
 const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -9,27 +9,17 @@ const LoginPage: React.FC = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     
-    const { login } = useAuth(); // Получаем функцию входа из контекста
+    const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
         try {
-            const response = await api.post('/api/v1/auth/login', {
-                email,
-                password,
-            });
-
-            // 1. Сохраняем токен в localStorage (чтобы axios его подхватил)
+            const response = await api.post('/auth/login', { email, password });
             localStorage.setItem('accessToken', response.data.access_token);
-
-            // 2. Обновляем состояние в AuthContext (это заставит App.tsx переключить роут)
             login(response.data); 
-
-            // 3. Плавный переход на главную
             navigate('/');
         } catch (err: any) {
             setError(err.response?.data?.error || 'Неверный логин или пароль');
@@ -40,43 +30,67 @@ const LoginPage: React.FC = () => {
 
     return (
         <div className="bg-[#e6f0ff] flex items-center justify-center min-h-screen p-4 font-sans">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 sm:p-10">
-                <div className="text-center mb-10">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 sm:p-10 transition-all duration-300">
+                
+                {/* Исправленный блок иконки */}
+                <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#e6f0ff] text-[#002FA7] mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-800">Добро пожаловать</h1>
+                    <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Добро пожаловать</h1>
+                    <p className="text-gray-500 mt-2 text-sm">Войдите в свой аккаунт Minor</p>
                 </div>
 
-                {error && <div className="mb-4 text-red-500 text-center text-sm">{error}</div>}
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100 text-center font-medium">
+                        {error}
+                    </div>
+                )}
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <input 
-                        type="email" 
-                        placeholder="Email" 
-                        className="w-full px-4 py-3 rounded-xl border"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                    />
-                    <input 
-                        type="password" 
-                        placeholder="Пароль" 
-                        className="w-full px-4 py-3 rounded-xl border"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                    />
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Email</label>
+                        <input 
+                            type="email" 
+                            placeholder="email@example.com" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#002FA7]/20 focus:border-[#002FA7] transition-all"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-1 ml-1">
+                            <label className="block text-xs font-bold text-gray-500 uppercase">Пароль</label>
+                            <a href="#" className="text-xs font-semibold text-[#002FA7] hover:underline">Забыли?</a>
+                        </div>
+                        <input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#002FA7]/20 focus:border-[#002FA7] transition-all"
+                            required
+                        />
+                    </div>
+                    
                     <button 
                         type="submit" 
                         disabled={loading}
-                        className="w-full bg-[#002FA7] text-white py-3 rounded-xl hover:bg-[#0047E6] transition-all"
+                        className="w-full bg-[#002FA7] hover:bg-[#001f7a] text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 mt-2"
                     >
                         {loading ? 'Вход...' : 'Войти'}
                     </button>
                 </form>
+
+                <div className="mt-8 text-center text-sm text-gray-500 font-medium">
+                    Нет аккаунта? 
+                    <Link to="/register" className="ml-1 text-[#002FA7] hover:underline">
+                        Создать аккаунт
+                    </Link>
+                </div>
             </div>
         </div>
     );

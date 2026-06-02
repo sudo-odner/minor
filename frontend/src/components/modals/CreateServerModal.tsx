@@ -27,7 +27,7 @@ const CreateServerModal: React.FC<CreateServerModalProps> = ({
 
     try {
       // Endpoint: POST /api/v1/servers/
-      const response = await api.post('/api/v1/servers', {
+      const response = await api.post('/servers', {
         name: name.trim(),
         avatar_url: '', // Default empty for now
       });

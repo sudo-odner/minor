@@ -30,7 +30,7 @@ const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
 
     try {
       // Отправляем запрос на бэкенд в Community Service
-      const response = await api.post(`/api/v1/servers/${serverId}/channels/`, {
+      const response = await api.post(`/servers/${serverId}/channels/`, {
         name: name.trim().toLowerCase().replace(/\s+/g, '-'), // форматируем под дискорд-стайл (без пробелов)
         type: type,
       });

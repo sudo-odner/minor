@@ -31,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (isRefreshing) return;
         isRefreshing = true;
         try {
-            const response = await api.post("/api/v1/auth/refresh");
+            const response = await api.post("/auth/refresh");
             const { access_token, user } = response.data;
 
             // ОБЯЗАТЕЛЬНО сохраняем новый токен, чтобы перехватчик Axios его увидел
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const logout = async () => {
         try {
-            await api.post("/api/v1/auth/logout");
+            await api.post("/auth/logout");
         } finally {
             setUser(null);
             setAccessToken(null);

@@ -2,190 +2,252 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { api } from '../api/axios';
-import CreateChannelModal from '../components/modals/CreateChannelModal';
-import CreateServerModal from '../components/modals/CreateServerModal'; // Импортируем модалку сервера
 
-const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Импорт компонентов
+import CreateServerModal from '../components/modals/CreateServerModal';
+import JoinServerModal from '../components/modals/JoinServerModal';
+import CreateChannelModal from '../components/modals/CreateChannelModal';
+import MemberList from '../components/server/MemberList';
+import ChatContainer from '../components/chat/ChatContainer';
+
+interface MainLayoutProps {
+  children: React.ReactNode;
+}
+
+const MainLayout = ({ children }: MainLayoutProps) => {
   const { logout, user, accessToken } = useAuth();
   const { isConnected } = useSocket();
-  
+
+  // Списки данных
   const [servers, setServers] = useState<any[]>([]);
-  const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [channels, setChannels] = useState<any[]>([]);
   
-  // Состояния открытия модальных окон
-  const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
-  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+  // Состояния выбора
+  const [activeServer, setActiveServer] = useState<any | null>(null);
+  const [activeChannel, setActiveChannel] = useState<any | null>(null);
 
-  // 1. Загрузка серверов пользователя при старте
-  const fetchServers = async () => {
-    if (!accessToken) return;
-    try {
-      const res = await api.get('/servers/@me');
-      const serverList = Array.isArray(res.data) ? res.data : (res.data?.servers || []);
-      setServers(serverList);
-      
-      if (serverList.length > 0 && !activeServerId) {
-        setActiveServerId(serverList[0].id);
-      }
-    } catch (err) {
-      console.error("Failed to fetch servers", err);
-    }
-  };
+  // Состояния модалок
+  const [isCreateServerOpen, setIsCreateServerOpen] = useState(false);
+  const [isJoinServerOpen, setIsJoinServerOpen] = useState(false);
+  const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
 
+  // 1. Загрузка серверов пользователя
   useEffect(() => {
+    if (!accessToken) return;
+
+    const fetchServers = async () => {
+      try {
+        const res = await api.get('/servers/@me');
+        const data = Array.isArray(res.data) ? res.data : [];
+        setServers(data);
+        
+        // Автоматически выбираем первый сервер, если ничего не выбрано
+        if (data.length > 0 && !activeServer) {
+          setActiveServer(data[0]);
+        }
+      } catch (err) {
+        console.error('Ошибка загрузки серверов:', err);
+      }
+    };
     fetchServers();
   }, [accessToken]);
 
-  // 2. Загрузка каналов при смене активного сервера
+  // 2. Загрузка каналов при смене сервера
   useEffect(() => {
-    if (!accessToken || !activeServerId) return;
+    if (!accessToken || !activeServer) {
+      setChannels([]);
+      setActiveChannel(null);
+      return;
+    }
 
     const fetchChannels = async () => {
       try {
-        const res = await api.get(`/servers/${activeServerId}/channels`);
-        const channelList = Array.isArray(res.data) ? res.data : (res.data?.channels || []);
-        setChannels(channelList);
+        const res = await api.get(`/servers/${activeServer.id}/channels`);
+        const data = Array.isArray(res.data) ? res.data : [];
+        setChannels(data);
+        
+        // Выбираем первый канал по умолчанию
+        if (data.length > 0) {
+          setActiveChannel(data[0]);
+        }
       } catch (err) {
-        console.error("Failed to fetch channels", err);
+        console.error('Ошибка загрузки каналов:', err);
         setChannels([]);
       }
     };
     fetchChannels();
-  }, [accessToken, activeServerId]);
+  }, [accessToken, activeServer]);
 
-  // Callback для добавления созданного канала
-  const handleChannelCreated = (newChannel: any) => {
-    setChannels((prev) => [...prev, newChannel]);
+  // Колбэки для обновления UI
+  const handleServerCreated = (newServer: any) => {
+    setServers(prev => [...prev, newServer]);
+    setActiveServer(newServer);
   };
 
-  // Callback для добавления созданного сервера
-  const handleServerCreated = (newServer: any) => {
-    setServers((prev) => [...prev, newServer]);
-    setActiveServerId(newServer.id); // Переключаемся на новый сервер
+  const handleChannelCreated = (newChannel: any) => {
+    setChannels(prev => [...prev, newChannel]);
+    setActiveChannel(newChannel);
   };
 
   return (
     <div className="flex h-screen w-full bg-[#313338] text-white overflow-hidden font-sans">
       
-      {/* 1. Панель серверов */}
-      <div className="w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 space-y-2 overflow-y-auto no-scrollbar">
+      {/* ПАНЕЛЬ 1: СПИСОК СЕРВЕРОВ (Самая левая) */}
+      <nav className="w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 space-y-2 overflow-y-auto no-scrollbar">
+        {/* Кнопка "Личные сообщения" */}
         <div 
-          onClick={() => setActiveServerId(null)}
-          className={`w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl transition-all ${
-            !activeServerId ? 'bg-[#5865f2] rounded-xl' : 'bg-[#313338] hover:bg-[#5865f2]'
+          onClick={() => setActiveServer(null)}
+          className={`w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ${
+            !activeServer ? 'bg-[#5865f2] rounded-xl' : 'bg-[#313338] hover:bg-[#5865f2] hover:rounded-xl'
           }`}
         >
-          <span className="font-bold text-xl">M</span>
+          <span className="text-xl font-bold">M</span>
         </div>
+
         <div className="w-8 h-[2px] bg-[#35363c] rounded-full mx-auto my-1" />
-        
-        {servers.map(server => (
-          <div 
-            key={server.id} 
-            onClick={() => setActiveServerId(server.id)}
-            className={`w-12 h-12 flex items-center justify-center cursor-pointer transition-all group ${
-              activeServerId === server.id 
-                ? 'bg-[#5865f2] rounded-xl' 
-                : 'bg-[#313338] rounded-full hover:rounded-xl hover:bg-[#5865f2]'
-            }`}
+
+        {/* Список иконок серверов */}
+        {servers.map((server) => (
+          <div
+            key={server.id}
+            onClick={() => setActiveServer(server)}
+            className={`relative flex items-center group mb-2`}
           >
-            <span className="text-sm font-semibold truncate px-1 uppercase">{server.name.substring(0, 3)}</span>
+            {/* Полоска индикатор слева */}
+            <div className={`absolute -left-3 w-1 bg-white rounded-r-full transition-all duration-200 ${
+              activeServer?.id === server.id ? 'h-10' : 'h-2 scale-0 group-hover:scale-100 group-hover:h-5'
+            }`} />
+            
+            <div className={`w-12 h-12 flex items-center justify-center cursor-pointer transition-all duration-200 shadow-lg ${
+              activeServer?.id === server.id ? 'bg-[#5865f2] rounded-xl' : 'bg-[#313338] rounded-full hover:rounded-xl hover:bg-[#5865f2]'
+            }`}>
+              <span className="text-sm font-bold uppercase">{(server.name || '??').substring(0, 2)}</span>
+            </div>
           </div>
         ))}
 
-        {/* Кнопка "Создать сервер" */}
-        <div 
-          onClick={() => setIsServerModalOpen(true)}
-          className="w-12 h-12 bg-[#313338] rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-[#23a559] transition-all text-[#23a559] hover:text-white"
-          title="Создать сервер"
+        {/* Кнопки действий */}
+        <button 
+          onClick={() => setIsCreateServerOpen(true)}
+          className="w-12 h-12 bg-[#313338] rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-[#23a55a] transition-all text-[#23a55a] hover:text-white"
         >
-          <span className="text-2xl">+</span>
-        </div>
-      </div>
+          <span className="text-2xl font-light">+</span>
+        </button>
 
-      {/* 2. Панель каналов */}
-      <div className="w-60 bg-[#2b2d31] flex flex-col">
-        <div className="h-12 shadow-sm flex items-center px-4 font-bold border-b border-[#1e1f22] justify-between">
-          <span className="truncate">
-            {activeServerId 
-              ? servers.find(s => s.id === activeServerId)?.name 
-              : "Личные сообщения"
-            }
-          </span>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {activeServerId ? (
+        <button 
+          onClick={() => setIsJoinServerOpen(true)}
+          className="w-12 h-12 bg-[#313338] rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-[#5865f2] transition-all text-gray-400 hover:text-white"
+        >
+          <span className="text-xl">🧭</span>
+        </button>
+      </nav>
+
+      {/* ПАНЕЛЬ 2: СПИСОК КАНАЛОВ (Средняя) */}
+      <aside className="w-60 bg-[#2b2d31] flex flex-col shrink-0">
+        <header className="h-12 shadow-md flex items-center px-4 font-bold border-b border-[#1e1f22] z-10">
+          <span className="truncate">{activeServer ? activeServer.name : "Личные сообщения"}</span>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {activeServer ? (
             <>
-              <div className="flex items-center justify-between text-xs font-semibold text-gray-400 px-2 mb-1 uppercase tracking-wider">
-                <span>Каналы</span>
-                <button 
-                  onClick={() => setIsChannelModalOpen(true)}
-                  className="hover:text-white text-lg transition-colors focus:outline-none"
-                  title="Создать канал"
-                >
-                  +
-                </button>
+              <div className="flex items-center justify-between text-xs font-bold text-gray-400 px-2 mt-4 mb-2 uppercase tracking-wider">
+                <span>Текстовые каналы</span>
+                <button onClick={() => setIsCreateChannelOpen(true)} className="hover:text-white text-xl leading-none">+</button>
               </div>
-
-              {channels.map(channel => (
-                <div key={channel.id} className="px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer text-gray-400 hover:text-gray-100 flex items-center justify-between group">
-                  <div className="flex items-center truncate">
-                    <span className="mr-2 text-xl text-gray-500 font-bold">{channel.type === 0 ? '#' : '🔊'}</span> 
-                    <span className="truncate text-sm">{channel.name}</span>
+              
+              <div className="space-y-0.5">
+                {channels.map((channel) => (
+                  <div
+                    key={channel.id}
+                    onClick={() => setActiveChannel(channel)}
+                    className={`group flex items-center px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                      activeChannel?.id === channel.id ? 'bg-[#3f4248] text-white' : 'text-gray-400 hover:bg-[#35373c] hover:text-gray-200'
+                    }`}
+                  >
+                    <span className="text-gray-500 text-xl mr-1.5">#</span>
+                    <span className="truncate font-medium">{channel.name}</span>
                   </div>
-                </div>
-              ))}
-
-              {channels.length === 0 && (
-                <div className="px-2 py-4 text-xs text-gray-500 italic">Каналов пока нет...</div>
-              )}
+                ))}
+              </div>
             </>
           ) : (
-            <div className="px-2 py-4 text-xs text-gray-500 italic">Тут будут личные переписки</div>
+            <div className="mt-4 px-2 text-sm text-gray-500 text-center italic">
+              Выберите сервер для просмотра каналов
+            </div>
           )}
         </div>
 
-        {/* Профиль пользователя */}
-        <div className="bg-[#232428] p-2 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <div className="w-8 h-8 bg-gray-600 rounded-full" />
-              <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#232428] ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+        {/* ПАНЕЛЬ ПРОФИЛЯ (Футер средней колонки) */}
+        <footer className="bg-[#232428] h-[52px] px-2 flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-8 h-8 bg-[#5865f2] rounded-full flex items-center justify-center font-bold text-xs">
+                  {(user?.username?.charAt(0) || 'U').toUpperCase()}
+              </div>
+              <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#232428] ${
+                isConnected ? 'bg-[#23a55a]' : 'bg-[#80848e]'
+              }`} />
             </div>
-            <div className="text-xs overflow-hidden w-24">
-              <p className="font-bold truncate">{user?.username || 'User'}</p>
-              <p className="text-gray-400 truncate">Online</p>
+            <div className="text-xs leading-tight truncate">
+              <p className="font-bold text-white truncate">{user?.username || 'User'}</p>
+              <p className="text-gray-400 truncate text-[10px]">{isConnected ? 'В сети' : 'Оффлайн'}</p>
             </div>
           </div>
-          <button onClick={logout} className="text-gray-400 hover:text-red-400 p-1">
-             🚪
-          </button>
-        </div>
-      </div>
+          <div className="flex items-center space-x-1">
+             <button onClick={logout} className="p-2 hover:bg-[#3f4248] rounded-md transition-colors text-gray-400 hover:text-red-400" title="Выйти">
+                <span className="text-lg">🚪</span>
+             </button>
+          </div>
+        </footer>
+      </aside>
 
-      {/* 3. Основная область чата */}
-      <main className="flex-1 flex flex-col bg-[#313338]">
-        {children}
+      {/* ПАНЕЛЬ 3: ОСНОВНОЙ ЧАТ (Центральная) */}
+      <main className="flex-1 flex flex-col min-w-0 bg-[#313338]">
+        {activeChannel ? (
+          <ChatContainer 
+            channelId={activeChannel.id} 
+            channelName={activeChannel.name} 
+          />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+            <div className="w-20 h-20 bg-[#35363c] rounded-full flex items-center justify-center mb-4">
+               <span className="text-4xl text-gray-500">💬</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Добро пожаловать в Minor!</h2>
+            <p className="text-gray-400 max-w-sm">
+              Это начало вашего нового сервера. Выберите канал слева или создайте новый, чтобы начать общение.
+            </p>
+          </div>
+        )}
       </main>
 
-      {/* Модальное окно создания канала */}
-      {activeServerId && (
-        <CreateChannelModal 
-          isOpen={isChannelModalOpen}
-          onClose={() => setIsChannelModalOpen(false)}
-          serverId={activeServerId}
-          onChannelCreated={handleChannelCreated}
-        />
+      {/* ПАНЕЛЬ 4: СПИСОК УЧАСТНИКОВ (Самая правая) */}
+      {activeServer && (
+        <MemberList serverId={activeServer.id} />
       )}
 
-      {/* Модальное окно создания сервера */}
+      {/* МОДАЛЬНЫЕ ОКНА */}
       <CreateServerModal 
-        isOpen={isServerModalOpen}
-        onClose={() => setIsServerModalOpen(false)}
-        onServerCreated={handleServerCreated}
+        isOpen={isCreateServerOpen} 
+        onClose={() => setIsCreateServerOpen(false)} 
+        onServerCreated={handleServerCreated} 
       />
+      
+      <JoinServerModal 
+        isOpen={isJoinServerOpen} 
+        onClose={() => setIsJoinServerOpen(false)} 
+        onJoined={handleServerCreated} 
+      />
+
+      {activeServer && (
+        <CreateChannelModal 
+          isOpen={isCreateChannelOpen} 
+          onClose={() => setIsCreateChannelOpen(false)} 
+          serverId={activeServer.id}
+          onChannelCreated={handleChannelCreated} 
+        />
+      )}
     </div>
   );
 };
