@@ -309,6 +309,8 @@ services:
             - POSTGRES_USER=community_service
             - POSTGRES_PASSWORD=community_service_master_key
             - POSTGRES_DATABASE=community_service
+            - USER_GRPC_CLIENT_ADDRESS=user-service:50051
+            - PRESENCE_GRPC_CLIENT_ADDRESS=presence-service:50051
         env_file:
           - ../backend/services/community_service/.env
         labels:

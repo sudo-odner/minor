@@ -12,6 +12,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/grpc"
 	httpRouter "github.com/sudo-odner/minor/backend/services/community_service/internal/server/http"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/http/handler"
+	presenceClient "github.com/sudo-odner/minor/backend/services/community_service/internal/client/grpc/presence"
 	userClient "github.com/sudo-odner/minor/backend/services/community_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/channel"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/service/members"
@@ -48,10 +49,16 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// grpc clients
-	userAddr := cfg.GRPCClients.Address // например "user-service:50051"
+	userAddr := cfg.GRPCClients.UserAddress // например "user-service:50051"
 	userGRPCClient, err := userClient.NewUserClient(userAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init user client: %w", err)
+	}
+
+	presenceAddr := cfg.GRPCClients.PresenceAddress // например "presence-service:50051"
+	presenceGRPCClient, err := presenceClient.NewPresenceClient(presenceAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init presence client: %w", err)
 	}
 
 	// 3. Init services
@@ -59,7 +66,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	serversService := servers.New(log, repo)
 	rolesService := roles.New(log, repo, permService, serversService)
 	channelService := channel.New(log, repo, broker, permService)
-	membersService := members.New(log, repo, permService, serversService, userGRPCClient)
+	membersService := members.New(log, repo, permService, serversService, userGRPCClient, presenceGRPCClient)
 
 	// 4. Init HTTP handlers
 	serverHandler := handler.NewServerHandler(log, serversService)

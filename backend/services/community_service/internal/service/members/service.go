@@ -25,6 +25,10 @@ type UserClient interface {
     GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
 }
 
+type PresenceClient interface {
+	GetUserStatuses(ctx context.Context, userIDs []string) (map[string]string, error)
+}
+
 type PermissionService interface {
 	FetchServerPermissions(ctx context.Context, userID, serverID uuid.UUID) (authz.Permission, error)
 }
@@ -34,20 +38,22 @@ type ServerService interface {
 }
 
 type Service struct {
-	log         *zap.Logger
-	repo        Repository
-	userClient UserClient
-	sPermission PermissionService
-	sServer     ServerService
+	log            *zap.Logger
+	repo           Repository
+	userClient     UserClient
+	presenceClient PresenceClient
+	sPermission    PermissionService
+	sServer        ServerService
 }
 
-func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServer ServerService, userClient UserClient) *Service {
+func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServer ServerService, userClient UserClient, presenceClient PresenceClient) *Service {
 	return &Service{
-		log:         log,
-		repo:        repo,
-		sPermission: sPermission,
-		sServer:     sServer,
-		userClient: userClient,
+		log:            log,
+		repo:           repo,
+		sPermission:    sPermission,
+		sServer:        sServer,
+		userClient:     userClient,
+		presenceClient: presenceClient,
 	}
 }
 
@@ -65,11 +71,36 @@ func (s *Service) AddMember(ctx context.Context, serverID, userID uuid.UUID, nic
 }
 
 func (s *Service) GetServerMember(ctx context.Context, serverID, userID uuid.UUID) (*models.Member, error) {
-	const op = "service.memver.GetServerMemver"
+	const op = "service.member.GetServerMember"
 
 	m, err := s.repo.GetServerMember(ctx, serverID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Обогащаем данными профиля
+	profiles, err := s.userClient.GetBatchProfiles(ctx, []string{userID.String()})
+	if err == nil {
+		if profile, ok := profiles[userID.String()]; ok {
+			m.Username = profile.Username
+			m.AvatarURL = profile.AvatarUrl
+		} else {
+			m.Username = "User-" + userID.String()[:4]
+		}
+	} else {
+		m.Username = "User-" + userID.String()[:4]
+	}
+
+	// Обогащаем статусом
+	statuses, err := s.presenceClient.GetUserStatuses(ctx, []string{userID.String()})
+	if err == nil {
+		if status, ok := statuses[userID.String()]; ok && status != "" {
+			m.Status = status
+		} else {
+			m.Status = "USER_STATUS_OFFLINE"
+		}
+	} else {
+		m.Status = "USER_STATUS_OFFLINE"
 	}
 
 	return m, nil
@@ -83,39 +114,52 @@ func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]m
 	)
 
 	dbMembers, err := s.repo.GetServerMembers(ctx, serverID)
-    if err != nil { return nil, err }
+	if err != nil { return nil, err }
 
-    fmt.Println("members:", dbMembers)
+	fmt.Println("members:", dbMembers)
     
-    // 2. Собираем все UserID в один срез
-    userIDs := make([]string, len(dbMembers))
-    for i, m := range dbMembers {
-        userIDs[i] = m.UserID.String()
-    }
+	// 2. Собираем все UserID в один срез
+	userIDs := make([]string, len(dbMembers))
+	for i, m := range dbMembers {
+		userIDs[i] = m.UserID.String()
+	}
 
-    fmt.Println("IDs: ", userIDs)
+	fmt.Println("IDs: ", userIDs)
 
-    // 3. Делаем ОДИН gRPC вызов в User Service за именами и аватарами
-    profiles, err := s.userClient.GetBatchProfiles(ctx, userIDs)
-    if err != nil {
-        log.Warn("Failed to get profiles from User Service: %v", zap.Error(err))
-    }
+	// 3. Делаем ОДИН gRPC вызов в User Service за именами и аватарами
+	profiles, err := s.userClient.GetBatchProfiles(ctx, userIDs)
+	if err != nil {
+		log.Warn("Failed to get profiles from User Service", zap.Error(err))
+	}
 
-    fmt.Println(profiles)
+	// 3.5 Делаем gRPC вызов в Presence Service за сетевыми статусами
+	statuses, err := s.presenceClient.GetUserStatuses(ctx, userIDs)
+	if err != nil {
+		log.Warn("Failed to get statuses from Presence Service", zap.Error(err))
+	}
 
-    // 4. Склеиваем данные (Enrichment)
-    for i := range dbMembers {
-        uid := dbMembers[i].UserID.String()
-        if profile, ok := profiles[uid]; ok {
-            dbMembers[i].Username = profile.Username   
-            dbMembers[i].AvatarURL = profile.AvatarUrl 
-        } else {
-            // Если профиль не найден в User Service, запишем хоть что-то для отладки
-            dbMembers[i].Username = "User-" + uid[:4] 
-        }
-    }
+	fmt.Println(profiles)
 
-    return dbMembers, nil
+	// 4. Склеиваем данные (Enrichment)
+	for i := range dbMembers {
+		uid := dbMembers[i].UserID.String()
+		if profile, ok := profiles[uid]; ok {
+			dbMembers[i].Username = profile.Username   
+			dbMembers[i].AvatarURL = profile.AvatarUrl 
+		} else {
+			// Если профиль не найден в User Service, запишем хоть что-то для отладки
+			dbMembers[i].Username = "User-" + uid[:4] 
+		}
+
+		// Обогащаем статусом (по умолчанию USER_STATUS_OFFLINE, если нет в кэше)
+		if status, ok := statuses[uid]; ok && status != "" {
+			dbMembers[i].Status = status
+		} else {
+			dbMembers[i].Status = "USER_STATUS_OFFLINE"
+		}
+	}
+
+	return dbMembers, nil
 }
 
 func (s *Service) RemoveMember(

@@ -41,17 +41,26 @@ func (p *AuthPublisher) PublishLoginSuccess(ctx context.Context, userID, ip, use
 }
 
 func (p *AuthPublisher) PublishUserRegistered(ctx context.Context, user *models.User) error {
-	event := events.UserRegisteredEvent{
+	event := struct {
+		UserID    string    `json:"user_id"`
+		Email     string    `json:"email"`
+		Username  string    `json:"username"`
+		Timestamp time.Time `json:"timestamp"`
+	}{
 		UserID:    user.ID.String(),
-		Timestamp: time.Now(),
 		Email:     user.Email,
+		Username:  user.Username,
+		Timestamp: time.Now(),
 	}
 
-	data, _ := json.Marshal(event)
-
-	_, err := p.js.Publish(ctx, "auth.user.login_success", data)
+	data, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("failed to publish login event: %w", err)
+		return fmt.Errorf("failed to marshal register event: %w", err)
+	}
+
+	_, err = p.js.Publish(ctx, "auth.user.registered", data)
+	if err != nil {
+		return fmt.Errorf("failed to publish register event: %w", err)
 	}
 
 	return nil

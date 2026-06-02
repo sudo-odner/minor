@@ -3,16 +3,15 @@ module github.com/sudo-odner/minor/backend/services/message_service
 go 1.26.0
 
 require (
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/render v1.0.3
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/gocql/gocql v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
-	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
 	github.com/redis/go-redis/v9 v9.20.0
-	github.com/sudo-odner/minor-shared v0.6.0
+	github.com/sudo-odner/minor-shared v0.6.4
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
@@ -27,6 +26,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

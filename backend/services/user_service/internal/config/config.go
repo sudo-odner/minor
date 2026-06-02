@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	Env        string `env:"ENV" env-required:"true"`
-	ServerHTTP ServerHTTP
-	ServerGRPC ServerGRPC
-	Nuts       Nuts
-	Postgres   Postgres
+	Env             string `env:"ENV" env-required:"true"`
+	ServerHTTP      ServerHTTP
+	ServerGRPC      ServerGRPC
+	Nuts            Nuts
+	Postgres        Postgres
+	PresenceAddress string `env:"PRESENCE_GRPC_CLIENT_ADDRESS" env-default:"presence-service:50051"`
 }
 
 type ServerHTTP struct {

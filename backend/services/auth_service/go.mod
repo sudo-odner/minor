@@ -4,18 +4,17 @@ go 1.26.0
 
 require (
 	github.com/go-chi/chi v1.5.5
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/render v1.0.3
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/rs/cors v1.11.1
-	github.com/sudo-odner/minor-shared v0.6.0
+	github.com/sudo-odner/minor-shared v0.6.4
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.52.0
 	google.golang.org/grpc v1.81.1
@@ -32,6 +31,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

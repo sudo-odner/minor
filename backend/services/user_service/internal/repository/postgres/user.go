@@ -170,3 +170,30 @@ func (r *Repository) GetUsersByIDs(ctx context.Context, userIDs []string) ([]mod
 
 	return users, nil
 }
+
+func (r *Repository) SearchUserByQuery(ctx context.Context, q string) (*models.User, error) {
+	const op = "repository.postgres.SearchUserByQuery"
+
+	query := `
+		SELECT id, email, username, avatar_url, bio, create_at, update_at
+		FROM users
+		WHERE username ILIKE $1 OR email ILIKE $1 OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%';
+	`
+	var u models.User
+	err := r.pool.QueryRow(ctx, query, q).Scan(
+		&u.ID,
+		&u.Email,
+		&u.Username,
+		&u.AvatarURL,
+		&u.Bio,
+		&u.CreateAt,
+		&u.UpdateAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, models.ErrNotFound
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return &u, nil
+}

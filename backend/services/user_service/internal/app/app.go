@@ -14,17 +14,19 @@ import (
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/server/http/handler"
 	friendService "github.com/sudo-odner/minor/backend/services/user_service/internal/service/friend"
 	userService "github.com/sudo-odner/minor/backend/services/user_service/internal/service/user"
+	presenceClient "github.com/sudo-odner/minor/backend/services/user_service/internal/client/grpc/presence"
 	"go.uber.org/zap"
 )
 
 type App struct {
-	log        *zap.Logger
-	repository *postgres.Repository
-	broker     *nuts.Broker
-	consumer   *nuts.UserConsumer
-	httpServer *httpServer.Server
-	grpcServer *grpcServ.Server
-	ErrChan    chan error
+	log            *zap.Logger
+	repository     *postgres.Repository
+	broker         *nuts.Broker
+	consumer       *nuts.UserConsumer
+	httpServer     *httpServer.Server
+	grpcServer     *grpcServ.Server
+	presenceClient *presenceClient.Client
+	ErrChan        chan error
 }
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
@@ -47,9 +49,16 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 	// communityPub := broker.NewPublisher(natsBroker.JS)
 
+	presenceGRPCClient, err := presenceClient.Dial(cfg.PresenceAddress)
+	if err != nil {
+		_ = repo.Close(ctx)
+		_ = broker.Close(ctx)
+		return nil, fmt.Errorf("failed to initialize presence client: %w", err)
+	}
+
 	// 3. Initialize Services
 	usrService := userService.New(log, repo, broker)
-	frnService := friendService.New(log, repo, broker)
+	frnService := friendService.New(log, repo, broker, presenceGRPCClient)
 
 	// 4. Initialize HTTP Handlers
 	uHandler := handler.NewUserHandler(log, usrService)
@@ -72,13 +81,14 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	gRPCServer := grpcServ.New(&cfg.ServerGRPC, log, gRPCHandler)
 
 	return &App{
-		log:        log,
-		repository: repo,
-		broker:     broker,
-		httpServer: server,
-		consumer:   userConsumer,
-		grpcServer: gRPCServer,
-		ErrChan:    make(chan error, 1),
+		log:            log,
+		repository:     repo,
+		broker:         broker,
+		httpServer:     server,
+		consumer:       userConsumer,
+		grpcServer:     gRPCServer,
+		presenceClient: presenceGRPCClient,
+		ErrChan:        make(chan error, 1),
 	}, nil
 }
 
@@ -144,6 +154,15 @@ func (a *App) Stop(ctx context.Context) error {
 	if a.repository != nil {
 		if err := a.repository.Close(ctx); err != nil {
 			a.log.Error("failed to close database connection", zap.Error(err))
+			if stopErr == nil {
+				stopErr = err
+			}
+		}
+	}
+
+	if a.presenceClient != nil {
+		if err := a.presenceClient.Close(); err != nil {
+			a.log.Error("failed to close presence client", zap.Error(err))
 			if stopErr == nil {
 				stopErr = err
 			}

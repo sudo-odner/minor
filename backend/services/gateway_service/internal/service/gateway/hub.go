@@ -35,19 +35,28 @@ func (h *Hub) Unregister(userID string) {
 
 // Broadcast шлет сообщение всем, кто онлайн на данном сервере
 func (h *Hub) Broadcast(data []byte) {
-    h.mu.RLock()
-    defer h.mu.RUnlock()
-    
-    for _, client := range h.clients {
-        // Отправляем данные в канал WritePump этого клиента
-        select {
-        case client.Send <- data:
-        default:
-            // Если канал забит, закрываем клиента
-            close(client.Send)
-            delete(h.clients, client.UserID)
-        }
-    }
+	h.mu.RLock()
+	var toDelete []string
+	for _, client := range h.clients {
+		// Отправляем данные в канал WritePump этого клиента
+		select {
+		case client.Send <- data:
+		default:
+			toDelete = append(toDelete, client.UserID)
+		}
+	}
+	h.mu.RUnlock()
+
+	if len(toDelete) > 0 {
+		h.mu.Lock()
+		for _, userID := range toDelete {
+			if client, ok := h.clients[userID]; ok {
+				close(client.Send)
+				delete(h.clients, userID)
+			}
+		}
+		h.mu.Unlock()
+	}
 }
 
 func (h *Hub) CloseAll() {

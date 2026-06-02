@@ -25,6 +25,7 @@ func NewRouter(log *zap.Logger, handlers Handlers) http.Handler {
 	r.Route("/api/v1/users", func(r chi.Router) {
 		r.Post("/", handlers.User.CreateUser())
 		r.Get("/me", handlers.User.GetMe())
+		r.Get("/search", handlers.User.SearchUser())
 		r.Get("/{user_id}", handlers.User.GetUser())
 		r.Patch("/", handlers.User.UpdateUser())
 		r.Delete("/", handlers.User.DeleteUser())

@@ -1,13 +1,13 @@
 import { api } from './axios';
 
 export interface Member {
-  userId: string;
-  serverId: string;
+  user_id: string;
+  server_id: string;
   nickname?: string;
-  username: string;      // Обогащается на бэкенде из User Service
-  avatarUrl?: string;
-  status?: string;       // Обогащается на бэкенде из Presence Service
-  roles: string[];       // Массив ID ролей участника
+  username: string;
+  avatar_url?: string;
+  status?: string;
+  roles: string[];
 }
 
 // 1. Вступить на сервер (AddMember)

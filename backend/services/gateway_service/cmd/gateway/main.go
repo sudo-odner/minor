@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,19 +67,115 @@ func main() {
 	})
 	go func() {
 		iter, _ := cons.Consume(func(msg jetstream.Msg) {
-			hub.Broadcast(msg.Data()) // Шлем байты в сокеты
+			var rawData map[string]any
+			if err := json.Unmarshal(msg.Data(), &rawData); err == nil {
+				// Map created_at to create_at for frontend compatibility
+				if createdAt, ok := rawData["created_at"]; ok {
+					rawData["create_at"] = createdAt
+				}
+				
+				wsPayload := map[string]any{
+					"op": 1,
+					"t":  "MESSAGE_CREATE",
+					"d":  rawData,
+				}
+				
+				wrappedBytes, err := json.Marshal(wsPayload)
+				if err == nil {
+					hub.Broadcast(wrappedBytes)
+				}
+			} else {
+				hub.Broadcast(msg.Data())
+			}
 			msg.Ack()
 		})
 		<-ctx.Done()
 		iter.Stop()
 	}()
 
-	// Б. Трансляция СТАТУСОВ и ПЕЧАТИ (Core NATS - высокая скорость)
+	// Б. Трансляция СООБЩЕСТВ (JetStream - надежная доставка событий каналов и участников)
+	go func() {
+		var commCons jetstream.Consumer
+		var err error
+		for {
+			commCons, err = js.CreateOrUpdateConsumer(ctx, "COMMUNITY_STREAM", jetstream.ConsumerConfig{
+				Durable:       "gateway_community_worker",
+				FilterSubject: "community.>",
+			})
+			if err == nil {
+				break
+			}
+			log.Warn("waiting for COMMUNITY_STREAM to be initialized...", zap.Error(err))
+			time.Sleep(2 * time.Second)
+		}
+
+		iter, _ := commCons.Consume(func(msg jetstream.Msg) {
+			subject := msg.Subject()
+			var rawData map[string]any
+			if err := json.Unmarshal(msg.Data(), &rawData); err == nil {
+				var tType string
+				switch subject {
+				case "community.channel.created":
+					tType = "CHANNEL_CREATE"
+				case "community.channel.updated":
+					tType = "CHANNEL_UPDATE"
+				case "community.channel.deleted":
+					tType = "CHANNEL_DELETE"
+				case "community.member.added":
+					tType = "MEMBER_ADD"
+				case "community.member.removed":
+					tType = "MEMBER_REMOVE"
+				}
+
+				if tType != "" {
+					wsPayload := map[string]any{
+						"op": 1,
+						"t":  tType,
+						"d":  rawData,
+					}
+					wrappedBytes, err := json.Marshal(wsPayload)
+					if err == nil {
+						hub.Broadcast(wrappedBytes)
+					}
+				}
+			}
+			msg.Ack()
+		})
+		<-ctx.Done()
+		iter.Stop()
+	}()
+
+	// В. Трансляция СТАТУСОВ и ПЕЧАТИ (Core NATS - высокая скорость)
 	nc.Subscribe("presence.status.updated", func(m *nats.Msg) {
-		hub.Broadcast(m.Data)
+		log.Info("received presence status update from NATS", zap.String("data", string(m.Data)))
+		var rawData map[string]any
+		if err := json.Unmarshal(m.Data, &rawData); err == nil {
+			wsPayload := map[string]any{
+				"op": 1,
+				"t":  "PRESENCE_UPDATE",
+				"d":  rawData,
+			}
+			if wrappedBytes, err := json.Marshal(wsPayload); err == nil {
+				hub.Broadcast(wrappedBytes)
+			}
+		} else {
+			hub.Broadcast(m.Data)
+		}
 	})
 	nc.Subscribe("user.typing.*", func(m *nats.Msg) {
-		hub.Broadcast(m.Data)
+		var rawData map[string]any
+		if err := json.Unmarshal(m.Data, &rawData); err == nil {
+			wsPayload := map[string]any{
+				"op": 1,
+				"t":  "TYPING_START",
+				"d":  rawData,
+			}
+			if wrappedBytes, err := json.Marshal(wsPayload); err == nil {
+				hub.Broadcast(wrappedBytes)
+			}
+		} else {
+			hub.Broadcast(m.Data)
+		}
 	})
 	
 	// 7. Настройка HTTP сервера и WebSocket эндпоинта
