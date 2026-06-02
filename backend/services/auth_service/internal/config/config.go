@@ -37,7 +37,7 @@ type GRPCConfig struct {
 
 type PostgresConfig struct {
 	Host        string `env:"POSTGRES_HOST"`
-	Port        int `env:"POSTGRES_PORT"`
+	Port        int 	`env:"POSTGRES_PORT"`
 	User        string `env:"POSTGRES_USER"`
 	DBName      string `env:"POSTGRES_DB_NAME"`
 	SSLMode     string `env:"POSTGRES_SSLMODE"`
