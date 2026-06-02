@@ -35,7 +35,7 @@ func main() {
 
 	var nc *nats.Conn
 	var err error
-	natsURL := cfg.NATS.URL // Убедись, что тут nats://minor-nats:4222
+	natsURL := cfg.NATS.URL
 
 	for i := 0; i < 10; i++ {
 		nc, err = nats.Connect(natsURL)
