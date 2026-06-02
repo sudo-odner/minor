@@ -29,10 +29,10 @@ func (s *Storage) Create(ctx context.Context, input *models.User) error {
 	}()
 
 	row := tx.QueryRow(ctx, `
-		INSERT INTO credentials(id, email, password_hash, is_active, created_at)
-		VALUES($1, $2, $3, TRUE, CURRENT_TIMESTAMP())
+		INSERT INTO credentials(id, email, username, password_hash, is_active, created_at)
+		VALUES($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
 		RETURNING id;
-	`, input.ID, input.Email, input.PasswordHash)
+	`, input.ID, input.Email, input.Username, input.PasswordHash)
 
 	var returnID uuid.UUID
 
@@ -65,13 +65,13 @@ func (s *Storage) GetByEmail(ctx context.Context, email string) (*models.User, e
 	}()
 
 	row := tx.QueryRow(ctx, `
-		SELECT c.id, c.email, c.password_hash
+		SELECT c.id, c.email, c.username, c.password_hash
 		FROM credentials c
 		WHERE c.email = $1;
 	`, email)
 
 	var user models.User
-	err = row.Scan(&user.ID, &user.Email, &user.PasswordHash)
+	err = row.Scan(&user.ID, &user.Email, &user.Username, &user.PasswordHash)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -100,14 +100,14 @@ func (s *Storage) GetByID(ctx context.Context, id string) (*models.User, error) 
 	}()
 	
 	row := s.pool.QueryRow(ctx, `
-		SELECT c.email, c.password_hash
-		FROM credentials
+		SELECT c.id, c.email, c.username, c.password_hash
+		FROM credentials c
 		WHERE c.id = $1;
 	`, id)
 	
 	var user models.User
 	
-	err = row.Scan(&user.Email, &user.PasswordHash)
+	err = row.Scan(&user.ID, &user.Email, &user.Username, &user.PasswordHash)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
