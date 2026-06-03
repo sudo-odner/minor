@@ -250,7 +250,7 @@ services:
         image: migrate/migrate:v4.17.1
         container_name: community-migrator
         volumes:
-            - ../backend/services/community_service/migrations:/migrations
+            - ../backend/services/community_service/migrations:/migrations:z
         command:
             - -path=/migrations
             - -database=postgres://community_service:community_service_master_key@community-postgres:5432/community_service?sslmode=disable
@@ -309,6 +309,8 @@ services:
             - POSTGRES_USER=community_service
             - POSTGRES_PASSWORD=community_service_master_key
             - POSTGRES_DATABASE=community_service
+            - USER_GRPC_CLIENT_ADDRESS=user-service:50051
+            - PRESENCE_GRPC_CLIENT_ADDRESS=presence-service:50051
         env_file:
           - ../backend/services/community_service/.env
         labels:
@@ -320,8 +322,8 @@ services:
         networks:
             - minor-network
         depends_on:
-            community-postgres:
-                condition: service_healthy
+            community-migrator:
+                condition: service_completed_successfully
 
     message_service:
         build:
@@ -350,12 +352,12 @@ services:
         networks:
             - minor-network
         depends_on:
-            cassandra:
-                condition: service_healthy
             redis:
                 condition: service_healthy
             nats:
                 condition: service_healthy
+            message-cassandra-migrator:
+                condition: service_completed_successfully
 
     user_service:
         build:
@@ -386,8 +388,8 @@ services:
         networks:
             - minor-network
         depends_on:
-            user-postgres:
-                condition: service_healthy
+            user-migrator:
+                condition: service_completed_successfully
 
     gateway_service:
         build:
