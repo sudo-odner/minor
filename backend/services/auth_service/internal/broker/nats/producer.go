@@ -41,17 +41,27 @@ func (p *AuthPublisher) PublishLoginSuccess(ctx context.Context, userID, ip, use
 }
 
 func (p *AuthPublisher) PublishUserRegistered(ctx context.Context, user *models.User) error {
+	// 1. Формируем событие. 
+	// Добавляем Username, так как он критически важен для User Service
 	event := events.UserRegisteredEvent{
 		UserID:    user.ID.String(),
-		Timestamp: time.Now(),
+		Username:  user.Username, // Добавь это поле в структуру события
 		Email:     user.Email,
+		Timestamp: time.Now(),
 	}
 
-	data, _ := json.Marshal(event)
-
-	_, err := p.js.Publish(ctx, "auth.user.login_success", data)
+	// 2. Сериализация
+	data, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("failed to publish login event: %w", err)
+		return fmt.Errorf("failed to marshal user registered event: %w", err)
+	}
+
+	// 3. Публикация
+	// ИСПРАВЛЕНО: используем правильный топик "auth.user.registered"
+	_, err = p.js.Publish(ctx, "auth.user.registered", data)
+	if err != nil {
+		// ИСПРАВЛЕНО: сообщение об ошибке теперь соответствует действительности
+		return fmt.Errorf("failed to publish registration event: %w", err)
 	}
 
 	return nil

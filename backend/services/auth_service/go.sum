@@ -85,6 +85,10 @@ github.com/sudo-odner/minor-shared v0.5.2 h1:he/BercN1JmWXNWTVe2mAHzHpJaf/fxvUWi
 github.com/sudo-odner/minor-shared v0.5.2/go.mod h1:qIDnhPjj8ZH7I54FGKC1E87CzBVDz+n+DIXc3RZ0OKM=
 github.com/sudo-odner/minor-shared v0.6.0 h1:AFsRBjgxjhN9L4/dJv0E1r9l2Rj7pTXz4zVC/qCHwM8=
 github.com/sudo-odner/minor-shared v0.6.0/go.mod h1:qIDnhPjj8ZH7I54FGKC1E87CzBVDz+n+DIXc3RZ0OKM=
+github.com/sudo-odner/minor-shared v0.6.4 h1:trw+ByjFIKEXJVQuCt2XOWHHpEbEzJuwu9sT95K7uZ4=
+github.com/sudo-odner/minor-shared v0.6.4/go.mod h1:qIDnhPjj8ZH7I54FGKC1E87CzBVDz+n+DIXc3RZ0OKM=
+github.com/sudo-odner/minor-shared v0.6.5 h1:S6sRRoMYV89NeKZ79JZ4d1fsBHCFwMC7ih1ucEkdEpc=
+github.com/sudo-odner/minor-shared v0.6.5/go.mod h1:qIDnhPjj8ZH7I54FGKC1E87CzBVDz+n+DIXc3RZ0OKM=
 github.com/zeebo/xxh3 v1.1.0 h1:s7DLGDK45Dyfg7++yxI0khrfwq9661w9EN78eP/UZVs=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=

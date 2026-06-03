@@ -141,6 +141,18 @@ func initStreams(ctx context.Context, js jetstream.JetStream, logger *zap.Logger
 			Name:     "AUTH_STREAM",
 			Subjects: []string{"auth.user.>"},
 		},
+		{
+			Name:     "COMMUNITY_STREAM",
+			Subjects: []string{"community.>"},
+		},
+		{
+			Name:     "USER_STREAM",
+			Subjects: []string{"user.>"},
+		},
+		{
+			Name:     "RELATIONSHIP_STREAM",
+			Subjects: []string{"relationship.>"},
+		},
 	}
 
 	for _, cfg := range streams {

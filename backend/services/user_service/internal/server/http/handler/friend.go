@@ -38,6 +38,7 @@ type RelationshipPreviewResponse struct {
 	Username  string  `json:"username"`
 	AvatarURL string `json:"avatar_url"`
 	Status    string  `json:"status"`
+	IsOnline  bool    `json:"is_online"`
 }
 
 func toRelationshipPreviewResponse(rp *models.RelationshipPreview) RelationshipPreviewResponse {
@@ -46,6 +47,7 @@ func toRelationshipPreviewResponse(rp *models.RelationshipPreview) RelationshipP
 		Username:  rp.Username,
 		AvatarURL: rp.AvatarURL,
 		Status:    rp.Status.String(),
+		IsOnline:  rp.IsOnline,
 	}
 }
 

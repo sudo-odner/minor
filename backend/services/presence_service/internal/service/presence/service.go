@@ -34,7 +34,7 @@ func New(log *zap.Logger, cache Cache, broker Broker) *Service {
 
 func (s *Service) SetStatus(ctx context.Context, userID string, status models.UserStatus, customStatus string) error {
 	const op = "service.presence.SetStatus"
-	s.log.Debug("setting status", zap.String("user_id", userID), zap.Any("status", status))
+	s.log.Info("setting status", zap.String("user_id", userID), zap.Any("status", status))
 
 	lastActiveAt := time.Now().Unix()
 
@@ -51,10 +51,15 @@ func (s *Service) SetStatus(ctx context.Context, userID string, status models.Us
 	}
 
 	if s.broker != nil {
+		s.log.Info("publishing presence status updated event", zap.String("user_id", userID))
 		err = s.broker.PublishPresenceStatusUpdated(ctx, p)
 		if err != nil {
 			s.log.Warn("failed to publish presence status updated event", zap.Error(err))
+		} else {
+			s.log.Info("presence status published to NATS", zap.String("user_id", userID), zap.Any("status", status))
 		}
+	} else {
+		s.log.Warn("broker is nil, skipping publish")
 	}
 
 	return nil

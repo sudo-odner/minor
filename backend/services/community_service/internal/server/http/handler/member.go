@@ -47,6 +47,7 @@ type MemberResponse struct {
 	Nickname  *string        `json:"nickname,omitempty"`
 	Username  *string        `json:"username"`
 	AvatarURL *string        `json:"avatar_url,omitempty"`
+	Status    string         `json:"status"`
 	JoinedAt  string         `json:"joined_at"`
 	Roles     []RoleResponse `json:"roles"`
 }
@@ -104,14 +105,21 @@ func (h *MemberHandler) AddMember() http.HandlerFunc {
 			return
 		}
 
-		// 4. Вызываем сервис. Используем userID из заголовка!
+		// 4. Вызываем сервис.
+		// Если в теле запроса передан конкретный user_id, используем его (для добавления друзей).
+		// Иначе берем userID из заголовка (когда пользователь сам вступает на сервер).
+		targetUserID := userID
+		if req.UserID != uuid.Nil {
+			targetUserID = req.UserID
+		}
+
 		// Если в req.Nickname пусто, сервис использует username по умолчанию
-		_, err = h.memberService.AddMember(r.Context(), serverID, userID, req.Nickname)
+		_, err = h.memberService.AddMember(r.Context(), serverID, targetUserID, req.Nickname)
 		if err != nil {
 			if strings.Contains(err.Error(), "already exists") {
-				h.log.Warn("user already a member", zap.String("user_id", userID.String()))
+				h.log.Warn("user already a member", zap.String("user_id", targetUserID.String()))
 				// Вместо 500 отдаем 409 (Конфликт) или 400
-				RenderError(w, r, http.StatusConflict, "already_member", "You are already a member of this server")
+				RenderError(w, r, http.StatusConflict, "already_member", "User is already a member of this server")
 				return
 			}
 			log.Error("failed to add member", zap.Error(err))
@@ -145,13 +153,14 @@ func (h *MemberHandler) GetServerMembers() http.HandlerFunc {
 		res := make([]MemberResponse, len(membersList))
 		for i := range membersList {
 			res[i] = MemberResponse{
-				ServerID: membersList[i].ServerID.String(),
-				UserID:   membersList[i].UserID.String(),
-				Username: &membersList[i].Username,
+				ServerID:  membersList[i].ServerID.String(),
+				UserID:    membersList[i].UserID.String(),
+				Username:  &membersList[i].Username,
 				AvatarURL: &membersList[i].AvatarURL,
-				Nickname: membersList[i].Nickname,
-				JoinedAt: membersList[i].JoinedAt.Format(time.RFC3339),
-				Roles:    mapRolesToResponse(membersList[i].Roles),
+				Status:    membersList[i].Status,
+				Nickname:  membersList[i].Nickname,
+				JoinedAt:  membersList[i].JoinedAt.Format(time.RFC3339),
+				Roles:     mapRolesToResponse(membersList[i].Roles),
 			}
 		}
 		render.JSON(w, r, res)
@@ -185,13 +194,14 @@ func (h *MemberHandler) GetServerMember() http.HandlerFunc {
 		}
 
 		render.JSON(w, r, MemberResponse{
-			ServerID: m.ServerID.String(),
-			UserID:   m.UserID.String(),
-			Username: &m.Username,
+			ServerID:  m.ServerID.String(),
+			UserID:    m.UserID.String(),
+			Username:  &m.Username,
 			AvatarURL: &m.AvatarURL,
-			Nickname: m.Nickname,
-			JoinedAt: m.JoinedAt.Format(time.RFC3339),
-			Roles:    mapRolesToResponse(m.Roles),
+			Status:    m.Status,
+			Nickname:  m.Nickname,
+			JoinedAt:  m.JoinedAt.Format(time.RFC3339),
+			Roles:     mapRolesToResponse(m.Roles),
 		})
 	}
 }

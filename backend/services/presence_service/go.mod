@@ -4,10 +4,9 @@ go 1.26.0
 
 require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
-	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
 	github.com/redis/go-redis/v9 v9.20.0
-	github.com/sudo-odner/minor-shared v0.6.0
+	github.com/sudo-odner/minor-shared v0.6.4
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
@@ -17,6 +16,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect

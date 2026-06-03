@@ -27,5 +27,6 @@ type Message struct {
 	UserID    uuid.UUID
 	Content   string
 	ReplyTo   *uuid.UUID
+	Username string
 	CreatedAt time.Time
 }

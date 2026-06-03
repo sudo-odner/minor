@@ -16,7 +16,8 @@ type UserService interface {
 	CreateUser(ctx context.Context, userID uuid.UUID, username, bio string) (*models.User, error)
 	GetUser(ctx context.Context, userID uuid.UUID) (*models.User, error)
 	UpdateUser(ctx context.Context, userID uuid.UUID, username, bio string) (*models.User, error)
-	DeleteUser(ctx context.Context, userID uuid.UUID) error
+	DeleteUser(ctx context.Context, id uuid.UUID) error
+	SearchUser(ctx context.Context, q string) (*models.User, error)
 }
 
 type UserHandler struct {
@@ -195,5 +196,27 @@ func (h *UserHandler) DeleteUser() http.HandlerFunc {
 
 		render.Status(r, http.StatusNoContent)
 		render.JSON(w, r, nil)
+	}
+}
+
+func (h *UserHandler) SearchUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "http.handler.user.SearchUser"
+		log := h.log.With(zap.String("op", op))
+
+		q := r.URL.Query().Get("q")
+		if q == "" {
+			RenderError(w, r, http.StatusBadRequest, CodeInvalidRequest, "search query parameter 'q' is required")
+			return
+		}
+
+		u, err := h.userService.SearchUser(r.Context(), q)
+		if err != nil {
+			log.Debug("user search failed", zap.String("query", q), zap.Error(err))
+			RenderModelError(w, r, err, "user not found")
+			return
+		}
+
+		render.JSON(w, r, toUserResponse(u))
 	}
 }

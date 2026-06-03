@@ -17,6 +17,7 @@ func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) 
 		MessageID: msg.MessageID,
 		ChannelID: msg.ChannelID,
 		AuthorID:  msg.UserID,
+		Username: msg.Username,
 		Content:   msg.Content,
 		ReplyTo:   msg.ReplyTo,
 		CreatedAt: msg.CreatedAt,

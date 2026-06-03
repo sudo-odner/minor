@@ -114,12 +114,15 @@ func (mh *MessageHandler) SendMessage() http.HandlerFunc {
 			replyToStr = msg.ReplyTo.String()
 		}
 
+		log.Info("message in handler before render", zap.Any("messages", msg))
+
 		render.Status(r, http.StatusCreated)
 		render.JSON(w, r, Message{
 			MessageID: msg.MessageID.String(),
 			ChannelID: msg.ChannelID.String(),
 			AuthorID:  msg.UserID.String(),
 			Content:   msg.Content,
+			Username:  msg.Username,
 			ReplyTo:   replyToStr,
 			CreateAt:  msg.CreatedAt,
 		})
@@ -206,6 +209,7 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 				ChannelID: msg.ChannelID.String(),
 				AuthorID:  msg.UserID.String(),
 				Content:   msg.Content,
+				Username: msg.Username,
 				ReplyTo:   replyToStr,
 				CreateAt:  msg.CreatedAt,
 			})

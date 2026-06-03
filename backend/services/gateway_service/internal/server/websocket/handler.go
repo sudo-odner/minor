@@ -86,34 +86,31 @@ func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("conn upgraded")	
 
-	// 3. Регистрация статуса ONLINE в Presence Service (через gRPC)
+	// 3. Создание объекта Client
+	client := service.NewClient(
+		authResp.UserId,
+		conn,
+		h.hub,
+		h.natsConn,
+		h.presenceClient,
+	)
+
+	// 4. Регистрируем клиента в хабе ДО SetStatus, чтобы он получил своё же ONLINE-событие
+	h.hub.Register(authResp.UserId, client)
+
+	// 5. Запускаем жизненный цикл сокета ДО SetStatus (чтобы WritePump был готов принимать)
+	go client.WritePump()
+	go client.ReadPump()
+
+	// 6. Регистрация статуса ONLINE в Presence Service (через gRPC)
+	// Делаем ПОСЛЕ регистрации в hub, чтобы NATS broadcast дошёл до нового клиента
 	_, err = h.presenceClient.SetStatus(r.Context(), &presencev1.SetStatusRequest{
 		UserId: authResp.UserId,
 		Status: presencev1.UserStatus_USER_STATUS_ONLINE,
 	})
 	if err != nil {
 		h.log.Error("failed to set online status", zap.Error(err))
-		// Продолжаем работу, даже если Presence упал, сокет важнее
 	}
-
-	log.Info("presence status update")
-
-	// 4. Создание объекта Client
-	// Передаем все необходимые зависимости, включая presenceClient для дефера в ReadPump
-	client := service.NewClient(
-		authResp.UserId,
-		conn,
-		h.hub,
-		h.natsConn,
-		h.presenceClient, // <-- важно для OFFLINE статуса при дисконнекте
-	)
-
-	// 5. Регистрируем клиента в хабе
-	h.hub.Register(authResp.UserId, client)
-
-	// 6. Запускаем жизненный цикл сокета
-	go client.WritePump()
-	go client.ReadPump()
 
 	h.log.Info("new websocket connection", zap.String("user_id", authResp.UserId))
 }

@@ -100,6 +100,7 @@ func (as *AuthService) Login(ctx context.Context, newUser *models.LoginUser, ip,
 		User: &models.NormalizedUser{
 			ID:    user.ID,
 			Email: user.Email,
+			Username: user.Username,
 		},
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -153,7 +154,7 @@ func (as *AuthService) Register(ctx context.Context, newUser *models.RegisterUse
 	}
 
 	return &models.AuthResponse{
-		User:         &models.NormalizedUser{ID: id, Email: newUser.Email},
+		User:         &models.NormalizedUser{ID: id, Email: newUser.Email, Username: newUser.Username},
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
@@ -225,7 +226,7 @@ func (as *AuthService) RefreshAccessToken(ctx context.Context, oldRefreshToken s
 	_ = as.sessionRepository.DeleteRefreshToken(ctx, oldRefreshToken)
 
 	return &models.AuthResponse{
-		User:         &models.NormalizedUser{ID: user.ID, Email: user.Email},
+		User:         &models.NormalizedUser{ID: user.ID, Email: user.Email, Username: user.Username},
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken.String(),
 	}, nil

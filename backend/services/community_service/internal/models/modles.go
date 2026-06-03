@@ -21,6 +21,7 @@ type Member struct {
     Nickname  *string   `json:"nickname"` // Указатель для обработки NULL
     Username  string    `json:"username"`  // <-- ПРОВЕРЬ ЭТОТ ТЕГ
     AvatarURL string    `json:"avatarUrl"` // <-- И ЭТОТ
+    Status    string    `json:"status"`
     JoinedAt  time.Time `json:"joinedAt"`
     Roles     []Role    `json:"roles"`
 }

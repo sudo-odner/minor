@@ -44,4 +44,5 @@ type RelationshipPreview struct {
 	Username  string
 	AvatarURL string
 	Status    RelationshipStatus
+	IsOnline  bool
 }

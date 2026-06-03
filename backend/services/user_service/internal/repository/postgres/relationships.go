@@ -124,6 +124,33 @@ func (repo *Repository) FriendList(ctx context.Context, userID uuid.UUID) ([]*mo
 	return list, nil
 }
 
+func (repo *Repository) RelationshipList(ctx context.Context, userID uuid.UUID) ([]*models.Relationship, error) {
+	const op = "repository.postgres.RelationshipList"
+
+	query := `
+		SELECT user_id, target_id, status, create_at, update_at
+		FROM relationships
+		WHERE user_id = $1;
+	`
+	rows, err := repo.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: query failed: %w", op, err)
+	}
+	defer rows.Close()
+
+	var list []*models.Relationship
+	for rows.Next() {
+		var r models.Relationship
+		if err := rows.Scan(&r.UserID, &r.TargetID, &r.Status, &r.CreatedAt, &r.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("%s: scan failed: %w", op, err)
+		}
+		list = append(list, &r)
+	}
+
+	return list, nil
+}
+
+
 func (repo *Repository) FriendRequestList(ctx context.Context, userID uuid.UUID) ([]*models.Relationship, error) {
 	const op = "repository.postgres.FriendRequestList"
 
@@ -224,17 +251,58 @@ func (repo *Repository) BlockUser(ctx context.Context, actorID, targetID uuid.UU
 func (repo *Repository) RemoveFriend(ctx context.Context, actorID, targetID uuid.UUID) error {
 	const op = "repository.postgres.RemoveFriend"
 
-	query := `
-		DELETE FROM relationships 
-		WHERE ((user_id = $1 AND target_id = $2) OR (user_id = $2 AND target_id = $1)) 
-		  AND status = 1;
-	`
-	res, err := repo.pool.Exec(ctx, query, actorID, targetID)
+	tx, err := repo.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("%s: delete failed: %w", op, err)
+		return fmt.Errorf("%s: begin tx failed: %w", op, err)
 	}
-	if res.RowsAffected() == 0 {
-		return models.ErrNotFound
+	defer tx.Rollback(ctx)
+
+	// 1. Get the relationship from actor's perspective
+	var status models.RelationshipStatus
+	querySelect := `
+		SELECT status FROM relationships 
+		WHERE user_id = $1 AND target_id = $2;
+	`
+	err = tx.QueryRow(ctx, querySelect, actorID, targetID).Scan(&status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.ErrNotFound
+		}
+		return fmt.Errorf("%s: select status failed: %w", op, err)
+	}
+
+	// 2. Perform deletion based on status
+	if status == models.StatusBlocked {
+		// Blocker unblocks the target: delete only the block row
+		queryDelete := `
+			DELETE FROM relationships 
+			WHERE user_id = $1 AND target_id = $2 AND status = 4;
+		`
+		res, err := tx.Exec(ctx, queryDelete, actorID, targetID)
+		if err != nil {
+			return fmt.Errorf("%s: delete block failed: %w", op, err)
+		}
+		if res.RowsAffected() == 0 {
+			return models.ErrNotFound
+		}
+	} else {
+		// Friends or pending request: delete both directional rows
+		queryDelete := `
+			DELETE FROM relationships 
+			WHERE ((user_id = $1 AND target_id = $2) OR (user_id = $2 AND target_id = $1))
+			  AND status IN (1, 2, 3);
+		`
+		res, err := tx.Exec(ctx, queryDelete, actorID, targetID)
+		if err != nil {
+			return fmt.Errorf("%s: delete friendship/request failed: %w", op, err)
+		}
+		if res.RowsAffected() == 0 {
+			return models.ErrNotFound
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%s: commit failed: %w", op, err)
 	}
 	return nil
 }

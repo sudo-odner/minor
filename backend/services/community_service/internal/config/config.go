@@ -34,7 +34,8 @@ type ServerGRPC struct {
 }
 
 type GRPCClients struct {
-	Address string `env:"USER_GRPC_CLIENT_ADDRESS"`
+	UserAddress     string `env:"USER_GRPC_CLIENT_ADDRESS"`
+	PresenceAddress string `env:"PRESENCE_GRPC_CLIENT_ADDRESS"`
 }
 
 type Nuts struct {
