@@ -28,13 +28,13 @@ html, body, #root {
 }
 
 body {
-  background-color: #313338; /* Темный фон Discord по умолчанию */
+  @apply bg-brand-bg transition-colors duration-200;
 }
 
-/* 3. Кастомные скроллбары в стиле Discord */
+/* 3. Кастомные скроллбары в стиле Minor */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -42,12 +42,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e1f22;
+  background: theme('colors.brand.blue-light');
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #111214;
+  background: theme('colors.brand.blue');
 }
 
 /* Утилита для скрытия скроллбара, если нужно */
