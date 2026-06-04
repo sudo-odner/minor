@@ -10,7 +10,8 @@ interface ChatContainerProps {
 }
 
 const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName }) => {
-  const [messages, setServers] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [userCache, setUserCache] = useState<Record<string, { username: string; avatarUrl?: string }>>({});
   const { socket } = useSocket();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -21,7 +22,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
       try {
         const history = await getMessages(channelId);
         // Cassandra отдает от новых к старым, для UI инвертируем
-        setServers(history.reverse());
+        setMessages(history.reverse());
         scrollToBottom();
       } catch (err) {
         console.error("Failed to load history", err);
@@ -30,17 +31,61 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
     loadHistory();
   }, [channelId]);
 
-  // 2. Прослушивание WebSocket для новых сообщений
+  // 2. Загрузка недостающих профилей пользователей для отображения ников
+  useEffect(() => {
+    const fetchMissingProfiles = async () => {
+      const missingIds = Array.from(
+        new Set(
+          messages
+            .map((m) => m.author_id)
+            .filter((id) => id && !userCache[id])
+        )
+      );
+      if (missingIds.length === 0) return;
+
+      const newProfiles = { ...userCache };
+      let updated = false;
+
+      await Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            const res = await api.get(`/users/${id}`);
+            if (res.data && res.data.username) {
+              newProfiles[id] = {
+                username: res.data.username,
+                avatarUrl: res.data.avatar_url,
+              };
+              updated = true;
+            }
+          } catch (err) {
+            console.error(`Failed to fetch profile for user ${id}:`, err);
+          }
+        })
+      );
+
+      if (updated) {
+        setUserCache(newProfiles);
+      }
+    };
+
+    fetchMissingProfiles();
+  }, [messages, userCache]);
+
+  // 3. Прослушивание WebSocket для новых сообщений
   useEffect(() => {
     if (!socket) return;
 
     const handleMessage = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data);
-      
-      // Проверяем, что это событие создания сообщения и оно для текущего канала
-      if (payload.t === 'MESSAGE_CREATE' && payload.d.channel_id === channelId) {
-        setServers((prev) => [...prev, payload.d]);
-        scrollToBottom();
+      try {
+        const payload = JSON.parse(event.data);
+        
+        // Проверяем, что это событие создания сообщения и оно для текущего канала
+        if (payload.t === 'MESSAGE_CREATE' && payload.d.channel_id === channelId) {
+          setMessages((prev) => [...prev, payload.d]);
+          scrollToBottom();
+        }
+      } catch (err) {
+        console.error("Failed to parse WS payload:", err);
       }
     };
 

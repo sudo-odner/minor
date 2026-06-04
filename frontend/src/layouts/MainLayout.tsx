@@ -171,7 +171,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
             className={`relative flex items-center group mb-2`}
           >
             {/* Полоска индикатор слева */}
-            <div className={`absolute -left-3 w-1 bg-white rounded-r-full transition-all duration-200 ${
+            <div className={`absolute -left-3 w-1 bg-[#060607] dark:bg-white rounded-r-full transition-all duration-200 ${
               activeServer?.id === server.id ? 'h-10' : 'h-2 scale-0 group-hover:scale-100 group-hover:h-5'
             }`} />
             
