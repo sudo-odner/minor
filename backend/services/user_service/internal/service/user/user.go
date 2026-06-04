@@ -17,6 +17,7 @@ type Repository interface {
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	GetUsersByIDs(ctx context.Context, userIDs []string) ([]models.User, error)
 	SearchUserByQuery(ctx context.Context, q string) (*models.User, error)
+	GetUsernameByID(ctx context.Context, userID string) (string, error)
 }
 
 type Broker interface {
@@ -153,4 +154,15 @@ func (s *UserService) SearchUser(ctx context.Context, q string) (*models.User, e
 	}
 
 	return u, nil
+}
+
+func (s *UserService) GetUserName(ctx context.Context, userID string) (string, error) {
+	const op = "service.user.GetUserName"
+
+	username, err := s.repo.GetUsernameByID(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return username, nil
 }

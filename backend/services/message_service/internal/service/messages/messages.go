@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
+	userv1 "github.com/sudo-odner/minor-shared/pkg/pb/user/v1"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 	"go.uber.org/zap"
 )
@@ -36,6 +37,8 @@ type CommunityClient interface {
 type UserClient interface {
 	FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error)
 	CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error)
+	GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
+	GetUserName(ctx context.Context, userID string) (string, error)
 }
 
 type MessageService struct {
@@ -166,6 +169,15 @@ func (ms *MessageService) SaveMessage(
 		return nil, err
 	}
 
+	username, err := ms.userClient.GetUserName(ctx, userID.String())
+	if err != nil {
+		log.Warn("could not get username for message", zap.Error(err))
+		username = "User" // fallback если сервис упал
+	}
+
+	msg.Username = username
+	log.Info("msg before publish", zap.Any("msg", msg))
+
 	if err := ms.broker.PublishMessageCreated(ctx, *msg); err != nil {
 		log.Error("failed publish message to broker", zap.Error(err))
 	}
@@ -174,48 +186,54 @@ func (ms *MessageService) SaveMessage(
 }
 
 // GetMessages Получить сообщение
-func (ms *MessageService) GetMessages(
-	ctx context.Context,
-	userID, channelID uuid.UUID,
-	limit int,
-	beforeID *uuid.UUID,
-) ([]models.Message, error) {
-	const op = "service.messages.GetMessages"
-	log := ms.log.With(zap.String("op", op))
+func (ms *MessageService) GetMessages(ctx context.Context, userID uuid.UUID, channelID uuid.UUID, limit int, before *uuid.UUID) ([]models.Message, error) {
+	// 1. Получаем сообщения из Cassandra (там только AuthorID)
+	const path = "service.messages.GetMessages"
 
-	// Получаем максу доступов
-	maskPermission, err := ms.loadPermissionMask(ctx, userID, channelID)
+	log := ms.log.With(
+		zap.String("path", path),
+	)
+
+	msgs, err := ms.repo.GetMessages(ctx, channelID, limit, before)
 	if err != nil {
-		if errors.Is(err, models.ErrChannelNotFound) {
-			log.Debug("owner channelID not found", zap.String("channelID", channelID.String()))
-			return nil, fmt.Errorf("%s: %w", op, err)
-		}
-		log.Error("falied to resolve channel owner", zap.Error(err))
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	// Проверка прав доступа на запись
-	if !authz.Has(maskPermission, authz.PermReadChat) {
-		log.Debug(
-			"permission denied to read message in channel",
-			zap.String("userID", userID.String()),
-			zap.String("channelID", channelID.String()),
-		)
-		return nil, models.ErrPermissionDenied
-	}
-
-	// Получение сообщения
-	msg, err := ms.repo.GetMessages(ctx, channelID, limit, beforeID)
-	if err != nil {
-		if errors.Is(err, models.ErrChannelNotFound) {
-			log.Debug("channel not found in cache", zap.String("channel_id", channelID.String()))
-			return nil, err
-		}
-		log.Error("failed get messages from database", zap.Error(err))
 		return nil, err
 	}
 
-	return msg, nil
+	// 2. Собираем уникальные ID авторов
+	authorIDs := make([]string, 0)
+	seen := make(map[string]bool)
+	for _, m := range msgs {
+		if !seen[m.UserID.String()] {
+			authorIDs = append(authorIDs, m.UserID.String())
+			seen[m.UserID.String()] = true
+		}
+	}
+
+	log.Info("trying to get profiles for messages")
+
+	// 3. Делаем gRPC запрос в User Service (тот самый Batch метод)
+	profiles, err := ms.userClient.GetBatchProfiles(ctx, authorIDs)
+	if err != nil {
+		log.Error("failed to get user profiles", zap.Error(err))
+		// Если gRPC упал, возвращаем сообщения как есть (будет "Аноним")
+		return msgs, nil
+	}
+
+	log.Info("got profiles", zap.Any("profiles", profiles))
+
+	// 4. СКЛЕЙКА: проставляем Username каждому сообщению
+	for i := range msgs {
+		authorID := msgs[i].UserID // Убедись, что тип совпадает (string или UUID string)
+		if profile, ok := profiles[authorID.String()]; ok {
+			msgs[i].Username = profile.Username
+		} else {
+			msgs[i].Username = "Unknown User" // Если вдруг юзера нет в базе
+		}
+	}
+
+	log.Info("messages with usernames", zap.Any("messages:", msgs))
+
+	return msgs, nil
 }
 
 // GetMessage Получить сообщегте по messageID

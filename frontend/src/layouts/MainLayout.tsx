@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { api } from '../api/axios';
+import { Sun, Moon, LogOut, Compass } from 'lucide-react';
 
 // Импорт компонентов
 import CreateServerModal from '../components/modals/CreateServerModal';
@@ -136,31 +137,37 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   // Колбэки для обновления UI
   const handleServerCreated = (newServer: any) => {
-    setServers(prev => [...prev, newServer]);
+    setServers(prev => {
+      if (prev.some(s => s.id === newServer.id)) return prev;
+      return [...prev, newServer];
+    });
     setActiveServer(newServer);
   };
 
   const handleChannelCreated = (newChannel: any) => {
-    setChannels(prev => [...prev, newChannel]);
+    setChannels(prev => {
+      if (prev.some(ch => ch.id === newChannel.id)) return prev;
+      return [...prev, newChannel];
+    });
     setActiveChannel(newChannel);
   };
 
   return (
-    <div className="flex h-screen w-full bg-white dark:bg-[#313338] text-[#060607] dark:text-white overflow-hidden font-sans transition-colors duration-200">
+    <div className="flex h-screen w-full bg-brand-bg text-[#060607] overflow-hidden font-sans transition-colors duration-200">
       
       {/* ПАНЕЛЬ 1: СПИСОК СЕРВЕРОВ (Самая левая) */}
-      <nav className="w-[72px] bg-[#e3e5e8] dark:bg-[#1e1f22] flex flex-col items-center py-3 space-y-2 overflow-y-auto no-scrollbar transition-colors duration-200">
+      <nav className="w-[72px] bg-brand-blue flex flex-col items-center py-3 space-y-2 overflow-y-auto no-scrollbar transition-colors duration-200">
         {/* Кнопка "Личные сообщения" */}
         <div 
           onClick={() => setActiveServer(null)}
           className={`w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ${
-            !activeServer ? 'bg-[#5865f2] rounded-xl text-white' : 'bg-white dark:bg-[#313338] text-[#060607] dark:text-white hover:bg-[#5865f2] hover:text-white hover:rounded-xl'
+            !activeServer ? 'bg-white text-brand-blue rounded-xl' : 'bg-brand-blue-dark/30 text-white hover:bg-white hover:text-brand-blue hover:rounded-xl'
           }`}
         >
           <span className="text-xl font-bold">M</span>
         </div>
 
-        <div className="w-8 h-[2px] bg-[#d1d3d6] dark:bg-[#35363c] rounded-full mx-auto my-1 transition-colors" />
+        <div className="w-8 h-[2px] bg-white/20 rounded-full mx-auto my-1 transition-colors" />
 
         {/* Список иконок серверов */}
         {servers.map((server) => (
@@ -175,7 +182,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
             }`} />
             
             <div className={`w-12 h-12 flex items-center justify-center cursor-pointer transition-all duration-200 shadow-lg ${
-              activeServer?.id === server.id ? 'bg-[#5865f2] rounded-xl text-white' : 'bg-white dark:bg-[#313338] text-[#060607] dark:text-white rounded-full hover:rounded-xl hover:bg-[#5865f2] hover:text-white'
+              activeServer?.id === server.id ? 'bg-white text-brand-blue rounded-xl' : 'bg-brand-blue-dark/30 text-white rounded-full hover:rounded-xl hover:bg-white hover:text-brand-blue'
             }`}>
               <span className="text-sm font-bold uppercase">{(server.name || '??').substring(0, 2)}</span>
             </div>
@@ -185,27 +192,27 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         {/* Кнопки действий */}
         <button 
           onClick={() => setIsCreateServerOpen(true)}
-          className="w-12 h-12 bg-white dark:bg-[#313338] rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-[#23a55a] transition-all text-[#23a55a] hover:text-white"
+          className="w-12 h-12 bg-brand-blue-dark/30 rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-white transition-all text-white hover:text-brand-blue"
         >
           <span className="text-2xl font-light">+</span>
         </button>
 
         <button 
           onClick={() => setIsJoinServerOpen(true)}
-          className="w-12 h-12 bg-white dark:bg-[#313338] rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-[#5865f2] transition-all text-gray-400 hover:text-white"
+          className="w-12 h-12 bg-brand-blue-dark/30 rounded-full flex items-center justify-center cursor-pointer hover:rounded-xl hover:bg-white transition-all text-white hover:text-brand-blue"
         >
-          <span className="text-xl">🧭</span>
+          <Compass size={24} />
         </button>
       </nav>
 
       {/* ПАНЕЛЬ 2: СПИСОК КАНАЛОВ (Средняя) */}
-      <aside className="w-60 bg-[#f2f3f5] dark:bg-[#2b2d31] flex flex-col shrink-0 transition-colors duration-200">
-        <header className="h-12 shadow-sm flex items-center justify-between px-4 font-bold border-b border-[#e3e5e8] dark:border-[#1e1f22] z-10">
-          <span className="truncate">{activeServer ? activeServer.name : "Личные сообщения"}</span>
+      <aside className="w-60 bg-white border-r border-brand-blue-light flex flex-col shrink-0 transition-colors duration-200">
+        <header className="h-12 shadow-sm flex items-center justify-between px-4 font-bold border-b border-brand-blue-light z-10">
+          <span className="truncate text-brand-blue">{activeServer ? activeServer.name : "Личные сообщения"}</span>
           {activeServer && (
             <button
               onClick={() => setIsAddMemberOpen(true)}
-              className="text-xs bg-[#248046] hover:bg-[#1a6535] text-white px-2 py-1 rounded transition-colors font-medium ml-2 shrink-0"
+              className="text-xs bg-brand-blue hover:bg-brand-blue-dark text-white px-2 py-1 rounded transition-colors font-medium ml-2 shrink-0"
               title="Добавить участников"
             >
               + Добавить
@@ -216,9 +223,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         <div className="flex-1 overflow-y-auto p-2">
           {activeServer ? (
             <>
-              <div className="flex items-center justify-between text-xs font-bold text-[#4f5660] dark:text-gray-400 px-2 mt-4 mb-2 uppercase tracking-wider">
+              <div className="flex items-center justify-between text-xs font-bold text-gray-500 px-2 mt-4 mb-2 uppercase tracking-wider">
                 <span>Текстовые каналы</span>
-                <button onClick={() => setIsCreateChannelOpen(true)} className="hover:text-[#060607] dark:hover:text-white text-xl leading-none">+</button>
+                <button onClick={() => setIsCreateChannelOpen(true)} className="hover:text-brand-blue text-xl leading-none">+</button>
               </div>
               
               <div className="space-y-0.5">
@@ -227,12 +234,12 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                     key={channel.id}
                     onClick={() => setActiveChannel(channel)}
                     className={`group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                      activeChannel?.id === channel.id ? 'bg-[#d4d7dc] dark:bg-[#3f4248] text-[#060607] dark:text-white' : 'text-[#4f5660] dark:text-gray-400 hover:bg-[#e3e5e8] dark:hover:bg-[#35373c] hover:text-[#060607] dark:hover:text-gray-200'
+                      activeChannel?.id === channel.id ? 'bg-brand-blue-light text-brand-blue font-semibold' : 'text-gray-600 hover:bg-brand-blue-light/50 hover:text-brand-blue'
                     }`}
                   >
                     <div className="flex items-center min-w-0">
-                      <span className="text-[#4f5660] dark:text-gray-500 text-xl mr-1.5">#</span>
-                      <span className="truncate font-medium">{channel.name}</span>
+                      <span className={`${activeChannel?.id === channel.id ? 'text-brand-blue' : 'text-gray-400'} text-xl mr-1.5`}>#</span>
+                      <span className="truncate">{channel.name}</span>
                     </div>
                     <button
                       onClick={(e) => {
@@ -240,7 +247,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                         setSelectedChannel(channel);
                         setIsEditChannelOpen(true);
                       }}
-                      className="opacity-0 group-hover:opacity-100 hover:text-[#060607] dark:hover:text-white transition-opacity ml-2 text-sm text-[#4f5660] dark:text-gray-400"
+                      className="opacity-0 group-hover:opacity-100 hover:text-brand-blue transition-opacity ml-2 text-sm text-gray-400"
                       title="Настройки канала"
                     >
                       ⚙️
@@ -254,18 +261,17 @@ const MainLayout = ({ children }: MainLayoutProps) => {
               <div 
                 onClick={() => setActiveChannel(null)}
                 className={`flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors mb-4 ${
-                  !activeChannel ? 'bg-[#d4d7dc] dark:bg-[#3f4248] text-[#060607] dark:text-white' : 'text-[#4f5660] dark:text-gray-400 hover:bg-[#e3e5e8] dark:hover:bg-[#35373c] hover:text-[#060607] dark:hover:text-gray-200'
+                  !activeChannel ? 'bg-brand-blue-light text-brand-blue' : 'text-gray-600 hover:bg-brand-blue-light/50 hover:text-brand-blue'
                 }`}
               >
-                <span className="text-xl mr-2.5">👥</span>
                 <span className="font-semibold text-sm">Друзья</span>
               </div>
               
-              <div className="text-xs font-bold text-[#4f5660] dark:text-gray-400 px-2 uppercase tracking-wider mb-2">
+              <div className="text-xs font-bold text-gray-500 px-2 uppercase tracking-wider mb-2">
                 Личные сообщения
               </div>
               <div className="space-y-0.5">
-                <div className="px-2 py-1.5 text-xs text-[#4f5660] dark:text-gray-500 italic">
+                <div className="px-2 py-1.5 text-xs text-gray-500 italic">
                   Нажмите на друга для начала личной переписки.
                 </div>
               </div>
@@ -274,38 +280,38 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         </div>
 
         {/* ПАНЕЛЬ ПРОФИЛЯ (Футер средней колонки) */}
-        <footer className="bg-[#ebedef] dark:bg-[#232428] h-[52px] px-2 flex items-center justify-between shrink-0 transition-colors duration-200">
+        <footer className="bg-brand-blue-light/30 h-[52px] px-2 flex items-center justify-between shrink-0 transition-colors duration-200">
           <div className="flex items-center space-x-2 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-8 h-8 bg-[#5865f2] rounded-full flex items-center justify-center font-bold text-xs text-white">
+              <div className="w-8 h-8 bg-brand-blue rounded-full flex items-center justify-center font-bold text-xs text-white">
                   {(user?.username?.charAt(0) || 'U').toUpperCase()}
               </div>
-              <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#ebedef] dark:border-[#232428] ${
-                isConnected ? 'bg-[#23a55a]' : 'bg-[#80848e]'
+              <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-white ${
+                isConnected ? 'bg-[#23a55a]' : 'bg-gray-400'
               }`} />
             </div>
             <div className="text-xs leading-tight truncate">
-              <p className="font-bold text-[#060607] dark:text-white truncate">{user?.username || 'User'}</p>
-              <p className="text-[#4f5660] dark:text-gray-400 truncate text-[10px]">{isConnected ? 'В сети' : 'Оффлайн'}</p>
+              <p className="font-bold text-gray-800 truncate">{user?.username || 'User'}</p>
+              <p className="text-gray-500 truncate text-[10px] font-medium">{isConnected ? 'В сети' : 'Оффлайн'}</p>
             </div>
           </div>
           <div className="flex items-center space-x-1">
              <button 
                 onClick={toggleTheme} 
-                className="p-2 hover:bg-[#d4d7dc] dark:hover:bg-[#3f4248] rounded-md transition-colors text-[#4f5660] dark:text-gray-400 hover:text-[#060607] dark:hover:text-white"
+                className="p-2 hover:bg-brand-blue-light rounded-md transition-colors text-gray-500 hover:text-brand-blue"
                 title={theme === 'light' ? "Тёмная тема" : "Светлая тема"}
              >
-                <span className="text-lg">{theme === 'light' ? '🌙' : '☀️'}</span>
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
              </button>
-             <button onClick={logout} className="p-2 hover:bg-[#d4d7dc] dark:hover:bg-[#3f4248] rounded-md transition-colors text-[#4f5660] dark:text-gray-400 hover:text-red-500" title="Выйти">
-                <span className="text-lg">🚪</span>
+             <button onClick={logout} className="p-2 hover:bg-brand-blue-light rounded-md transition-colors text-gray-500 hover:text-brand-blue" title="Выйти">
+                <LogOut size={20} />
              </button>
           </div>
         </footer>
       </aside>
 
       {/* ПАНЕЛЬ 3: ОСНОВНОЙ ЧАТ (Центральная) */}
-      <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#313338] transition-colors duration-200">
+      <main className="flex-1 flex flex-col min-w-0 bg-white transition-colors duration-200">
         {activeChannel ? (
           <ChatContainer 
             channelId={activeChannel.id} 
@@ -315,11 +321,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           <FriendsView onlineUsers={onlineUsers} />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="w-20 h-20 bg-[#f2f3f5] dark:bg-[#35363c] rounded-full flex items-center justify-center mb-4 transition-colors">
-               <span className="text-4xl text-[#4f5660] dark:text-gray-500">💬</span>
+            <div className="w-20 h-20 bg-brand-blue-light/50 rounded-full flex items-center justify-center mb-4 transition-colors">
+               <span className="text-4xl text-brand-blue opacity-70">💬</span>
             </div>
-            <h2 className="text-2xl font-bold text-[#060607] dark:text-white mb-2 transition-colors">Добро пожаловать в Minor!</h2>
-            <p className="text-[#4f5660] dark:text-gray-400 max-w-sm transition-colors">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 transition-colors">Добро пожаловать в Minor!</h2>
+            <p className="text-gray-500 max-w-sm transition-colors">
               Это начало вашего нового сервера. Выберите канал слева или создайте новый, чтобы начать общение.
             </p>
           </div>

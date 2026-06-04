@@ -73,6 +73,8 @@ func main() {
 				if createdAt, ok := rawData["created_at"]; ok {
 					rawData["create_at"] = createdAt
 				}
+
+				log.Info("rawData", zap.Any("radData", rawData))
 				
 				wsPayload := map[string]any{
 					"op": 1,

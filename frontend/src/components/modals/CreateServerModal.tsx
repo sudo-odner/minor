@@ -44,26 +44,26 @@ const CreateServerModal: React.FC<CreateServerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 font-sans backdrop-blur-[2px]">
-      <div className="bg-white dark:bg-[#313338] w-full max-w-md rounded-lg overflow-hidden shadow-2xl animate-fade-in border border-[#e3e5e8] dark:border-[#1e1f22] transition-colors duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 font-sans backdrop-blur-[2px]">
+      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-fade-in border border-transparent transition-all duration-200">
         
         {/* Шапка */}
-        <div className="p-6 text-center">
-          <h3 className="text-2xl font-bold text-[#060607] dark:text-white transition-colors">Создайте свой сервер</h3>
-          <p className="text-[#4f5660] dark:text-gray-400 text-base mt-2 transition-colors">
-            Ваш сервер — это место, где вы общаетесь с друзьями. Создайте свой сервер и начните общаться.
+        <div className="p-8 text-center">
+          <h3 className="text-3xl font-bold text-gray-800 transition-colors">Создайте свой сервер</h3>
+          <p className="text-gray-500 text-sm mt-3 leading-relaxed transition-colors">
+            Ваш сервер — это место, где вы общаетесь с друзьями. Создайте свое сообщество прямо сейчас.
           </p>
         </div>
 
         {error && (
-          <div className="mx-6 p-2.5 bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 text-xs rounded text-center transition-colors">
+          <div className="mx-8 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl text-center transition-colors">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
+        <form onSubmit={handleSubmit} className="p-8 pt-4 space-y-6">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-[#4f5660] dark:text-gray-300 uppercase tracking-wider transition-colors">Название сервера</label>
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Название сервера</label>
             <input
               type="text"
               required
@@ -71,26 +71,26 @@ const CreateServerModal: React.FC<CreateServerModalProps> = ({
               placeholder="Введите название сервера"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-[#ebedef] dark:bg-[#1e1f22] text-[#060607] dark:text-white rounded border border-transparent focus:outline-none focus:border-[#5865f2] transition-all text-base placeholder-[#4f5660] dark:placeholder-gray-500"
+              className="w-full px-4 py-3.5 bg-gray-50 text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/10 transition-all text-base placeholder-gray-400 shadow-inner"
             />
-            <p className="text-[10px] text-[#4f5660] dark:text-gray-400 transition-colors">
+            <p className="text-[10px] text-gray-400 text-center mt-2 px-4 transition-colors">
               Создавая сервер, вы соглашаетесь с Правилами сообщества Minor.
             </p>
           </div>
 
           {/* Подвал с кнопками */}
-          <div className="bg-[#f2f3f5] dark:bg-[#2b2d31] -mx-6 -mb-6 p-4 flex justify-between items-center transition-colors duration-200">
+          <div className="bg-gray-50 -mx-8 -mb-8 p-6 flex justify-between items-center transition-colors duration-200 mt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 text-sm font-medium text-[#060607] dark:text-white hover:underline transition-colors"
+              className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800 hover:underline transition-colors"
             >
               Назад
             </button>
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="px-8 py-2.5 text-sm font-medium bg-[#5865f2] hover:bg-[#4752c4] text-white rounded transition-colors disabled:opacity-50 shadow-sm"
+              className="px-10 py-3 text-sm font-bold bg-brand-blue hover:bg-brand-blue-dark text-white rounded-xl transition-all disabled:opacity-50 shadow-md active:scale-95"
             >
               {loading ? 'Создание...' : 'Создать'}
             </button>

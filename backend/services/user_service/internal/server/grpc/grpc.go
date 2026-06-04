@@ -16,6 +16,7 @@ import (
 type UserService interface {
 	GetUser(ctx context.Context, userID uuid.UUID) (*models.User, error)
 	GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
+	GetUserName(ctx context.Context, userID string) (string, error)
 }
 
 type ServerAPI struct {
@@ -80,4 +81,29 @@ func (h *ServerAPI) GetBatchProfiles(ctx context.Context, req *userv1.GetBatchPr
     return &userv1.GetBatchProfilesResponse{
         Profiles: profilesMap,
     }, nil
+}
+
+// GetUserName реализует метод из user.proto
+func (s *ServerAPI) GetUserName(ctx context.Context, req *userv1.GetUserNameRequest) (*userv1.GetUserNameResponse, error) {
+	const op = "server.grpc.GetUserName"
+	
+	log := s.log.With(
+		zap.String("op", op),
+	)
+	
+	if req.GetUserId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	username, err := s.userService.GetUserName(ctx, req.GetUserId())
+	if err != nil {
+		// Логируем ошибку и возвращаем gRPC статус NotFound или Internal
+		return nil, status.Errorf(codes.NotFound, "failed to get username: %v", err)
+	}
+
+	log.Info("got username", zap.String("username", username))
+	
+	return &userv1.GetUserNameResponse{
+		Username: username,
+	}, nil
 }

@@ -98,8 +98,8 @@ func (as *AuthService) Login(ctx context.Context, newUser *models.LoginUser, ip,
 
 	return &models.AuthResponse{
 		User: &models.NormalizedUser{
-			ID:       user.ID,
-			Email:    user.Email,
+			ID:    user.ID,
+			Email: user.Email,
 			Username: user.Username,
 		},
 		AccessToken:  accessToken,

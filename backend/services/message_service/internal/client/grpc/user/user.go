@@ -2,11 +2,13 @@ package user
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
 	userv1 "github.com/sudo-odner/minor-shared/pkg/pb/user/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -17,17 +19,15 @@ type Client struct {
 func New(target string) (*Client, error) {
 	const op = "client.grpc.user.New"
 
-	// TODO: enable when create user service gRPC server
-	// conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	// if err != nil {
-	// 	return nil, fmt.Errorf("%s: %w", op, err)
-	// }
-	//
-	// return &Client{
-	// 	client: userv1.NewUserServiceClient(conn),
-	// 	conn:   conn,
-	// }, nil
-	return &Client{}, nil
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	
+	return &Client{
+		client: userv1.NewUserServiceClient(conn),
+		conn:   conn,
+	}, nil
 }
 
 // Закрыть gRPC соединение
@@ -48,4 +48,29 @@ func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUI
 func (c *Client) CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error) {
 	// TODO: Immplemet logic
 	return true, nil
+}
+
+func (c *Client) GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error) {
+	resp, err := c.client.GetBatchProfiles(ctx, &userv1.GetBatchProfilesRequest{
+		UserIds: userIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetProfiles(), nil
+}
+
+func (c *Client) GetUserName(ctx context.Context, userID string) (string, error) {
+	// ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	// defer cancel()
+
+	resp, err := c.client.GetUserName(ctx, &userv1.GetUserNameRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("grpc get username failed: %w", err)
+	}
+
+	return resp.GetUsername(), nil
 }

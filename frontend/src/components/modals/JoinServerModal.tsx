@@ -44,46 +44,45 @@ const JoinServerModal: React.FC<JoinServerModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 font-sans backdrop-blur-[2px]">
-            <div className="bg-white dark:bg-[#313338] w-full max-w-md rounded-lg overflow-hidden shadow-2xl border border-[#e3e5e8] dark:border-[#1e1f22] p-6 transition-colors duration-200">
-                <h3 className="text-xl font-bold text-[#060607] dark:text-white mb-2 transition-colors">
-                    Вступить по приглашению
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 font-sans backdrop-blur-[2px]">
+            <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-transparent p-8 transition-all duration-200">
+                <h3 className="text-3xl font-bold text-gray-800 mb-3 transition-colors text-center">
+                    Присоединиться
                 </h3>
-                <p className="text-[#4f5660] dark:text-gray-400 text-xs mb-4 transition-colors">
-                    Введите ID сервера (UUID), чтобы присоединиться к
-                    сообществу.
+                <p className="text-gray-500 text-sm mb-6 text-center leading-relaxed transition-colors">
+                    Введите ID сервера (UUID), чтобы стать частью нового сообщества.
                 </p>
 
                 {error && (
-                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 text-xs rounded text-center transition-colors">
+                    <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl text-center transition-colors">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <input
                         type="text"
                         required
                         placeholder="019e84d7-b837-7d9b-..."
                         value={serverId}
                         onChange={(e) => setServerId(e.target.value)}
-                        className="w-full px-4 py-3 bg-[#ebedef] dark:bg-[#1e1f22] text-[#060607] dark:text-white rounded border border-transparent focus:outline-none focus:border-[#5865f2] transition-all text-sm placeholder-[#4f5660] dark:placeholder-gray-500"
+                        className="w-full px-4 py-3.5 bg-gray-50 text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/10 transition-all text-sm placeholder-gray-400"
                     />
 
-                    <div className="flex justify-end space-x-3 pt-2">
+                    <div className="flex justify-between items-center pt-4">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-[#060607] dark:text-white hover:underline transition-colors"
+                            className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-800 hover:underline transition-colors"
                         >
                             Отмена
                         </button>
                         <button
                             type="submit"
                             disabled={loading || !serverId.trim()}
-                            className="px-6 py-2 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded text-sm font-medium disabled:opacity-50 shadow-sm"
+                            className="px-10 py-3 bg-brand-blue hover:bg-brand-blue-dark text-white rounded-xl text-sm font-bold disabled:opacity-50 shadow-md active:scale-95 transition-all"
                         >
-                            {loading ? "Вступление..." : "Присоединиться"}
+                            {loading ? "..." : "Войти"}
                         </button>
                     </div>
                 </form>
