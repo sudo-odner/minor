@@ -3,6 +3,7 @@ import { getMessages, Message, sendMessage } from '../../api/messages';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import MessageInput from './MessageInput';
+import { api } from '../../api/axios';
 
 interface ChatContainerProps {
   channelId: string;
@@ -15,6 +16,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
   const { socket } = useSocket();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. Загрузка истории при смене канала
   useEffect(() => {
@@ -22,8 +24,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
       try {
         const history = await getMessages(channelId);
         // Cassandra отдает от новых к старым, для UI инвертируем
-        setMessages(history.reverse());
-        scrollToBottom();
+        setMessages([...history].reverse());
       } catch (err) {
         console.error("Failed to load history", err);
       }
@@ -31,7 +32,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
     loadHistory();
   }, [channelId]);
 
-  // 2. Загрузка недостающих профилей пользователей для отображения ников
+  // 2. Авто-скролл вниз при новых сообщениях
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // 3. Загрузка недостающих профилей пользователей
   useEffect(() => {
     const fetchMissingProfiles = async () => {
       const missingIds = Array.from(
@@ -41,9 +47,10 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
             .filter((id) => id && !userCache[id])
         )
       );
+      
       if (missingIds.length === 0) return;
 
-      const newProfiles = { ...userCache };
+      const newProfiles: Record<string, { username: string; avatarUrl?: string }> = {};
       let updated = false;
 
       await Promise.all(
@@ -64,14 +71,14 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
       );
 
       if (updated) {
-        setUserCache(newProfiles);
+        setUserCache(prev => ({ ...prev, ...newProfiles }));
       }
     };
 
     fetchMissingProfiles();
   }, [messages, userCache]);
 
-  // 3. Прослушивание WebSocket для новых сообщений
+  // 4. Прослушивание WebSocket для новых сообщений
   useEffect(() => {
     if (!socket) return;
 
@@ -79,10 +86,16 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
       try {
         const payload = JSON.parse(event.data);
         
-        // Проверяем, что это событие создания сообщения и оно для текущего канала
-        if (payload.t === 'MESSAGE_CREATE' && payload.d.channel_id === channelId) {
-          setMessages((prev) => [...prev, payload.d]);
-          scrollToBottom();
+        // В нашем протоколе события приходят с op: 1
+        if (payload.op === 1 && payload.t === 'MESSAGE_CREATE') {
+          const newMsg = payload.d;
+          if (newMsg.channel_id === channelId) {
+            setMessages((prev) => {
+              // Предотвращаем дубликаты
+              if (prev.some(m => m.message_id === newMsg.message_id)) return prev;
+              return [...prev, newMsg];
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to parse WS payload:", err);
@@ -93,17 +106,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
     return () => socket.removeEventListener('message', handleMessage);
   }, [socket, channelId]);
 
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
-
   const handleSend = async (content: string) => {
     try {
       await sendMessage(channelId, content);
-      // Мы не добавляем сообщение в стейт здесь, 
-      // оно прилетит к нам через WebSocket (как в Discord)
+      // Мы не добавляем сообщение в стейт здесь вручную, 
+      // оно прилетит к нам через WebSocket (как в Discord),
+      // что гарантирует синхронизацию всех клиентов.
     } catch (err) {
       alert("Ошибка отправки");
     }
@@ -121,6 +129,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {messages.map((msg) => {
           const isMe = msg.author_id === user?.id;
+          const authorName = msg.username || userCache[msg.author_id]?.username || 'Аноним';
           
           return (
             <div 
@@ -130,12 +139,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
               }`}
             >
               <div className="w-10 h-10 bg-brand-blue/10 text-brand-blue rounded-full shrink-0 flex items-center justify-center font-bold border border-brand-blue-light">
-                  {(msg.username?.charAt(0) || 'U').toUpperCase()}
+                  {authorName.charAt(0).toUpperCase()}
               </div>
               <div className={isMe ? 'text-right' : ''}>
                 <div className={`flex items-baseline space-x-2 ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
                   <span className="font-bold text-gray-800 hover:underline cursor-pointer">
-                    {msg.username || 'Аноним'}
+                    {authorName}
                   </span>
                   <span className="text-[10px] text-gray-400 font-medium uppercase">
                     {new Date(msg.create_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -146,7 +155,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ channelId, channelName })
             </div>
           );
         })}
-        <div ref={scrollRef} />
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Поле ввода */}
