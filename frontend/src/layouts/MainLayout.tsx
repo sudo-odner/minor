@@ -137,12 +137,18 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   // Колбэки для обновления UI
   const handleServerCreated = (newServer: any) => {
-    setServers(prev => [...prev, newServer]);
+    setServers(prev => {
+      if (prev.some(s => s.id === newServer.id)) return prev;
+      return [...prev, newServer];
+    });
     setActiveServer(newServer);
   };
 
   const handleChannelCreated = (newChannel: any) => {
-    setChannels(prev => [...prev, newChannel]);
+    setChannels(prev => {
+      if (prev.some(ch => ch.id === newChannel.id)) return prev;
+      return [...prev, newChannel];
+    });
     setActiveChannel(newChannel);
   };
 
