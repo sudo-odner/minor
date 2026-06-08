@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { MessageCircle, Ban, Trash2, UserCheck, UserX } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface Friend {
   user_id: string;
@@ -20,6 +21,7 @@ const FriendsView: React.FC<FriendsViewProps> = ({ onlineUsers = {} }) => {
   const [activeTab, setActiveTab] = useState<'online' | 'all' | 'pending' | 'blocked' | 'add'>('online');
   const [relationships, setRelationships] = useState<Friend[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [searchResult, setSearchResult] = useState<any | null>(null);
   const [searchError, setSearchError] = useState('');
   const [searchSuccess, setSearchSuccess] = useState('');
@@ -60,13 +62,17 @@ const FriendsView: React.FC<FriendsViewProps> = ({ onlineUsers = {} }) => {
       setSearchResult(null);
       setSearchError('');
       setSearchSuccess('');
+      setSearchQuery('');
     }
   }, [activeTab]);
 
   // 2. Поиск пользователя по логину или почте
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResult(null);
+      setSearchError('');
+      return;
+    }
 
     setSearchResult(null);
     setSearchError('');
@@ -74,7 +80,7 @@ const FriendsView: React.FC<FriendsViewProps> = ({ onlineUsers = {} }) => {
     setIsLoading(true);
 
     try {
-      const res = await api.get(`/users/search?q=${searchQuery.trim()}`);
+      const res = await api.get(`/users/search?q=${query.trim()}`);
       if (res.data) {
         setSearchResult(res.data);
       } else {
@@ -89,6 +95,17 @@ const FriendsView: React.FC<FriendsViewProps> = ({ onlineUsers = {} }) => {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'add') {
+      performSearch(debouncedSearchQuery);
+    }
+  }, [debouncedSearchQuery, activeTab, performSearch]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(searchQuery);
   };
 
   // 3. Отправка запроса в друзья
@@ -218,7 +235,6 @@ const FriendsView: React.FC<FriendsViewProps> = ({ onlineUsers = {} }) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-transparent border-none outline-none flex-1 text-sm text-gray-800 px-2 placeholder-gray-400"
-                disabled={isLoading}
               />
               <button 
                 type="submit" 
@@ -232,13 +248,13 @@ const FriendsView: React.FC<FriendsViewProps> = ({ onlineUsers = {} }) => {
             {/* Ошибки или успехи */}
             {searchError && (
               <div className="text-red-500 text-sm mb-4 bg-red-500/10 p-3 rounded border border-red-500/20">
-                ⚠️ {searchError}
+                {searchError}
               </div>
             )}
 
             {searchSuccess && (
               <div className="text-green-500 text-sm mb-4 bg-green-500/10 p-3 rounded border border-green-500/20">
-                ✅ {searchSuccess}
+                 {searchSuccess}
               </div>
             )}
 

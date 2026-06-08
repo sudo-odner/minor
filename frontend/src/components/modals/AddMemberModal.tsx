@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/axios';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface Friend {
   user_id: string;
@@ -23,6 +24,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
 }) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [searchResult, setSearchResult] = useState<any | null>(null);
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -56,15 +58,17 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
     }
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResult(null);
+      return;
+    }
 
     setMessage(null);
     setSearchResult(null);
 
     try {
-      const res = await api.get(`/users/search?q=${searchQuery.trim()}`);
+      const res = await api.get(`/users/search?q=${query.trim()}`);
       if (res.data) {
         setSearchResult(res.data);
       } else {
@@ -73,6 +77,17 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
     } catch (err: any) {
       setMessage({ type: 'error', text: 'Пользователь не найден или произошла ошибка' });
     }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      performSearch(debouncedSearchQuery);
+    }
+  }, [debouncedSearchQuery, isOpen, performSearch]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(searchQuery);
   };
 
   const handleAddMember = async (userId: string, username: string) => {
@@ -138,7 +153,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
                   : 'bg-red-50 border-red-100 text-red-600'
               }`}
             >
-              {message.type === 'success' ? '✅' : '⚠️'} {message.text}
+              {message.type === 'success' ? '' : ''} {message.text}
             </div>
           )}
 
