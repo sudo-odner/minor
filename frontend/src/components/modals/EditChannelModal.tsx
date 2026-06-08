@@ -90,7 +90,9 @@ const EditChannelModal: React.FC<EditChannelModalProps> = ({
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Имя канала</label>
             <div className="relative flex items-center">
-              <span className="absolute left-4 text-brand-blue opacity-50 text-xl font-light">#</span>
+              <span className="absolute left-4 text-brand-blue opacity-50 text-xl font-light">
+                {channel.type === 0 ? '#' : '🔊'}
+              </span>
               <input
                 type="text"
                 required

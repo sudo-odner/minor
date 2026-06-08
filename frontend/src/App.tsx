@@ -8,6 +8,8 @@ import { SocketProvider } from './context/SocketContext';
 // Страницы и Лейауты
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import MainLayout from './layouts/MainLayout';
 
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -51,6 +53,8 @@ const AppContent: React.FC = () => {
         {/* Публичные маршруты */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Защищенные маршруты (Вся основная логика мессенджера) */}
         <Route
