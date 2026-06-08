@@ -223,13 +223,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         <div className="flex-1 overflow-y-auto p-2">
           {activeServer ? (
             <>
+              {/* ТЕКСТОВЫЕ КАНАЛЫ */}
               <div className="flex items-center justify-between text-xs font-bold text-gray-500 px-2 mt-4 mb-2 uppercase tracking-wider">
                 <span>Текстовые каналы</span>
                 <button onClick={() => setIsCreateChannelOpen(true)} className="hover:text-brand-blue text-xl leading-none">+</button>
               </div>
               
-              <div className="space-y-0.5">
-                {channels.map((channel) => (
+              <div className="space-y-0.5 mb-4">
+                {channels.filter(ch => ch.type === 0).map((channel) => (
                   <div
                     key={channel.id}
                     onClick={() => setActiveChannel(channel)}
@@ -239,6 +240,40 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                   >
                     <div className="flex items-center min-w-0">
                       <span className={`${activeChannel?.id === channel.id ? 'text-brand-blue' : 'text-gray-400'} text-xl mr-1.5`}>#</span>
+                      <span className="truncate">{channel.name}</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedChannel(channel);
+                        setIsEditChannelOpen(true);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 hover:text-brand-blue transition-opacity ml-2 text-sm text-gray-400"
+                      title="Настройки канала"
+                    >
+                      ⚙️
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* ГОЛОСОВЫЕ КАНАЛЫ */}
+              <div className="flex items-center justify-between text-xs font-bold text-gray-500 px-2 mt-4 mb-2 uppercase tracking-wider">
+                <span>Голосовые каналы</span>
+                <button onClick={() => setIsCreateChannelOpen(true)} className="hover:text-brand-blue text-xl leading-none">+</button>
+              </div>
+              
+              <div className="space-y-0.5">
+                {channels.filter(ch => ch.type === 1).map((channel) => (
+                  <div
+                    key={channel.id}
+                    onClick={() => setActiveChannel(channel)}
+                    className={`group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                      activeChannel?.id === channel.id ? 'bg-brand-blue-light text-brand-blue font-semibold' : 'text-gray-600 hover:bg-brand-blue-light/50 hover:text-brand-blue'
+                    }`}
+                  >
+                    <div className="flex items-center min-w-0">
+                      <span className={`${activeChannel?.id === channel.id ? 'text-brand-blue' : 'text-gray-400'} text-xl mr-1.5`}>🔊</span>
                       <span className="truncate">{channel.name}</span>
                     </div>
                     <button
