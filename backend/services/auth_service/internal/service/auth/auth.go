@@ -231,3 +231,12 @@ func (as *AuthService) RefreshAccessToken(ctx context.Context, oldRefreshToken s
 		RefreshToken: newRefreshToken.String(),
 	}, nil
 }
+
+func (as *AuthService) ForgotPassword(email string) (string, error) {
+	// TODO: implement me
+	return "", nil
+}
+
+func (as *AuthService) ResetPassword() {
+	//TODO: implement me
+}
