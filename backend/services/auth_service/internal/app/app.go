@@ -51,7 +51,7 @@ func New(log *zap.Logger, cfg *config.Config) *App {
 
 	publisher := natsProducer.NewAuthPublisher(natsApp.JS)
 	
-	authService := authService.New(pgConn, redisConn, publisher, log, cfg.Auth)
+	authService := authService.New(pgConn, redisConn, redisConn, publisher, log, cfg.Auth)
 	authHTTPHandler := authHTTPHandler.NewHTTPHandler(authService, log)
 	authGRPCHandler := authGRPCHandler.NewGRPCHandler(authService, log)
 
