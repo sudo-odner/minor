@@ -86,6 +86,11 @@ func (c *NotificationConsumer) StartAuthConsumer(ctx context.Context) error {
 			if err = json.Unmarshal(msg.Data(), &event); err == nil {
 				err = c.notifier.HandleLogin(ctx, event)
 			}
+		case "auth.password.reset_requested":
+			var event events.PasswordResetRequestedEvent
+			if err = json.Unmarshal(msg.Data(), &event); err == nil {
+				err = c.notifier.HandlePasswordReset(ctx, event)
+			}
 		}
 
 		if err != nil {
