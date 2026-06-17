@@ -4,7 +4,7 @@ import { api } from '../api/axios';
 
 const ResetPasswordPage: React.FC = () => {
     const [searchParams] = useSearchParams();
-    const token = searchParams.get('token');
+    // const token = searchParams.get('token');
     
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -12,6 +12,8 @@ const ResetPasswordPage: React.FC = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const token = searchParams.get('token');
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
