@@ -136,9 +136,9 @@ func (s *Storage) UpdatePassword(ctx context.Context, id string, newPasswordHash
 	}()
 	
 	_, err = s.pool.Exec(ctx, `
-		UPDATE credentials c
-		SET c.password_hash = $1
-		WHERE c.id = $2;
+		UPDATE credentials
+		SET password_hash = $1
+		WHERE id = $2;
 	`, newPasswordHash, id)
 
 	if err != nil {
