@@ -64,7 +64,7 @@ func (c *NotificationConsumer) StartChatConsumer(ctx context.Context) error {
 func (c *NotificationConsumer) StartAuthConsumer(ctx context.Context) error {
 	cons, err := c.jetStream.CreateOrUpdateConsumer(ctx, "AUTH_STREAM", jetstream.ConsumerConfig{
 		Durable:       "notification-auth-worker",
-		FilterSubject: "auth.user.>",
+		FilterSubject: "auth.>",
 		AckPolicy:     jetstream.AckExplicitPolicy,
 	})
 	if err != nil {
