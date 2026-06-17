@@ -4,18 +4,16 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/redis/go-redis/v9"
 )
 
 const (
-	resetCodePrefix = "auth:reset:%s"
+	resetTokenPrefix = "auth:reset:%s"
 )
 
-func (r *RedisSessionRepo) SetResetCode(ctx context.Context, email string, code string, ttl time.Duration) error {
-	key := fmt.Sprintf(resetCodePrefix, email)
+func (r *RedisSessionRepo) SetResetCode(ctx context.Context, email string, token string, ttl time.Duration) error {
+	key := fmt.Sprintf(resetTokenPrefix, token)
 
-	err := r.client.Set(ctx, key, code, ttl).Err()
+	err := r.client.Set(ctx, key, email, ttl).Err()
 	if err != nil {
 		return fmt.Errorf("failed to set reset code in redis: %w", err)
 	}
@@ -23,22 +21,19 @@ func (r *RedisSessionRepo) SetResetCode(ctx context.Context, email string, code 
 	return nil
 }
 
-func (r *RedisSessionRepo) GetResetCode(ctx context.Context, email string) (string, error) {
-	key := fmt.Sprintf(resetCodePrefix, email)
+func (r *RedisSessionRepo) GetEmailByResetToken(ctx context.Context, token string) (string, error) {
+    key := fmt.Sprintf(resetTokenPrefix, token) 
 
-	val, err := r.client.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return "", fmt.Errorf("reset code not found or expired")
+    res, err := r.client.Get(ctx, key).Result()
+    if err != nil {
+		return "", fmt.Errorf("failed to set reset code in redis: %w", err)
 	}
-	if err != nil {
-		return "", fmt.Errorf("failed to get reset code from redis: %w", err)
-	}
-
-	return val, nil
+   
+	return res, nil
 }
 
-func (r *RedisSessionRepo) DeleteResetCode(ctx context.Context, email string) error {
-	key := fmt.Sprintf(resetCodePrefix, email)
+func (r *RedisSessionRepo) DeleteResetCode(ctx context.Context, token string) error {
+	key := fmt.Sprintf(resetTokenPrefix, token)
 
 	err := r.client.Del(ctx, key).Err()
 	if err != nil {
