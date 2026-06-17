@@ -78,23 +78,36 @@ func (n *Notifier) HandleChatMessage(ctx context.Context, event events.MessageCr
 	return n.emailProvider.Send(ctx, email, title, body)
 }
 
-func (n *Notifier) HandlePasswordReset(ctx context.Context, event events.PasswordResetRequestedEvent) error {
-	title := "Восстановление пароля в Minor"
+// func (n *Notifier) HandlePasswordReset(ctx context.Context, event events.PasswordResetRequestedEvent) error {
+// 	title := "Восстановление пароля в Minor"
 	
-	// Используем твой стиль из примера SMTP клиента
-	body := fmt.Sprintf(
-		"Здравствуйте, %s!\n\n"+
-			"Был получен запрос на сброс пароля для вашего аккаунта.\n"+
-			"Ваш проверочный код: %s\n\n"+
-			"Этот код действителен в течение 15 минут. Если вы не запрашивали сброс, просто проигнорируйте это письмо.",
-		event.Username, event.Code,
-	)
+// 	// Используем твой стиль из примера SMTP клиента
+// 	body := fmt.Sprintf(
+// 		"Здравствуйте, %s!\n\n"+
+// 			"Был получен запрос на сброс пароля для вашего аккаунта.\n"+
+// 			"Ваш проверочный код: %s\n\n"+
+// 			"Этот код действителен в течение 15 минут. Если вы не запрашивали сброс, просто проигнорируйте это письмо.",
+// 		event.Username, event.Code,
+// 	)
 
-	// Отправляем через уже реализованный Gmail/SMTP провайдер
-	err := n.emailProvider.Send(ctx, event.Email, title, body)
-	if err != nil {
-		return fmt.Errorf("failed to send reset email: %w", err)
-	}
+// 	// Отправляем через уже реализованный Gmail/SMTP провайдер
+// 	err := n.emailProvider.Send(ctx, event.Email, title, body)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to send reset email: %w", err)
+// 	}
 
-	return nil
+// 	return nil
+// }
+
+func (n *Notifier) HandlePasswordReset(ctx context.Context, event events.PasswordResetRequestedEvent) error {
+    // Формируем ссылку на фронтенд (localhost для разработки)
+    resetLink := fmt.Sprintf("http://localhost/reset-password?token=%s", event.Code)
+
+    title := "Восстановление пароля"
+    body := fmt.Sprintf(
+        "Здравствуйте, %s!\n\nДля сброса пароля перейдите по ссылке:\n%s\n\nСсылка действует 15 минут.",
+        event.Username, resetLink,
+    )
+
+    return n.emailProvider.Send(ctx, event.Email, title, body)
 }
