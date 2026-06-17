@@ -89,7 +89,7 @@ func (m *mockResetRepo) SetResetCode(ctx context.Context, id string, code string
 	return nil
 }
 
-func (m *mockResetRepo) GetResetCode(ctx context.Context, id string) (string, error) {
+func (m *mockResetRepo) GetEmailByResetToken(ctx context.Context, id string) (string, error) {
 	code := m.codes[id]
 	return code, nil
 }
