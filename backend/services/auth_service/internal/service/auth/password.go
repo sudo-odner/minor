@@ -2,13 +2,19 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/sudo-odner/minor/backend/services/auth_service/internal/lib/otp"
+	"github.com/google/uuid"
+	// "github.com/sudo-odner/minor/backend/services/auth_service/internal/lib/otp"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/models"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	ErrInvalidResetToken = errors.New("reset token is invalid or expired")
 )
 
 func (as *AuthService) ForgotPassword(ctx context.Context, payload *models.ForgotPasswordPayload) error {
@@ -25,26 +31,30 @@ func (as *AuthService) ForgotPassword(ctx context.Context, payload *models.Forgo
 		return nil
 	}
 
-	code, err := otp.GenerateRandomCode(6)
-	if err != nil {
-		log.Warn("failed to generate reset code", zap.Error(err))
+	// code, err := otp.GenerateRandomCode(6)
+	// if err != nil {
+	// 	log.Warn("failed to generate reset code", zap.Error(err))
 
-		return fmt.Errorf("%s: %w", path, err)
-	}
+	// 	return fmt.Errorf("%s: %w", path, err)
+	// }
 
-	err = as.resetRepository.SetResetCode(ctx, payload.Email, code, 15*time.Minute)
+	resetToken := uuid.New().String()
+
+	err = as.resetRepository.SetResetCode(ctx, payload.Email, resetToken, 15*time.Minute)
 	if err != nil {
 		log.Warn("failed to set reset code in redis", zap.Error(err))
 
 		return fmt.Errorf("%s: %w", path, err)
 	}
 
-	err = as.eventPublisher.PublishPasswordResetRequested(ctx, payload.Email, code, user.Username)
+	err = as.eventPublisher.PublishPasswordResetRequested(ctx, payload.Email, resetToken, user.Username)
 	if err != nil {
 		log.Warn("failed to publish event", zap.Error(err))
 
 		return fmt.Errorf("%s: %w", path, err)
 	}
+
+	log.Info("SUCCESS: reset event published to NATS")
 
 	return nil
 }
@@ -56,27 +66,29 @@ func (as *AuthService) ResetPassword(ctx context.Context, payload *models.ResetP
 		zap.String("path", path),
 	)
 
-	savedCode, err := as.resetRepository.GetResetCode(ctx, payload.Email)
-	if err != nil || savedCode != payload.Code {
-		log.Warn("failed to compare reset codes", zap.Error(err))
-
-		return fmt.Errorf("%s: %w", path, err)
+	email, err := as.resetRepository.GetEmailByResetToken(ctx, payload.Token)
+	if err != nil {
+		log.Warn("invalid reset token attempt", zap.String("token", payload.Token), zap.String("path", path))
+		return ErrInvalidResetToken
 	}
 
-	user, err := as.authRepository.GetByEmail(ctx, payload.Email)
+	user, err := as.authRepository.GetByEmail(ctx, email)
 	if err != nil {
 		log.Warn("failed to get user by email", zap.Error(err))
 
 		return fmt.Errorf("%s: %w", path, err)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(payload.NewPassword), bcrypt.DefaultCost)
+	fmt.Println("new Password before hashing:", payload.Password)
+	
+	hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Warn("failed to generate hash from password", zap.Error(err))
 
 		return fmt.Errorf("%s: %w", path, err)
 	}
 
+	fmt.Println("SAVE TO DB HASH:", string(hash))
 	err = as.authRepository.UpdatePassword(ctx, user.ID.String(), string(hash))
 	if err != nil {
 		log.Warn("failed to update password", zap.Error(err))
@@ -97,6 +109,11 @@ func (as *AuthService) ResetPassword(ctx context.Context, payload *models.ResetP
 
 		return fmt.Errorf("%s: %w", path, err)
 	}
+
+	// err = as.eventPublisher.PublishPasswordChanged(ctx, user.ID.String())
+	// if err != nil {
+	// 	log.Error("failed to publish password changed event", zap.Error(err))
+	// }
 
 	return nil
 }
