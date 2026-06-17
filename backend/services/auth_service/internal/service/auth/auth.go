@@ -40,7 +40,7 @@ type SessionRepository interface {
 // Redis reset code interface
 type ResetRepository interface {
 	SetResetCode(ctx context.Context, email string, code string, timeout time.Duration) error
-	GetResetCode(ctx context.Context, email string) (string, error)
+	GetEmailByResetToken(ctx context.Context, email string) (string, error)
 	DeleteResetCode(ctx context.Context, email string) error
 }
 
@@ -72,7 +72,7 @@ func New(authRepository AuthRepository, sessionRepository SessionRepository, res
 	}
 }
 
-func (as *AuthService) Login(ctx context.Context, newUser *models.LoginUser, ip, userAgent string) (authResponse *models.AuthResponse, err error) {
+func (as *AuthService) Login(ctx context.Context, loginUser *models.LoginUser, ip, userAgent string) (authResponse *models.AuthResponse, err error) {
 	const op = "service.auth.Login"
 
 	log := as.log.With(
@@ -81,12 +81,16 @@ func (as *AuthService) Login(ctx context.Context, newUser *models.LoginUser, ip,
 
 	log.Info("attempting to login user")
 
-	user, err := as.authRepository.GetByEmail(ctx, newUser.Email)
+	user, err := as.authRepository.GetByEmail(ctx, loginUser.Email)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(newUser.Password))
+
+	loginHash, err := bcrypt.GenerateFromPassword([]byte(loginUser.Password), bcrypt.DefaultCost)
+	fmt.Println(loginUser.Password, string(loginHash), user.PasswordHash)
+	fmt.Println("GET FROM DB HASH:", user.PasswordHash)
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginUser.Password))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
