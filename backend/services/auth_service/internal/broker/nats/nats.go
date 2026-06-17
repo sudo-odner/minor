@@ -98,13 +98,10 @@ func (a *App) InitAuthStream(ctx context.Context) error {
 	
 	cfg := jetstream.StreamConfig{
 		Name:     streamName,
-		// Указываем маски тем, которые этот поток будет сохранять.
-		// auth.user.> покроет регистрацию и логин
-		// auth.password.> покроет запросы на сброс пароля
 		Subjects: []string{"auth.user.>", "auth.password.>"}, 
-		Storage:  jetstream.FileStorage, // Храним на диске
+		Storage:  jetstream.FileStorage, 
 		Retention: jetstream.LimitsPolicy,
-		MaxAge:   7 * 24 * time.Hour,    // Храним события неделю
+		MaxAge:   7 * 24 * time.Hour,
 	}
 
 	_, err := a.JS.CreateOrUpdateStream(ctx, cfg)
