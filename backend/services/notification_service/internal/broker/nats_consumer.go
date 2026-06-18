@@ -64,7 +64,7 @@ func (c *NotificationConsumer) StartChatConsumer(ctx context.Context) error {
 func (c *NotificationConsumer) StartAuthConsumer(ctx context.Context) error {
 	cons, err := c.jetStream.CreateOrUpdateConsumer(ctx, "AUTH_STREAM", jetstream.ConsumerConfig{
 		Durable:       "notification-auth-worker",
-		FilterSubject: "auth.user.>",
+		FilterSubject: "auth.>",
 		AckPolicy:     jetstream.AckExplicitPolicy,
 	})
 	if err != nil {
@@ -85,6 +85,11 @@ func (c *NotificationConsumer) StartAuthConsumer(ctx context.Context) error {
 			var event events.UserLoginSuccessEvent
 			if err = json.Unmarshal(msg.Data(), &event); err == nil {
 				err = c.notifier.HandleLogin(ctx, event)
+			}
+		case "auth.password.reset_requested":
+			var event events.PasswordResetRequestedEvent
+			if err = json.Unmarshal(msg.Data(), &event); err == nil {
+				err = c.notifier.HandlePasswordReset(ctx, event)
 			}
 		}
 

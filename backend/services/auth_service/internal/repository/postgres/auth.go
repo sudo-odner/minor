@@ -114,3 +114,36 @@ func (s *Storage) GetByID(ctx context.Context, id string) (*models.User, error) 
 
 	return &user, nil
 }
+
+func (s *Storage) UpdatePassword(ctx context.Context, id string, newPasswordHash string) error {
+	const op = "repository.postgres.auth.UpdatePassword"
+	
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return
+		}
+		
+		commitErr := tx.Commit(ctx)
+		if commitErr != nil {
+			err = fmt.Errorf("%s: %w", op, commitErr)
+		}
+	}()
+	
+	_, err = s.pool.Exec(ctx, `
+		UPDATE credentials
+		SET password_hash = $1
+		WHERE id = $2;
+	`, newPasswordHash, id)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}

@@ -45,13 +45,16 @@ func New(log *zap.Logger, cfg *config.Config) *App {
 
 	redisConn := redis.NewSessionRepo(rdb)
 
-	natsApp := natsapp.New(log, cfg)
+	natsApp, err := natsapp.New(log, cfg)
+	if err != nil {
+		panic("failed to initialize NATS")
+	}
 
 	log.Info("starting authentication service")
 
 	publisher := natsProducer.NewAuthPublisher(natsApp.JS)
 	
-	authService := authService.New(pgConn, redisConn, publisher, log, cfg.Auth)
+	authService := authService.New(pgConn, redisConn, redisConn, publisher, log, cfg.Auth)
 	authHTTPHandler := authHTTPHandler.NewHTTPHandler(authService, log)
 	authGRPCHandler := authGRPCHandler.NewGRPCHandler(authService, log)
 

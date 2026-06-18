@@ -40,6 +40,15 @@ func (m *mockAuthRepo) GetByID(ctx context.Context, id string) (*models.User, er
 	return nil, errors.New("user not found")
 }
 
+func (m *mockAuthRepo) UpdatePassword(ctx context.Context, id string, newPasswordHash string) error {
+	if user := m.users[id]; user == nil {
+		return errors.New("user not found")
+	}
+	m.users[id].PasswordHash = newPasswordHash
+
+	return nil
+}
+
 type mockSessionRepo struct {
 	tokens map[string]string
 }
@@ -71,6 +80,25 @@ func (m *mockSessionRepo) DeleteAllUserSessions(ctx context.Context, userID stri
 	return nil
 }
 
+type mockResetRepo struct {
+	codes map[string]string
+}
+
+func (m *mockResetRepo) SetResetCode(ctx context.Context, id string, code string, timeout time.Duration) error {
+	m.codes[id] = code
+	return nil
+}
+
+func (m *mockResetRepo) GetEmailByResetToken(ctx context.Context, id string) (string, error) {
+	code := m.codes[id]
+	return code, nil
+}
+
+func (m *mockResetRepo) DeleteResetCode(ctx context.Context, id string) error {
+	delete(m.codes, id)
+	return nil
+}
+
 type mockPublisher struct {
 	registered []*models.User
 	logins     []string
@@ -90,9 +118,14 @@ func (m *mockPublisher) PublishUserLoggedOut(ctx context.Context, userID, tokenI
 	return nil
 }
 
+func (m *mockPublisher) PublishPasswordResetRequested(ctx context.Context, userID, code string, username string) error {
+	return nil
+}
+
 func TestAuthService_Register_Success(t *testing.T) {
 	repo := &mockAuthRepo{users: make(map[string]*models.User)}
 	session := &mockSessionRepo{tokens: make(map[string]string)}
+	reset := &mockResetRepo{codes: make(map[string]string)}
 	pub := &mockPublisher{}
 
 	cfg := config.AuthConfig{
@@ -100,7 +133,7 @@ func TestAuthService_Register_Success(t *testing.T) {
 		AccessTokenTTL: 5 * time.Minute,
 	}
 
-	svc := auth.New(repo, session, pub, zap.NewNop(), cfg)
+	svc := auth.New(repo, session, reset, pub, zap.NewNop(), cfg)
 
 	newUser := &models.RegisterUser{
 		Email:    "test@novsu.ru",
@@ -137,6 +170,7 @@ func TestAuthService_Register_Success(t *testing.T) {
 func TestAuthService_Register_AlreadyExists(t *testing.T) {
 	repo := &mockAuthRepo{users: make(map[string]*models.User)}
 	session := &mockSessionRepo{tokens: make(map[string]string)}
+	reset := &mockResetRepo{codes: make(map[string]string)}
 	pub := &mockPublisher{}
 
 	cfg := config.AuthConfig{
@@ -153,7 +187,7 @@ func TestAuthService_Register_AlreadyExists(t *testing.T) {
 		PasswordHash: "some_hash",
 	}
 
-	svc := auth.New(repo, session, pub, zap.NewNop(), cfg)
+	svc := auth.New(repo, session, reset, pub, zap.NewNop(), cfg)
 
 	newUser := &models.RegisterUser{
 		Email:    "test@novsu.ru",
@@ -174,6 +208,7 @@ func TestAuthService_Register_AlreadyExists(t *testing.T) {
 func TestAuthService_Login_Success(t *testing.T) {
 	repo := &mockAuthRepo{users: make(map[string]*models.User)}
 	session := &mockSessionRepo{tokens: make(map[string]string)}
+	reset := &mockResetRepo{codes: make(map[string]string)}
 	pub := &mockPublisher{}
 
 	cfg := config.AuthConfig{
@@ -193,7 +228,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 		PasswordHash: string(hash),
 	}
 
-	svc := auth.New(repo, session, pub, zap.NewNop(), cfg)
+	svc := auth.New(repo, session, reset, pub, zap.NewNop(), cfg)
 
 	login := &models.LoginUser{
 		Email:    "user@novsu.ru",
@@ -226,6 +261,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 func TestAuthService_Login_InvalidPassword(t *testing.T) {
 	repo := &mockAuthRepo{users: make(map[string]*models.User)}
 	session := &mockSessionRepo{tokens: make(map[string]string)}
+	reset := &mockResetRepo{codes: make(map[string]string)}
 	pub := &mockPublisher{}
 
 	cfg := config.AuthConfig{
@@ -243,7 +279,7 @@ func TestAuthService_Login_InvalidPassword(t *testing.T) {
 		PasswordHash: string(hash),
 	}
 
-	svc := auth.New(repo, session, pub, zap.NewNop(), cfg)
+	svc := auth.New(repo, session, reset, pub, zap.NewNop(), cfg)
 
 	login := &models.LoginUser{
 		Email:    "user@novsu.ru",

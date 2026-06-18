@@ -86,3 +86,28 @@ func (p *AuthPublisher) PublishUserLoggedOut(ctx context.Context, userID, tokenI
 
 	return nil
 }
+
+func (p *AuthPublisher) PublishPasswordResetRequested(ctx context.Context, email, code, username string) error {
+	// 1. Формируем объект события
+	event := events.PasswordResetRequestedEvent{
+		Email:     email,
+		Code:      code,
+		Username:  username,
+		Timestamp: time.Now(),
+	}
+
+	// 2. Сериализуем в JSON
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal password reset event: %w", err)
+	}
+
+	// 3. Публикуем в JetStream
+	// Subject: auth.password.reset_requested
+	_, err = p.js.Publish(ctx, "auth.password.reset_requested", data)
+	if err != nil {
+		return fmt.Errorf("failed to publish password reset event to NATS: %w", err)
+	}
+
+	return nil
+}

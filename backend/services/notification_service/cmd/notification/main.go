@@ -139,7 +139,8 @@ func initStreams(ctx context.Context, js jetstream.JetStream, logger *zap.Logger
 		},
 		{
 			Name:     "AUTH_STREAM",
-			Subjects: []string{"auth.user.>"},
+			// Subjects: []string{"auth.user.>", "auth.password.>"},
+			Subjects: []string{"auth.>"},
 		},
 		{
 			Name:     "COMMUNITY_STREAM",
