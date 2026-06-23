@@ -22,13 +22,7 @@ type GatewayHandler struct {
 	upgrader       websocket.Upgrader
 }
 
-func NewGatewayHandler(
-	log *zap.Logger,
-	hub *service.Hub,
-	auth authv1.AuthServiceClient,
-	presence presencev1.PresenceServiceClient,
-	nats *nats.Conn,
-) *GatewayHandler {
+func NewGatewayHandler(log *zap.Logger, hub *service.Hub, auth authv1.AuthServiceClient, presence presencev1.PresenceServiceClient, nats *nats.Conn) *GatewayHandler {
 	return &GatewayHandler{
 		log:            log,
 		hub:            hub,
@@ -36,26 +30,25 @@ func NewGatewayHandler(
 		presenceClient: presence,
 		natsConn:       nats,
 		upgrader: websocket.Upgrader{
-    		ReadBufferSize:  1024,
-      		WriteBufferSize: 1024,
-		    CheckOrigin: func(r *http.Request) bool {
-		        return true
-		    },
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
 		},
 	}
 }
 
 func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 	const path = "server.websocket.HandleWS"
-	
+
 	log := h.log.With(
 		zap.String("path", path),
 		zap.String("req-id", middleware.GetReqID(r.Context())),
 	)
 
 	log.Info("starting handle websocket")
-	
-	// 1. Аутентификация (берем токен из Query-параметра ?token=...)
+
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		h.log.Warn("connection attempt without token")
@@ -65,7 +58,6 @@ func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("got token", zap.String("token", token))
 
-	// Вызов gRPC Auth Service
 	authResp, err := h.authClient.VerifyToken(r.Context(), &authv1.VerifyTokenRequest{
 		AccessToken: token,
 	})
@@ -77,16 +69,14 @@ func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("success auth grpc call")
 
-	// 2. Апгрейд протокола до WebSocket
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.log.Error("failed to upgrade to websocket", zap.Error(err))
 		return
 	}
 
-	log.Info("conn upgraded")	
+	log.Info("conn upgraded")
 
-	// 3. Создание объекта Client
 	client := service.NewClient(
 		authResp.UserId,
 		conn,
@@ -95,15 +85,11 @@ func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 		h.presenceClient,
 	)
 
-	// 4. Регистрируем клиента в хабе ДО SetStatus, чтобы он получил своё же ONLINE-событие
 	h.hub.Register(authResp.UserId, client)
 
-	// 5. Запускаем жизненный цикл сокета ДО SetStatus (чтобы WritePump был готов принимать)
 	go client.WritePump()
 	go client.ReadPump()
 
-	// 6. Регистрация статуса ONLINE в Presence Service (через gRPC)
-	// Делаем ПОСЛЕ регистрации в hub, чтобы NATS broadcast дошёл до нового клиента
 	_, err = h.presenceClient.SetStatus(r.Context(), &presencev1.SetStatusRequest{
 		UserId: authResp.UserId,
 		Status: presencev1.UserStatus_USER_STATUS_ONLINE,
