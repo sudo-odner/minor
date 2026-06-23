@@ -6,34 +6,34 @@ import (
 	"time"
 
 	presencev1 "github.com/sudo-odner/minor-shared/pkg/pb/presence/v1"
+	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/config"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type Client struct {
-	api  presencev1.PresenceServiceClient // переименовал для удобства
+type PresenceGRPCClient struct {
+	api  presencev1.PresenceServiceClient
 	conn *grpc.ClientConn
 }
 
-func NewPresenceClient(addr string) (*Client, error) {
+func New(log *zap.Logger, cfg *config.Config) (*PresenceGRPCClient, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
-	// grpc.NewClient — это правильно (Go gRPC v1.60+)
-	conn, err := grpc.NewClient(addr, opts...)
+	presenceConn, err := grpc.NewClient(cfg.GRPC.PresenceService.Address, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to presence service: %w", err)
 	}
 
-	return &Client{
-		api:  presencev1.NewPresenceServiceClient(conn),
-		conn: conn,
+	return &PresenceGRPCClient{
+		api:  presencev1.NewPresenceServiceClient(presenceConn),
+		conn: presenceConn,
 	}, nil
 }
 
-// SetStatus — Обязательно нужен для Gateway Service
-func (c *Client) SetStatus(ctx context.Context, userID string, status presencev1.UserStatus) error {
+func (c *PresenceGRPCClient) SetStatus(ctx context.Context, userID string, status presencev1.UserStatus) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -47,8 +47,7 @@ func (c *Client) SetStatus(ctx context.Context, userID string, status presencev1
 	return nil
 }
 
-// IsUserOnline — Оставил твою логику, она верна
-func (c *Client) IsUserOnline(ctx context.Context, userID string) (bool, error) {
+func (c *PresenceGRPCClient) IsUserOnline(ctx context.Context, userID string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -62,6 +61,6 @@ func (c *Client) IsUserOnline(ctx context.Context, userID string) (bool, error) 
 	return resp.Presence.Status == presencev1.UserStatus_USER_STATUS_ONLINE, nil
 }
 
-func (c *Client) Close() error {
+func (c *PresenceGRPCClient) Close() error {
 	return c.conn.Close()
 }
