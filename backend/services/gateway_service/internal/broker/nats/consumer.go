@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/service/gateway"
 	"go.uber.org/zap"
@@ -118,42 +117,80 @@ func (cm *ConsumerManager) StartAllConsumers(ctx context.Context) error {
 	}()
 
 	go func() {
-		cons, err := cm.js.CreateOrUpdateConsumer(ctx, "PRESENCE_STREAM")
-		nc.Conn.Subscribe("presence.status.updated", func(m *nats.Msg) {
-			log.Info("received presence status update from NATS", zap.String("data", string(m.Data)))
+		cons, err := cm.js.CreateOrUpdateConsumer(ctx, "PRESENCE_STREAM",
+			jetstream.ConsumerConfig{
+				Durable:       "gateway_presence_worker",
+				FilterSubject: "presence.>",
+			})
+
+		if err != nil {
+			log.Warn("failed to initialize presence stream")
+		}
+
+		iter, err := cons.Consume(func(msg jetstream.Msg) {
+			subject := msg.Subject()
 			var rawData map[string]any
-			if err := json.Unmarshal(m.Data, &rawData); err == nil {
+
+			if err := json.Unmarshal(msg.Data(), &rawData); err == nil {
+				var tType string
+				switch subject {
+				case "presence.status.updated":
+					log.Info("received presence status update from NATS",zap.String("data", string(msg.Data())))
+					tType = "PRESENCE_UPDATE"
+				}
+
 				wsPayload := map[string]any{
 					"op": 1,
-					"t":  "PRESENCE_UPDATE",
+					"t":  tType,
 					"d":  rawData,
 				}
+
 				if wrappedBytes, err := json.Marshal(wsPayload); err == nil {
 					cm.hub.Broadcast(wrappedBytes)
 				}
-			} else {
-				cm.hub.Broadcast(m.Data)
 			}
+			msg.Ack()
 		})
+		<-ctx.Done()
+		iter.Stop()
 	}()
 
 	go func() {
-		cons, err := cm.js.CreateOrUpdateConsumer(ctx, "")
-		nc.Conn.Subscribe("user.typing.*", func(m *nats.Msg) {
+		cons, err := cm.js.CreateOrUpdateConsumer(ctx, "USER_STREAM",
+			jetstream.ConsumerConfig{
+				Durable:       "gateway_user_worker",
+				FilterSubject: "user.>",
+			})
+
+		if err != nil {
+			log.Warn("failed to initialize user stream")
+		}
+
+		iter, err := cons.Consume(func(msg jetstream.Msg) {
+			subject := msg.Subject()
 			var rawData map[string]any
-			if err := json.Unmarshal(m.Data, &rawData); err == nil {
+
+			if err := json.Unmarshal(msg.Data(), &rawData); err == nil {
+				var tType string
+				switch subject {
+				case "user.typing.*":
+					tType = "TYPING_START"
+
+				}
+
 				wsPayload := map[string]any{
 					"op": 1,
-					"t":  "TYPING_START",
+					"t":  tType,
 					"d":  rawData,
 				}
 				if wrappedBytes, err := json.Marshal(wsPayload); err == nil {
 					cm.hub.Broadcast(wrappedBytes)
 				}
-			} else {
-				cm.hub.Broadcast(m.Data)
 			}
+			msg.Ack()
 		})
+		<-ctx.Done()
+		iter.Stop()
 	}()
 
 	return nil
