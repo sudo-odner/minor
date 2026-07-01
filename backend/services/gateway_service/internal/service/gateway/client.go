@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/nats-io/nats.go"
 	presencev1 "github.com/sudo-odner/minor-shared/pkg/pb/presence/v1"
+	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/client/grpc/presence"
 	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/models"
 )
 
@@ -17,14 +18,14 @@ type Client struct {
 	Send           chan []byte
 	hub            *Hub
 	natsConn       *nats.Conn
-	presenceClient presencev1.PresenceServiceClient
+	presenceClient *presence.PresenceGRPCClient
 }
 
 type TypingData struct {
 	ChannelID string `json:"channel_id"`
 }
 
-func NewClient(userID string, conn *websocket.Conn,	hub *Hub, nats *nats.Conn, presence presencev1.PresenceServiceClient) *Client {
+func NewClient(userID string, conn *websocket.Conn,	hub *Hub, nats *nats.Conn, presence *presence.PresenceGRPCClient) *Client {
 	return &Client{
 		UserID:         userID,
 		Conn:           conn,
@@ -39,10 +40,12 @@ func (c *Client) ReadPump() {
 	defer func() {
 		c.hub.Unregister(c.UserID)
 
-		_, err := c.presenceClient.SetStatus(context.Background(), &presencev1.SetStatusRequest{
-			UserId: c.UserID,
-			Status: presencev1.UserStatus_USER_STATUS_OFFLINE, // Используем константу из proto
-		})
+		err := c.presenceClient.SetStatus(
+			context.Background(),
+			c.UserID,
+			presencev1.UserStatus_USER_STATUS_OFFLINE,
+		)
+		
 		if err != nil {
 			fmt.Printf("failed to set offline status: %v\n", err)
 		}
