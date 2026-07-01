@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	authv1 "github.com/sudo-odner/minor-shared/pkg/pb/auth/v1"
 	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/config"
@@ -36,4 +38,13 @@ func New(log *zap.Logger, cfg *config.Config) (*AuthGRPCClient, error) {
 		api:  authv1.NewAuthServiceClient(authConn),
 		conn: authConn,
 	}, nil
+}
+
+func (ac *AuthGRPCClient) VerifyToken(ctx context.Context, token string) (*authv1.VerifyTokenResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2 * time.Second)
+	defer cancel()
+
+	return ac.api.VerifyToken(ctx, &authv1.VerifyTokenRequest{
+		AccessToken: token,
+	})
 }
