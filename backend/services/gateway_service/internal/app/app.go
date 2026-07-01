@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -30,13 +31,15 @@ func New(log *zap.Logger, cfg *config.Config) *App {
 
 	hub := gatewayService.NewHub(log)
 	
-	nc, err := nats.New(log, cfg)
+	natsApp, err := nats.New(log, cfg)
 	if err != nil {
 		log.Error("failed to initialize nats instance")
 		panic(err)
 	}
 
-	nc.StartConsumers()
+	cm := nats.NewConsumerManager(natsApp.Conn, natsApp.JS, log, hub)
+	
+	cm.StartAllConsumers(context.Background())
 
 	authClient, err := auth.New(log, cfg)
 	if err != nil {
@@ -50,24 +53,13 @@ func New(log *zap.Logger, cfg *config.Config) *App {
 		panic(err)
 	}
 	
-	handler := gatewayHandler.NewGatewayHandler(log, hub, authClient, presenceClient, nc)
+	handler := gatewayHandler.NewGatewayHandler(log, hub, authClient, presenceClient, natsApp.Conn)
 	
 	r := chi.NewRouter()
 	r.Get("/gateway", handler.HandleWS)
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
 
-	
-
-	
-
-	
-
-	server := &http.Server{
-		Addr:    cfg.HTTP.Port,
-		Handler: r,
-	}
-
-	httpApp := httpapp.New(log, cfg)
+	httpApp := httpapp.New(log, cfg, r)
 	
 	return &App{
 		GatewayHTTPServer: httpApp,
