@@ -8,21 +8,22 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
-	authv1 "github.com/sudo-odner/minor-shared/pkg/pb/auth/v1"
 	presencev1 "github.com/sudo-odner/minor-shared/pkg/pb/presence/v1"
+	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/client/grpc/auth"
+	"github.com/sudo-odner/minor/backend/services/gateway_service/internal/client/grpc/presence"
 	service "github.com/sudo-odner/minor/backend/services/gateway_service/internal/service/gateway"
 )
 
 type GatewayHandler struct {
 	log            *zap.Logger
 	hub            *service.Hub
-	authClient     authv1.AuthServiceClient
-	presenceClient presencev1.PresenceServiceClient
+	authClient     *auth.AuthGRPCClient
+	presenceClient *presence.PresenceGRPCClient
 	natsConn       *nats.Conn
 	upgrader       websocket.Upgrader
 }
 
-func NewGatewayHandler(log *zap.Logger, hub *service.Hub, auth authv1.AuthServiceClient, presence presencev1.PresenceServiceClient, nats *nats.Conn) *GatewayHandler {
+func NewGatewayHandler(log *zap.Logger, hub *service.Hub, auth *auth.AuthGRPCClient, presence *presence.PresenceGRPCClient, nats *nats.Conn) *GatewayHandler {
 	return &GatewayHandler{
 		log:            log,
 		hub:            hub,
@@ -58,9 +59,8 @@ func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("got token", zap.String("token", token))
 
-	authResp, err := h.authClient.VerifyToken(r.Context(), &authv1.VerifyTokenRequest{
-		AccessToken: token,
-	})
+	authResp, err := h.authClient.VerifyToken(r.Context(), token)
+
 	if err != nil || !authResp.IsValid {
 		h.log.Warn("invalid token", zap.Error(err))
 		w.WriteHeader(http.StatusUnauthorized)
@@ -90,10 +90,7 @@ func (h *GatewayHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 	go client.WritePump()
 	go client.ReadPump()
 
-	_, err = h.presenceClient.SetStatus(r.Context(), &presencev1.SetStatusRequest{
-		UserId: authResp.UserId,
-		Status: presencev1.UserStatus_USER_STATUS_ONLINE,
-	})
+	err = h.presenceClient.SetStatus(r.Context(), authResp.UserId, presencev1.UserStatus_USER_STATUS_ONLINE)
 	if err != nil {
 		h.log.Error("failed to set online status", zap.Error(err))
 	}
