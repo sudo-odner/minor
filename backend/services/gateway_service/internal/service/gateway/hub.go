@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"sync"
+
 	"go.uber.org/zap"
 
 	"github.com/gorilla/websocket"
@@ -33,12 +34,10 @@ func (h *Hub) Unregister(userID string) {
 	delete(h.clients, userID)
 }
 
-// Broadcast шлет сообщение всем, кто онлайн на данном сервере
 func (h *Hub) Broadcast(data []byte) {
 	h.mu.RLock()
 	var toDelete []string
 	for _, client := range h.clients {
-		// Отправляем данные в канал WritePump этого клиента
 		select {
 		case client.Send <- data:
 		default:
@@ -66,20 +65,16 @@ func (h *Hub) CloseAll() {
 	h.log.Info("closing all active websocket connections", zap.Int("count", len(h.clients)))
 
 	for userID, client := range h.clients {
-		// 1. Отправляем стандартный пакет закрытия WebSocket (Close Frame)
-		// Это позволяет браузеру понять, что сервер уходит на покой
 		err := client.Conn.WriteMessage(
-			websocket.CloseMessage, 
+			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down"),
 		)
 		if err != nil {
 			h.log.Debug("failed to send close message", zap.String("user_id", userID), zap.Error(err))
 		}
 
-		// 2. Закрываем физическое TCP соединение
 		client.Conn.Close()
 
-		// 3. Удаляем из мапы
 		delete(h.clients, userID)
 	}
 }
