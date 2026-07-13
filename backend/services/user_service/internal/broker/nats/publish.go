@@ -6,14 +6,16 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	// "github.com/sudo-odner/minor-shared/pkg/events"
+	userEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/user"
+	"github.com/sudo-odner/minor-shared/pkg/nats/events"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/models"
 )
 
 func (b *Broker) PublishUserCreated(ctx context.Context, u *models.User) error {
 	const op = "broker.nuts.PublishUserCreated"
 
-	event := events.UserCreatedEvent{
+	event := userEvents.UserCreatedEvent{
 		UserID:   u.ID.String(),
 		Username: u.Username,
 		Email:    u.Email,
@@ -28,7 +30,7 @@ func (b *Broker) PublishUserCreated(ctx context.Context, u *models.User) error {
 func (b *Broker) PublishUserUpdated(ctx context.Context, u *models.User) error {
 	const op = "broker.nuts.PublishUserUpdated"
 
-	event := events.UserUpdatedEvent{
+	event := userEvents.UserUpdatedEvent{
 		UserID:    u.ID.String(),
 		Username:  u.Username,
 		AvatarURL: u.AvatarURL,
@@ -44,7 +46,7 @@ func (b *Broker) PublishUserUpdated(ctx context.Context, u *models.User) error {
 func (b *Broker) PublishUserDeleted(ctx context.Context, userID uuid.UUID) error {
 	const op = "broker.nuts.PublishUserDeleted"
 
-	if err := b.publish(events.SubjectUserDeleted, events.UserDeletedEvent{
+	if err := b.publish(events.SubjectUserDeleted, userEvents.UserDeletedEvent{
 		UserID: userID.String(),
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -55,7 +57,7 @@ func (b *Broker) PublishUserDeleted(ctx context.Context, userID uuid.UUID) error
 func (b *Broker) PublishRelationshipUpdated(ctx context.Context, userID, targetID uuid.UUID, status models.RelationshipStatus) error {
 	const op = "broker.nuts.PublishRelationshipUpdated"
 
-	event := events.RelationshipUpdatedEvent{
+	event := userEvents.RelationshipUpdatedEvent{
 		UserID:   userID.String(),
 		TargetID: targetID.String(),
 		Status:   int16(status),
@@ -70,7 +72,7 @@ func (b *Broker) PublishRelationshipUpdated(ctx context.Context, userID, targetI
 func (b *Broker) PublishRelationshipDeleted(ctx context.Context, userID, targetID uuid.UUID) error {
 	const op = "broker.nuts.PublishRelationshipDeleted"
 
-	event := events.RelationshipDeletedEvent{
+	event := userEvents.RelationshipDeletedEvent{
 		UserID:   userID.String(),
 		TargetID: targetID.String(),
 	}
