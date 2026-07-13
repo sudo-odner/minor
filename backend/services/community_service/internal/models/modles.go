@@ -18,9 +18,9 @@ type Server struct {
 type Member struct {
     UserID    uuid.UUID `json:"userId"`
     ServerID  uuid.UUID `json:"serverId"`
-    Nickname  *string   `json:"nickname"` // Указатель для обработки NULL
-    Username  string    `json:"username"`  // <-- ПРОВЕРЬ ЭТОТ ТЕГ
-    AvatarURL string    `json:"avatarUrl"` // <-- И ЭТОТ
+    Nickname  *string   `json:"nickname"`
+    Username  string    `json:"username"`
+    AvatarURL string    `json:"avatarUrl"`
     Status    string    `json:"status"`
     JoinedAt  time.Time `json:"joinedAt"`
     Roles     []Role    `json:"roles"`
