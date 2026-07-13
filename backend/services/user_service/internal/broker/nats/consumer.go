@@ -1,5 +1,4 @@
-// internal/broker/nuts/consume.go
-package nuts
+package nats
 
 import (
 	"context"
