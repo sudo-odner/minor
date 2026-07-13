@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	messageEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/message"
+	authEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/auth"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
 )
 
@@ -33,7 +34,7 @@ func NewNotifier(presenceClient *presence.Client, userClient UserClient, emailPr
 	}
 }
 
-func (n *Notifier) HandleRegistration(ctx context.Context, event events.UserRegisteredEvent) error {
+func (n *Notifier) HandleRegistration(ctx context.Context, event authEvents.UserRegisteredEvent) error {
 	title := "Добро пожаловать в Minor!"
 	body := fmt.Sprintf("Здравствуйте, %s!\n\nВы успешно зарегистрировались. Ваш ID: %s", 
 		event.Email, event.UserID)
@@ -42,7 +43,7 @@ func (n *Notifier) HandleRegistration(ctx context.Context, event events.UserRegi
 }
 
 // HandleLogin отправляет уведомление о входе
-func (n *Notifier) HandleLogin(ctx context.Context, event events.UserLoginSuccessEvent) error {
+func (n *Notifier) HandleLogin(ctx context.Context, event authEvents.UserLoginSuccessEvent) error {
 	// Сначала узнаем email и имя через gRPC, так как в событии Login их обычно нет (только ID)
 	email, _ := n.userClient.GetUserEmail(ctx, event.UserID)
 	username, _ := n.userClient.GetUserName(ctx, event.UserID)
@@ -54,7 +55,7 @@ func (n *Notifier) HandleLogin(ctx context.Context, event events.UserLoginSucces
 	return n.emailProvider.Send(ctx, email, title, body)
 }
 
-func (n *Notifier) HandleChatMessage(ctx context.Context, event events.MessageCreatedEvent) error {
+func (n *Notifier) HandleChatMessage(ctx context.Context, event messageEvents.MessageCreatedEvent) error {
 	// 1. Проверяем статус (Online/Offline)
 	// Используем AuthorID или RecipientID из твоего события
 	isOnline, err := n.presenceClient.IsUserOnline(ctx, event.AuthorID.String())

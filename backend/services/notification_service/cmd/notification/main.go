@@ -10,7 +10,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/sudo-odner/minor/backend/services/notification_service/internal/broker"
+	natsConsumer "github.com/sudo-odner/minor/backend/services/notification_service/internal/broker/nats"
 	presenceClient "github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
 	userClient "github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/config"
@@ -62,7 +62,7 @@ func main() {
 	notifierSvc := notifyService.NewNotifier(presenceClient, userClient, emailProvider)
 
 	// Воркер (Консьюмер NATS)
-	notificationConsumer := broker.NewNotificationConsumer(log, js, notifierSvc)
+	notificationConsumer := natsConsumer.NewNotificationConsumer(log, js, notifierSvc)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

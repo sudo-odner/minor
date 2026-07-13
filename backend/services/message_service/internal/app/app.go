@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nuts"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nats"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/user"
@@ -47,7 +47,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	resourseToClose = append(resourseToClose, repo.Close)
 
 	// Init brocker Nuts
-	brocker, err := nuts.New(cfg.Nuts)
+	brocker, err := nats.New(cfg.Nuts)
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("%s: brocker(Nuts) not init: %w", op, err)

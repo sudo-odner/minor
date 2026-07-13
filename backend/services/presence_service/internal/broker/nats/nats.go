@@ -1,4 +1,4 @@
-package nuts
+package nats
 
 import (
 	"context"

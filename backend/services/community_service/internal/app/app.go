@@ -6,7 +6,7 @@ import (
 
 	grpcServ "github.com/sudo-odner/minor/backend/services/community_service/internal/app/grpc"
 	httpServ "github.com/sudo-odner/minor/backend/services/community_service/internal/app/http"
-	"github.com/sudo-odner/minor/backend/services/community_service/internal/broker/nuts"
+	"github.com/sudo-odner/minor/backend/services/community_service/internal/broker/nats"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/repository/postgres"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/server/grpc"
@@ -26,7 +26,7 @@ type App struct {
 	cfg        *config.Config
 	log        *zap.Logger
 	reposipory *postgres.Repository
-	broker     *nuts.Broker
+	broker     *nats.Broker
 	httpServer *httpServ.Server
 	grpcServer *grpcServ.Server
 }
@@ -42,7 +42,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// 2. Init broker Nuts
-	broker, err := nuts.New(&cfg.Nuts)
+	broker, err := nats.New(&cfg.Nuts)
 	if err != nil {
 		_ = repo.Close(ctx)
 		return nil, fmt.Errorf("%s: %w", op, err)

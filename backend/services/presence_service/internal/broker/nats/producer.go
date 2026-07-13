@@ -1,18 +1,19 @@
-package nuts
+package nats
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	"github.com/sudo-odner/minor-shared/pkg/nats/events"
+	presenceEvents	"github.com/sudo-odner/minor-shared/pkg/nats/events/presence"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/models"
 )
 
 func (b *Broker) PublishPresenceStatusUpdated(ctx context.Context, p *models.Presence) error {
 	const op = "broker.nuts.PublishPresenceStatusUpdated"
 
-	event := events.PresenceStatusUpdatedEvent{
+	event := presenceEvents.PresenceStatusUpdatedEvent{
 		UserID:       p.UserID,
 		Status:       int32(p.Status),
 		CustomStatus: p.CustomStatus,
