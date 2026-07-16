@@ -6,7 +6,7 @@ import (
 
 	grpcServ "github.com/sudo-odner/minor/backend/services/user_service/internal/app/grpc"
 	httpServer "github.com/sudo-odner/minor/backend/services/user_service/internal/app/http"
-	"github.com/sudo-odner/minor/backend/services/user_service/internal/broker/nuts"
+	"github.com/sudo-odner/minor/backend/services/user_service/internal/broker/nats"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/user_service/internal/repository/postgres"
 	grpcRouter "github.com/sudo-odner/minor/backend/services/user_service/internal/server/grpc"
@@ -21,8 +21,8 @@ import (
 type App struct {
 	log            *zap.Logger
 	repository     *postgres.Repository
-	broker         *nuts.Broker
-	consumer       *nuts.UserConsumer
+	broker         *nats.Broker
+	consumer       *nats.UserConsumer
 	httpServer     *httpServer.Server
 	grpcServer     *grpcServ.Server
 	presenceClient *presenceClient.Client
@@ -41,7 +41,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// 2. Initialize Nats Broker
-	broker, err := nuts.New(&cfg.Nuts, log)
+	broker, err := nats.New(&cfg.Nuts, log)
 	if err != nil {
 		_ = repo.Close(ctx)
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -65,7 +65,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	fHandler := handler.NewFriendHandler(log, frnService)
 
 	// consumer
-	userConsumer := nuts.NewUserConsumer(log, broker.JS, usrService)
+	userConsumer := nats.NewUserConsumer(log, broker.JS, usrService)
 
 	// 5. Initialize HTTP Router
 	router := httpRouter.NewRouter(log, httpRouter.Handlers{

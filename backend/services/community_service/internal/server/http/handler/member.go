@@ -80,7 +80,6 @@ func (h *MemberHandler) AddMember() http.HandlerFunc {
 			return
 		}
 
-		// 2. КРИТИЧНО: Берем User ID из заголовка, который проставил Traefik/Auth
 		userIDStr := r.Header.Get("X-User-ID")
 		if userIDStr == "" {
 			log.Error("X-User-ID header is missing")
@@ -95,30 +94,23 @@ func (h *MemberHandler) AddMember() http.HandlerFunc {
 			return
 		}
 
-		// 3. Пытаемся декодировать тело (необязательно)
 		var req AddMemberRequest
 		err = json.NewDecoder(r.Body).Decode(&req)
-		// Если тело пустое (EOF), это НЕ ошибка, просто идем дальше
 		if err != nil && err.Error() != "EOF" {
 			log.Warn("failed to decode body", zap.Error(err))
 			RenderError(w, r, http.StatusBadRequest, CodeInternalServerError, "invalid_request_body")
 			return
 		}
 
-		// 4. Вызываем сервис.
-		// Если в теле запроса передан конкретный user_id, используем его (для добавления друзей).
-		// Иначе берем userID из заголовка (когда пользователь сам вступает на сервер).
 		targetUserID := userID
 		if req.UserID != uuid.Nil {
 			targetUserID = req.UserID
 		}
 
-		// Если в req.Nickname пусто, сервис использует username по умолчанию
 		_, err = h.memberService.AddMember(r.Context(), serverID, targetUserID, req.Nickname)
 		if err != nil {
 			if strings.Contains(err.Error(), "already exists") {
 				h.log.Warn("user already a member", zap.String("user_id", targetUserID.String()))
-				// Вместо 500 отдаем 409 (Конфликт) или 400
 				RenderError(w, r, http.StatusConflict, "already_member", "User is already a member of this server")
 				return
 			}

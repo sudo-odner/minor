@@ -1,11 +1,11 @@
-package nuts
+package nats
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/nats-io/nats.go"
-	"github.com/sudo-odner/minor/backend/services/presence_service/internal/config"
+	"github.com/sudo-odner/minor/backend/services/community_service/internal/config"
 )
 
 type Broker struct {

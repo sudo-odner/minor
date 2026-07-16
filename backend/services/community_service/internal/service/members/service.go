@@ -2,6 +2,7 @@ package members
 
 import (
 	"context"
+	// "encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ type Repository interface {
 }
 
 type UserClient interface {
-    GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
+	GetBatchProfiles(ctx context.Context, userIDs []string) (map[string]*userv1.UserProfile, error)
 }
 
 type PresenceClient interface {
@@ -37,6 +38,10 @@ type ServerService interface {
 	GetServer(ctx context.Context, serverID uuid.UUID) (*models.Server, error)
 }
 
+type Broker interface {
+	PublishMemberAdded(ctx context.Context, )
+}
+
 type Service struct {
 	log            *zap.Logger
 	repo           Repository
@@ -44,6 +49,7 @@ type Service struct {
 	presenceClient PresenceClient
 	sPermission    PermissionService
 	sServer        ServerService
+	broker         Broker
 }
 
 func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServer ServerService, userClient UserClient, presenceClient PresenceClient) *Service {
@@ -60,12 +66,34 @@ func New(log *zap.Logger, repo Repository, sPermission PermissionService, sServe
 func (s *Service) AddMember(ctx context.Context, serverID, userID uuid.UUID, nickname string) (*models.Member, error) {
 	const op = "service.member.AddMember"
 
-	// Только у когдо есть модерация
+	// log := s.log.With(
+	// 	zap.String("op", op),
+	// )
 
 	m, err := s.repo.AddMember(ctx, serverID, userID, nickname)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	// server, err := s.sServer.GetServer(ctx, serverID)
+	// if err != nil {
+	// 	log.Warn("failed to get server info")
+
+	// 	return nil, fmt.Errorf("%s: %w", op)
+	// }
+
+	// event := map[string]any{
+	// 	"user_id": userID.String(),
+	// 	"server": map[string]any{
+	// 		"id":       server.ID.String(),
+	// 		"name":     server.Name,
+	// 		"icon_url": server.AvatarURL,
+	// 	},
+	// }
+
+	// data, _ := json.Marshal(event)
+
+	// _, err = s.broker.AddMember(ctx, data)
 
 	return m, nil
 }
@@ -78,7 +106,6 @@ func (s *Service) GetServerMember(ctx context.Context, serverID, userID uuid.UUI
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Обогащаем данными профиля
 	profiles, err := s.userClient.GetBatchProfiles(ctx, []string{userID.String()})
 	if err == nil {
 		if profile, ok := profiles[userID.String()]; ok {
@@ -114,10 +141,12 @@ func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]m
 	)
 
 	dbMembers, err := s.repo.GetServerMembers(ctx, serverID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	fmt.Println("members:", dbMembers)
-    
+
 	// 2. Собираем все UserID в один срез
 	userIDs := make([]string, len(dbMembers))
 	for i, m := range dbMembers {
@@ -144,11 +173,11 @@ func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]m
 	for i := range dbMembers {
 		uid := dbMembers[i].UserID.String()
 		if profile, ok := profiles[uid]; ok {
-			dbMembers[i].Username = profile.Username   
-			dbMembers[i].AvatarURL = profile.AvatarUrl 
+			dbMembers[i].Username = profile.Username
+			dbMembers[i].AvatarURL = profile.AvatarUrl
 		} else {
 			// Если профиль не найден в User Service, запишем хоть что-то для отладки
-			dbMembers[i].Username = "User-" + uid[:4] 
+			dbMembers[i].Username = "User-" + uid[:4]
 		}
 
 		// Обогащаем статусом (по умолчанию USER_STATUS_OFFLINE, если нет в кэше)
@@ -162,12 +191,7 @@ func (s *Service) GetServerMembers(ctx context.Context, serverID uuid.UUID) ([]m
 	return dbMembers, nil
 }
 
-func (s *Service) RemoveMember(
-	ctx context.Context,
-	actorID uuid.UUID,
-	serverID uuid.UUID,
-	targetUserID uuid.UUID,
-) error {
+func (s *Service) RemoveMember(ctx context.Context, actorID uuid.UUID, serverID uuid.UUID, targetUserID uuid.UUID) error {
 	const op = "service.member.RemoveMember"
 
 	server, err := s.sServer.GetServer(ctx, serverID)

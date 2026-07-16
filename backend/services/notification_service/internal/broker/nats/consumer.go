@@ -1,4 +1,4 @@
-package broker
+package nats
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 	"fmt"
 
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	messageEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/message"
+	authEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/auth"
 	service "github.com/sudo-odner/minor/backend/services/notification_service/internal/service/notifier"
 	"go.uber.org/zap"
 )
@@ -36,7 +37,7 @@ func (c *NotificationConsumer) StartChatConsumer(ctx context.Context) error {
 	}
 
 	cc, err := cons.Consume(func(msg jetstream.Msg) {
-		var event events.MessageCreatedEvent
+		var event messageEvents.MessageCreatedEvent
 		if err := json.Unmarshal(msg.Data(), &event); err != nil {
 			c.log.Error("failed to unmarshal chat event", zap.Error(err))
 			msg.Term()
@@ -77,17 +78,17 @@ func (c *NotificationConsumer) StartAuthConsumer(ctx context.Context) error {
 
 		switch subject {
 		case "auth.user.registered":
-			var event events.UserRegisteredEvent
+			var event authEvents.UserRegisteredEvent
 			if err = json.Unmarshal(msg.Data(), &event); err == nil {
 				err = c.notifier.HandleRegistration(ctx, event)
 			}
 		case "auth.user.login_success":
-			var event events.UserLoginSuccessEvent
+			var event authEvents.UserLoginSuccessEvent
 			if err = json.Unmarshal(msg.Data(), &event); err == nil {
 				err = c.notifier.HandleLogin(ctx, event)
 			}
 		case "auth.password.reset_requested":
-			var event events.PasswordResetRequestedEvent
+			var event authEvents.PasswordResetRequestedEvent
 			if err = json.Unmarshal(msg.Data(), &event); err == nil {
 				err = c.notifier.HandlePasswordReset(ctx, event)
 			}

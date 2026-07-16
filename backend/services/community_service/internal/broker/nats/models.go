@@ -1,12 +1,12 @@
-package nuts
+package nats
 
 import (
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	communityEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/community"
 	"github.com/sudo-odner/minor/backend/services/community_service/internal/models"
 )
 
-func toChannelDTO(ch *models.Channel) events.ChannelDTO {
-	return events.ChannelDTO{
+func toChannelDTO(ch *models.Channel) communityEvents.ChannelDTO {
+	return communityEvents.ChannelDTO{
 		ID:        ch.ID,
 		ServerID:  ch.ServerID,
 		Name:      ch.Name,
@@ -17,8 +17,8 @@ func toChannelDTO(ch *models.Channel) events.ChannelDTO {
 	}
 }
 
-func toShortChannelDTO(ch models.Channel) events.ShortChannelDTO {
-	return events.ShortChannelDTO{
+func toShortChannelDTO(ch models.Channel) communityEvents.ShortChannelDTO {
+	return communityEvents.ShortChannelDTO{
 		ID:       ch.ID,
 		ParentID: ch.ParentID,
 		Position: ch.Position,

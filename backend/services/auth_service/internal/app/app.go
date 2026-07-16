@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	natsapp "github.com/sudo-odner/minor/backend/services/auth_service/internal/broker/nats"
-	natsProducer "github.com/sudo-odner/minor/backend/services/auth_service/internal/broker/nats/producer"
+	// natsProducer "github.com/sudo-odner/minor/backend/services/auth_service/internal/broker/nats/producer"
 	// natsConsumer "github.com/sudo-odner/minor/backend/services/auth_service/internal/broker/nats/consumer"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/postgres"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/repository/redis"
@@ -52,7 +52,7 @@ func New(log *zap.Logger, cfg *config.Config) *App {
 
 	log.Info("starting authentication service")
 
-	publisher := natsProducer.NewAuthPublisher(natsApp.JS)
+	publisher := natsapp.NewAuthPublisher(natsApp.JS)
 	
 	authService := authService.New(pgConn, redisConn, redisConn, publisher, log, cfg.Auth)
 	authHTTPHandler := authHTTPHandler.NewHTTPHandler(authService, log)

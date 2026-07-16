@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	grpcServ "github.com/sudo-odner/minor/backend/services/presence_service/internal/app/grpc"
-	"github.com/sudo-odner/minor/backend/services/presence_service/internal/broker/nuts"
+	"github.com/sudo-odner/minor/backend/services/presence_service/internal/broker/nats"
 
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/cache/redis"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/config"
@@ -18,7 +18,7 @@ type App struct {
 	cfg        *config.Config
 	log        *zap.Logger
 	cache      *redis.Cache
-	broker     *nuts.Broker
+	broker     *nats.Broker
 	grpcServer *grpcServ.Server
 }
 
@@ -33,7 +33,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// 2. Init broker Nuts
-	broker, err := nuts.New(&cfg.Nuts)
+	broker, err := nats.New(&cfg.Nuts)
 	if err != nil {
 		_ = cache.Stop()
 		return nil, fmt.Errorf("%s: %w", op, err)

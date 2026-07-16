@@ -1,4 +1,4 @@
-package nuts
+package nats
 
 import (
 	"context"
@@ -6,14 +6,15 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	"github.com/sudo-odner/minor-shared/pkg/nats/events"
+	messageEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/message"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
 func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) error {
 	const op = "broker.nuts.PublishMessageCreated"
 
-	event := events.MessageCreatedEvent{
+	event := messageEvents.MessageCreatedEvent{
 		MessageID: msg.MessageID,
 		ChannelID: msg.ChannelID,
 		AuthorID:  msg.UserID,
@@ -38,7 +39,7 @@ func (b *Broker) PublishMessageCreated(ctx context.Context, msg models.Message) 
 func (b *Broker) PublishMessageDeleted(ctx context.Context, channelID, messageID uuid.UUID) error {
 	const op = "broker.nuts.PublishMessageDeleted"
 
-	event := events.MessageDeletedEvent{
+	event := messageEvents.MessageDeletedEvent{
 		MessageID: messageID,
 		ChannelID: channelID,
 	}

@@ -8,7 +8,8 @@ import (
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/services/auth_service/internal/models"
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	// authEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/auth"
+	authEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/auth"
 )
 
 type AuthPublisher struct {
@@ -20,7 +21,7 @@ func NewAuthPublisher(js jetstream.JetStream) *AuthPublisher {
 }
 
 func (p *AuthPublisher) PublishLoginSuccess(ctx context.Context, userID, ip, userAgent string) error {
-	event := events.UserLoginSuccessEvent{
+	event := authEvents.UserLoginSuccessEvent{
 		UserID:    userID,
 		Timestamp: time.Now(),
 		IP:        ip,
@@ -43,7 +44,7 @@ func (p *AuthPublisher) PublishLoginSuccess(ctx context.Context, userID, ip, use
 func (p *AuthPublisher) PublishUserRegistered(ctx context.Context, user *models.User) error {
 	// 1. Формируем событие. 
 	// Добавляем Username, так как он критически важен для User Service
-	event := events.UserRegisteredEvent{
+	event := authEvents.UserRegisteredEvent{
 		UserID:    user.ID.String(),
 		Username:  user.Username, // Добавь это поле в структуру события
 		Email:     user.Email,
@@ -68,7 +69,7 @@ func (p *AuthPublisher) PublishUserRegistered(ctx context.Context, user *models.
 }
 
 func (p *AuthPublisher) PublishUserLoggedOut(ctx context.Context, userID, tokenID string) error {
-	event := events.UserLoggedOutEvent{
+	event := authEvents.UserLoggedOutEvent{
 		UserID:    userID,
 		TokenID:   tokenID,
 		Timestamp: time.Now(),
@@ -89,7 +90,7 @@ func (p *AuthPublisher) PublishUserLoggedOut(ctx context.Context, userID, tokenI
 
 func (p *AuthPublisher) PublishPasswordResetRequested(ctx context.Context, email, code, username string) error {
 	// 1. Формируем объект события
-	event := events.PasswordResetRequestedEvent{
+	event := authEvents.PasswordResetRequestedEvent{
 		Email:     email,
 		Code:      code,
 		Username:  username,
