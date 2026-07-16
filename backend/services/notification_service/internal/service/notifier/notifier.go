@@ -100,7 +100,7 @@ func (n *Notifier) HandleChatMessage(ctx context.Context, event messageEvents.Me
 // 	return nil
 // }
 
-func (n *Notifier) HandlePasswordReset(ctx context.Context, event events.PasswordResetRequestedEvent) error {
+func (n *Notifier) HandlePasswordReset(ctx context.Context, event authEvents.PasswordResetRequestedEvent) error {
     // Формируем ссылку на фронтенд (localhost для разработки)
     resetLink := fmt.Sprintf("http://localhost/reset-password?token=%s", event.Code)
 
