@@ -18,9 +18,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	dbHosts := os.Getenv("CASSANDRA_HOSTS")
-	if dbHosts == "" {
-		dbHosts = "127.0.0.1"
+	dbHosts, exists := os.LookupEnv("CASSANDRA_HOSTS")
+	if !exists {
+		log.Printf("[%s] Migrator stoped with error: CASSANDRA_HOSTS not set", op)
+		return
 	}
 	hosts := strings.Split(dbHosts, ",")
 
