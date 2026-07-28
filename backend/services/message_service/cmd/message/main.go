@@ -19,11 +19,12 @@ func main() {
 
 	application, err := app.New(cfg, logger)
 	if err != nil {
-		logger.Error("falied initilizate application", zap.Error(err))
+		logger.Error("ERROR: falied initilizate application", zap.Error(err))
 		return
 	}
 
 	if err := application.Run(); err != nil {
-		logger.Error("falied run application", zap.Error(err))
+		logger.Error("ERROR: falied run application", zap.Error(err))
+		return
 	}
 }

@@ -19,74 +19,72 @@ import (
 )
 
 type App struct {
-	log             *zap.Logger
-	httpServ        *httpServ.HttpServ
-	resourseToClose []func() error
+	log      *zap.Logger
+	httpServ *httpServ.HttpServ
+
+	broker          *nats.Broker
+	clientCommunity *community.Client
+	clientUser      *user.Client
+
+	repo  *cassandra.Repository
+	cache *redis.Cache
 }
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	const op = "app.New"
 	ctx := context.Background()
+	a := &App{log: log}
 
-	// Массив для закрытия всех ресурсов (Resource Collector)
-	var resourseToClose []func() error
-	rollback := func() {
-		for i := len(resourseToClose) - 1; i >= 0; i-- {
-			if err := resourseToClose[i](); err != nil {
-				log.Warn("falied close resource", zap.Error(err))
-			}
+	var success bool
+	defer func() {
+		if !success {
+			log.Warn("startup falild, rolling back initialized resourse")
+			_ = a.Stop(ctx)
 		}
-	}
+	}()
 
-	// Init repository Cassandra
-	repo, err := cassandra.New(&cfg.Cassandra)
+	// Init clients
+	// Community gRPC client
+	clientCommunity, err := community.New(cfg.GRPC.Client.TargetCommunity)
 	if err != nil {
-		return nil, fmt.Errorf("%s: repository(Cassandra) not init: %w", op, err)
+		return nil, fmt.Errorf("%s: community client (gRPC) init failed: %w", op, err)
 	}
-	log.Debug("Repository(Cassandra) successfully starting")
-	resourseToClose = append(resourseToClose, repo.Close)
+	a.clientCommunity = clientCommunity
+	// Cser gRPC client
+	clientUser, err := user.New(cfg.GRPC.Client.TargetUser)
+	if err != nil {
+		return nil, fmt.Errorf("%s: user client (gRPC) init failed: %w", op, err)
+	}
+	a.clientUser = clientUser
 
-	// Init brocker Nuts
-	brocker, err := nats.New(cfg.Nuts)
+	// Init Broker (Nuts)
+	broker, err := nats.New(cfg.Nuts)
 	if err != nil {
-		rollback()
-		return nil, fmt.Errorf("%s: brocker(Nuts) not init: %w", op, err)
+		return nil, fmt.Errorf("%s: broker (Nuts) init failed: %w", op, err)
 	}
-	log.Debug("Brocker(Nuts) successfully starting")
-	resourseToClose = append(resourseToClose, brocker.Stop)
+	a.broker = broker
 
 	// Init cache Redis
 	cache, err := redis.New(ctx, cfg.Redis)
 	if err != nil {
-		rollback()
-		return nil, fmt.Errorf("%s: cache(Redis) not init: %w", op, err)
+		return nil, fmt.Errorf("%s: cache (Redis) init failed: %w", op, err)
 	}
-	log.Debug("Redis successfully starting")
-	resourseToClose = append(resourseToClose, cache.Stop)
+	a.cache = cache
 
-	// Init Community client gRPC
-	communityClient, err := community.New(cfg.GRPC.Client.TargetCommunity)
+	// Init repository (Cassandra)
+	repo, err := cassandra.New(&cfg.Cassandra)
 	if err != nil {
-		rollback()
-		return nil, fmt.Errorf("%s: Community client(gRPC) not init: %w", op, err)
+		return nil, fmt.Errorf("%s: repository (Cassandra) init failed: %w", op, err)
 	}
-	resourseToClose = append(resourseToClose, communityClient.Close)
+	a.repo = repo
 
-	// Init User client gRPC
-	userClient, err := user.New(cfg.GRPC.Client.TargetUser)
-	if err != nil {
-		rollback()
-		return nil, fmt.Errorf("%s: User client(gRPC) not init: %w", op, err)
-	}
-	resourseToClose = append(resourseToClose, userClient.Close)
-
-	// Init services
-	service := messagesService.New(log, repo, brocker, cache, communityClient, userClient)
-
-	// Init handler
-	handler := messagesHandler.New(log, service)
+	// Init service, handler & router
+	service := messagesService.New(log, a.repo, a.broker, a.cache, a.clientCommunity, a.clientUser)
+	messageHandler := messagesHandler.New(log, service)
 
 	// TODO: add logger middlaware
+	// TODO: move from App file
+
 	router := chi.NewRouter()
 	router.Route("/api/v1/messages", func(r chi.Router) {
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -95,27 +93,22 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		})
 
 		r.Route("/{channel_id}", func(r chi.Router) {
-			r.Post("/", handler.SendMessage())
-			r.Get("/", handler.GetMessages())
-			r.Get("/{message_id}", handler.GetMessage())
-			r.Delete("/{message_id}", handler.DeleteMessage())
+			r.Post("/", messageHandler.SendMessage())
+			r.Get("/", messageHandler.GetMessages())
+			r.Get("/{message_id}", messageHandler.GetMessage())
+			r.Delete("/{message_id}", messageHandler.DeleteMessage())
 		})
 	})
 
-	return &App{
-		log:             log,
-		resourseToClose: resourseToClose,
-		httpServ:        httpServ.New(&cfg.HttpServer, router),
-	}, nil
+	a.httpServ = httpServ.New(&cfg.HttpServer, router)
+	success = true
+	return a, nil
 }
 
 func (a *App) Run() error {
 	const op = "app.Run"
-	log := a.log.With(zap.String("op", op))
+	a.log.Info("starting http server", zap.String("address", a.httpServ.Address()))
 
-	log.Info("starting application")
-
-	log.Info("starting http server", zap.String("address", a.httpServ.Address()))
 	if err := a.httpServ.Run(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -123,22 +116,48 @@ func (a *App) Run() error {
 	return nil
 }
 
-// TODO: Safe stop(repo, grpc and etc)
 func (a *App) Stop(ctx context.Context) error {
 	const op = "app.Stop"
 	log := a.log.With(zap.String("op", op))
 	log.Info("stopping application")
 
-	// Останавливаем HTTP-server
-	if err := a.httpServ.Stop(ctx); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+	// Close server (http)
+	if a.httpServ != nil {
+		if err := a.httpServ.Stop(ctx); err != nil {
+			log.Warn("failed to stop http server", zap.Error(err))
+		}
 	}
-	log.Info("http server stopped")
 
-	// Останавливаем все сервисы
-	for i := len(a.resourseToClose) - 1; i >= 0; i-- {
-		if err := a.resourseToClose[i](); err != nil {
-			log.Warn("falied close resource", zap.Error(err))
+	// Close clients (gRPC)
+	if a.clientCommunity != nil {
+		if err := a.clientCommunity.Close(); err != nil {
+			log.Warn("failed to close community gRPC client", zap.Error(err))
+		}
+	}
+	if a.clientUser != nil {
+		if err := a.clientUser.Close(); err != nil {
+			log.Warn("failed to close user gRPC client", zap.Error(err))
+		}
+	}
+
+	// Close broker
+	if a.broker != nil {
+		if err := a.broker.Stop(); err != nil {
+			log.Warn("failed to stop broker", zap.Error(err))
+		}
+	}
+
+	// Close cache
+	if a.cache != nil {
+		if err := a.cache.Stop(); err != nil {
+			log.Warn("failed to stop cache", zap.Error(err))
+		}
+	}
+
+	// Close repository
+	if a.repo != nil {
+		if err := a.repo.Close(); err != nil {
+			log.Warn("failed to close repository", zap.Error(err))
 		}
 	}
 
