@@ -7,27 +7,25 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/migrator"
 )
 
 func main() {
-	const op = "cmd.migrator"
-
-	log.Printf("[%s] Starting migrator...", op)
+	log.Printf("INFO: Starting migrator...")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	dbHosts, exists := os.LookupEnv("CASSANDRA_HOSTS")
 	if !exists {
-		log.Printf("[%s] Migrator stoped with error: CASSANDRA_HOSTS not set", op)
-		return
+		log.Printf("ERROR: Migrator stoped with error: CASSANDRA_HOSTS not set")
 	}
 	hosts := strings.Split(dbHosts, ",")
 
-	if err := migrator.RunMigrations(ctx, hosts, "chat"); err != nil {
-		log.Printf("[%s] Migrator stoped with error: %v", op, err)
+	if err := migrator.RunMigrations(ctx, hosts, "message", 5, 5*time.Second); err != nil {
+		log.Printf("ERROR: Migrator stoped with error: %v", err)
 		return
 	}
-	log.Printf("[%s] Migrator successful created", op)
+	log.Printf("INFO: Migrator successful created")
 }
