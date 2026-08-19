@@ -81,6 +81,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 	a.nats = nc
 	brokerProducer := appNats.NewProducer(nc, js)
+	brokerConsumer := appNats.NewConsumer(nc, js)
 
 	// Init cache Redis
 	cache, err := redis.New(ctx, cfg.Redis)
