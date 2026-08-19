@@ -9,12 +9,12 @@ import (
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nats"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/community"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/client/grpc/user"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
 	messagesHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/server/http/handler/messages"
 	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/relationship"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -26,8 +26,7 @@ type App struct {
 
 	broker           *nats.Broker
 	connRelationship *grpc.ClientConn
-	clientCommunity  *community.Client
-	clientUser       *user.Client
+	connCommunity    *grpc.ClientConn
 
 	repo  *cassandra.Repository
 	cache *redis.Cache
@@ -48,11 +47,12 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 	// Init clients
 	// Community gRPC client
-	clientCommunity, err := community.New(cfg.GRPC.Client.TargetCommunity)
+	grpcConnCommunity, err := grpc.NewClient(cfg.GRPC.Client.TargetCommunity, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fmt.Errorf("%s: community client (gRPC) init failed: %w", op, err)
+		return nil, fmt.Errorf("%s: falied connect (gRPC) to community service: %w", op, err)
 	}
-	a.clientCommunity = clientCommunity
+	a.connCommunity = grpcConnCommunity
+	clientCommunity := community.New(communityv1.NewCommunityServiceClient(grpcConnCommunity))
 
 	// Relationship gRPC client
 	grpcConnRelationship, err := grpc.NewClient(cfg.GRPC.Client.TargetRelationship, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -60,7 +60,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: falied connect (gRPC) to relationship service: %w", op, err)
 	}
 	a.connRelationship = grpcConnRelationship
-	// clientRelationship := relationship.New(relationshipv1.NewRelationshipServiceClient(grpcConnRelationship))
+	clientRelationship := relationship.New(relationshipv1.NewRelationshipServiceClient(grpcConnRelationship))
 
 	// Init Broker (Nuts)
 	broker, err := nats.New(cfg.Nuts)
