@@ -66,7 +66,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 	// Init Broker (Nuts)
 	nc, err := nats.Connect(
-		cfg.Nuts.Url,
+		cfg.Nuts.URL,
 		nats.Name("message_service"),
 		nats.Timeout(cfg.Nuts.Timeout),
 		nats.MaxReconnects(cfg.Nuts.MaxReconnects),
