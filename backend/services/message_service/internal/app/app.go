@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/broker/nats"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
@@ -15,6 +16,7 @@ import (
 	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/relationship"
+	appNats "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -24,9 +26,9 @@ type App struct {
 	log      *zap.Logger
 	httpServ *httpServ.HttpServ
 
-	broker           *nats.Broker
 	connRelationship *grpc.ClientConn
 	connCommunity    *grpc.ClientConn
+	nats             *nats.Conn
 
 	repo  *cassandra.Repository
 	cache *redis.Cache
@@ -63,11 +65,22 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	clientRelationship := relationship.New(relationshipv1.NewRelationshipServiceClient(grpcConnRelationship))
 
 	// Init Broker (Nuts)
-	broker, err := nats.New(cfg.Nuts)
+	nc, err := nats.Connect(
+		cfg.Nuts.Url,
+		nats.Name("message_service"),
+		nats.Timeout(cfg.Nuts.Timeout),
+		nats.MaxReconnects(cfg.Nuts.MaxReconnects),
+		nats.ReconnectWait(cfg.Nuts.ReconnectWait),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("%s: broker (Nuts) init failed: %w", op, err)
+		return nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)
 	}
-	a.broker = broker
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return nil, fmt.Errorf("s: failed to initilize JetStream: %w", op, err)
+	}
+	a.nats = nc
+	brokerProducer := appNats.NewProducer(nc, js)
 
 	// Init cache Redis
 	cache, err := redis.New(ctx, cfg.Redis)
