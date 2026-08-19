@@ -66,11 +66,11 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 	// Init Broker (Nuts)
 	nc, err := nats.Connect(
-		cfg.Nuts.URL,
+		cfg.Nats.URL,
 		nats.Name("message_service"),
-		nats.Timeout(cfg.Nuts.Timeout),
-		nats.MaxReconnects(cfg.Nuts.MaxReconnects),
-		nats.ReconnectWait(cfg.Nuts.ReconnectWait),
+		nats.Timeout(cfg.Nats.Timeout),
+		nats.MaxReconnects(cfg.Nats.MaxReconnects),
+		nats.ReconnectWait(cfg.Nats.ReconnectWait),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)

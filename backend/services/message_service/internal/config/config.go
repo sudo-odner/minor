@@ -12,7 +12,7 @@ type Config struct {
 	Env        string `env:"ENV" env-required:"true"`
 	HttpServer HttpServer
 	Cassandra  Cassandra
-	Nuts       Nuts
+	Nats       Nats
 	Redis      Redis
 	GRPC       GRPC
 }
@@ -46,9 +46,9 @@ type Redis struct {
 	WriteTimeout time.Duration `env:"REDIS_WRITE_TIMEOUT" env-default:"3s"`
 }
 
-type Nuts struct {
+type Nats struct {
 	// REQUIRED
-	Url string `env:"NATS_URL" env-required:"true"`
+	URL string `env:"NATS_URL" env-required:"true"`
 	// OPTIONAL
 	Timeout       time.Duration `env:"NATS_TIMEOUT" env-default:"10s"`
 	MaxReconnects int           `env:"NATS_MAX_RECONNECTS" env-default:"5"`
