@@ -9,17 +9,17 @@ import (
 	relationshipv1 "github.com/sudo-odner/minor-shared/pkg/pb/relationship/v1"
 )
 
-type RelationshipClient struct {
+type Client struct {
 	client relationshipv1.RelationshipServiceClient
 }
 
-func New(client relationshipv1.RelationshipServiceClient) *RelationshipClient {
-	return &RelationshipClient{
+func New(client relationshipv1.RelationshipServiceClient) *Client {
+	return &Client{
 		client: client,
 	}
 }
 
-func (c *RelationshipClient) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
+func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
 	resp, err := c.client.FetchPermission(ctx, &relationshipv1.FetchPermissionRequest{
 		UserId:    userID.String(),
 		ChannelId: channelID.String(),

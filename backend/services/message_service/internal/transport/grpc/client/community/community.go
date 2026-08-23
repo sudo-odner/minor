@@ -9,17 +9,17 @@ import (
 	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
 )
 
-type CommunityClient struct {
+type Client struct {
 	client communityv1.CommunityServiceClient
 }
 
-func New(client communityv1.CommunityServiceClient) *CommunityClient {
-	return &CommunityClient{
+func New(client communityv1.CommunityServiceClient) *Client {
+	return &Client{
 		client: client,
 	}
 }
 
-func (c *CommunityClient) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
+func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
 	resp, err := c.client.FetchPermission(ctx, &communityv1.FetchPermissionRequest{
 		UserId:    userID.String(),
 		ChannelId: channelID.String(),

@@ -10,6 +10,8 @@ import (
 	gonats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	goredis "github.com/redis/go-redis/v9"
+	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
+	relationshipv1 "github.com/sudo-odner/minor-shared/pkg/pb/relationship/v1"
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
@@ -29,14 +31,12 @@ type App struct {
 	log      *zap.Logger
 	httpServ *httpServ.HttpServ
 
-	grpcConnRelationship *grpc.ClientConn
-	grpcConnCommunity    *grpc.ClientConn
+	grpcRelationship *grpc.ClientConn
+	grpcCommunity    *grpc.ClientConn
 
 	nats      *gonats.Conn
 	redis     *goredis.Client
 	cassandra *gocql.Session
-
-	cache *redis.Cache
 }
 
 func New(cfg *config.Config, log *zap.Logger) (*App, error) {
@@ -53,21 +53,10 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}()
 
 	// Init clients
-	// Community gRPC client
-	grpcConnCommunity, err := grpc.NewClient(cfg.GRPC.Client.TargetCommunity, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcCommunity, grpcRelationship, err := a.initGRPCClient(ctx, &cfg.GRPC)
 	if err != nil {
-		return nil, fmt.Errorf("%s: falied connect (gRPC) to community service: %w", op, err)
+		return nil, err
 	}
-	a.grpcConnCommunity = grpcConnCommunity
-	clientCommunity := community.New(communityv1.NewCommunityServiceClient(grpcConnCommunity))
-
-	// Relationship gRPC client
-	grpcConnRelationship, err := grpc.NewClient(cfg.GRPC.Client.TargetRelationship, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("%s: falied connect (gRPC) to relationship service: %w", op, err)
-	}
-	a.grpcConnRelationship = grpcConnRelationship
-	clientRelationship := relationship.New(relationshipv1.NewRelationshipServiceClient(grpcConnRelationship))
 
 	// Init Broker (Nuts)
 	consumer, producer, err := a.initNats(ctx, &cfg.Nats)
@@ -114,6 +103,29 @@ func (a *App) Run() error {
 	}
 
 	return nil
+}
+
+func (a *App) initGRPCClient(ctx context.Context, cfg *config.GRPC) (*community.Client, *relationship.Client, error) {
+	const op = "app.initGRPCClient"
+
+	// Community gRPC client
+	grpcCommunity, err := grpc.NewClient(
+		cfg.Client.TargetCommunity,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: falied connect (gRPC) to community service: %w", op, err)
+	}
+	a.grpcCommunity = grpcCommunity
+
+	// Relationship gRPC client
+	grpcRelationship, err := grpc.NewClient(cfg.Client.TargetRelationship, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: falied connect (gRPC) to relationship service: %w", op, err)
+	}
+	a.grpcRelationship = grpcRelationship
+
+	return community.New(communityv1.NewCommunityServiceClient(grpcCommunity)), relationship.New(relationshipv1.NewRelationshipServiceClient(grpcRelationship)), nil
 }
 
 func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *nats.Producer, error) {
