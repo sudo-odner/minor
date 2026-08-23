@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gocql/gocql"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	goredis "github.com/redis/go-redis/v9"
@@ -31,10 +32,10 @@ type App struct {
 	grpcConnRelationship *grpc.ClientConn
 	grpcConnCommunity    *grpc.ClientConn
 
-	nats  *nats.Conn
-	redis *redis.Client
+	nats      *nats.Conn
+	redis     *goredis.Client
+	cassandra *gocql.Session
 
-	repo  *cassandra.Repository
 	cache *redis.Cache
 }
 
@@ -91,11 +92,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	a.initRedis(ctx, &cfg.Redis)
 
 	// Init repository (Cassandra)
-	repo, err := cassandra.New(&cfg.Cassandra)
-	if err != nil {
-		return nil, fmt.Errorf("%s: repository (Cassandra) init failed: %w", op, err)
-	}
-	a.repo = repo
+	a.initCassandra(ctx, &cfg.Cassandra)
 
 	// Init service, handler & router
 	service := messagesService.New(log, a.repo, a.broker, a.cache, a.clientCommunity, a.clientUser)
@@ -148,6 +145,34 @@ func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, e
 
 	a.redis = goredis.NewClient(opts)
 	return redis.New(a.redis), nil
+}
+
+func (a *App) initCassandra(ctx context.Context, cfg *config.Cassandra) (*cassandra.Repository, error) {
+	const op = "app.initCassandra"
+
+	cluster := gocql.NewCluster(cfg.Host)
+	cluster.Keyspace = cfg.Keyspace
+	if cfg.Username != "" {
+		cluster.Authenticator = gocql.PasswordAuthenticator{
+			Username: cfg.Username,
+			Password: cfg.Password,
+		}
+	}
+
+	cluster.Timeout = cfg.Timeout
+	consistency, err := gocql.ParseConsistencyWrapper(cfg.Consistency)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unncorect consistency type %w", op, err)
+	}
+	cluster.Consistency = consistency
+	cluster.NumConns = cfg.NumConns
+
+	session, err := cluster.CreateSession()
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to create session: %w", op, err)
+	}
+
+	return cassandra.New(session), nil
 }
 
 func (a *App) Stop(ctx context.Context) error {
