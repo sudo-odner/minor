@@ -3,9 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/gocql/gocql"
 	gonats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -16,10 +14,11 @@ import (
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/redis"
-	messagesHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/server/http/handler/messages"
 	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/relationship"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http"
+	messagesHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
 
 	"go.uber.org/zap"
@@ -73,25 +72,13 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	service := messagesService.New(log, repo, producer, cache, grpcCommunity, grpcRelationship)
 	messageHandler := messagesHandler.New(log, service)
 
-	// TODO: add logger middlaware
-	// TODO: move from App file
+	a.httpServ = httpServ.New(
+		&cfg.HttpServer,
+		http.NewRouter(http.Handlers{
+			Message: messageHandler,
+		}),
+	)
 
-	router := chi.NewRouter()
-	router.Route("/api/v1/messages", func(r chi.Router) {
-		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("ok"))
-		})
-
-		r.Route("/{channel_id}", func(r chi.Router) {
-			r.Post("/", messageHandler.SendMessage())
-			r.Get("/", messageHandler.GetMessages())
-			r.Get("/{message_id}", messageHandler.GetMessage())
-			r.Delete("/{message_id}", messageHandler.DeleteMessage())
-		})
-	})
-
-	a.httpServ = httpServ.New(&cfg.HttpServer, router)
 	success = true
 	return a, nil
 }

@@ -209,7 +209,7 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 				ChannelID: msg.ChannelID.String(),
 				AuthorID:  msg.UserID.String(),
 				Content:   msg.Content,
-				Username: msg.Username,
+				Username:  msg.Username,
 				ReplyTo:   replyToStr,
 				CreateAt:  msg.CreatedAt,
 			})
