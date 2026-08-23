@@ -8,15 +8,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	goredis "github.com/redis/go-redis/v9"
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/cache/redis"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/redis"
 	messagesHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/server/http/handler/messages"
 	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/relationship"
 	appNats "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -26,9 +28,11 @@ type App struct {
 	log      *zap.Logger
 	httpServ *httpServ.HttpServ
 
-	connRelationship *grpc.ClientConn
-	connCommunity    *grpc.ClientConn
-	nats             *nats.Conn
+	grpcConnRelationship *grpc.ClientConn
+	grpcConnCommunity    *grpc.ClientConn
+
+	nats  *nats.Conn
+	redis *redis.Client
 
 	repo  *cassandra.Repository
 	cache *redis.Cache
@@ -53,7 +57,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: falied connect (gRPC) to community service: %w", op, err)
 	}
-	a.connCommunity = grpcConnCommunity
+	a.grpcConnCommunity = grpcConnCommunity
 	clientCommunity := community.New(communityv1.NewCommunityServiceClient(grpcConnCommunity))
 
 	// Relationship gRPC client
@@ -61,7 +65,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: falied connect (gRPC) to relationship service: %w", op, err)
 	}
-	a.connRelationship = grpcConnRelationship
+	a.grpcConnRelationship = grpcConnRelationship
 	clientRelationship := relationship.New(relationshipv1.NewRelationshipServiceClient(grpcConnRelationship))
 
 	// Init Broker (Nuts)
@@ -84,11 +88,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	brokerConsumer := appNats.NewConsumer(nc, js)
 
 	// Init cache Redis
-	cache, err := redis.New(ctx, cfg.Redis)
-	if err != nil {
-		return nil, fmt.Errorf("%s: cache (Redis) init failed: %w", op, err)
-	}
-	a.cache = cache
+	a.initRedis(ctx, &cfg.Redis)
 
 	// Init repository (Cassandra)
 	repo, err := cassandra.New(&cfg.Cassandra)
@@ -133,6 +133,21 @@ func (a *App) Run() error {
 	}
 
 	return nil
+}
+
+func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, error) {
+	opts, err := goredis.ParseURL(cfg.Url)
+	if err != nil {
+		return nil, err
+	}
+	opts.PoolSize = cfg.PoolSize         // Максимальное колличество соединений на сервис
+	opts.MinIdleConns = cfg.MinIdleConns // Минимальное значения откртых соединений (горячий старт)
+	opts.DialTimeout = cfg.DialTimeout
+	opts.ReadTimeout = cfg.ReadTimeout
+	opts.WriteTimeout = cfg.WriteTimeout
+
+	a.redis = goredis.NewClient(opts)
+	return redis.New(a.redis), nil
 }
 
 func (a *App) Stop(ctx context.Context) error {

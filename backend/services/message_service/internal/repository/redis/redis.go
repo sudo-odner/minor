@@ -10,6 +10,16 @@ import (
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
+type Cache struct {
+	client *redis.Client
+}
+
+func New(client *redis.Client) *Cache {
+	return &Cache{
+		client: client,
+	}
+}
+
 // Получить из cache(redis) кто владеет каналом
 func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (models.ChannelOwner, error) {
 	const op = "cache.redis.GetChannelOwner"
