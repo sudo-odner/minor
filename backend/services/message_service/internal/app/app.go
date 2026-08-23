@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gocql/gocql"
-	"github.com/nats-io/nats.go"
+	gonats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	goredis "github.com/redis/go-redis/v9"
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
@@ -18,7 +18,7 @@ import (
 	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/relationship"
-	appNats "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -32,7 +32,7 @@ type App struct {
 	grpcConnRelationship *grpc.ClientConn
 	grpcConnCommunity    *grpc.ClientConn
 
-	nats      *nats.Conn
+	nats      *gonats.Conn
 	redis     *goredis.Client
 	cassandra *gocql.Session
 
@@ -70,23 +70,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	clientRelationship := relationship.New(relationshipv1.NewRelationshipServiceClient(grpcConnRelationship))
 
 	// Init Broker (Nuts)
-	nc, err := nats.Connect(
-		cfg.Nats.URL,
-		nats.Name("message_service"),
-		nats.Timeout(cfg.Nats.Timeout),
-		nats.MaxReconnects(cfg.Nats.MaxReconnects),
-		nats.ReconnectWait(cfg.Nats.ReconnectWait),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)
-	}
-	js, err := jetstream.New(nc)
-	if err != nil {
-		return nil, fmt.Errorf("s: failed to initilize JetStream: %w", op, err)
-	}
-	a.nats = nc
-	brokerProducer := appNats.NewProducer(nc, js)
-	brokerConsumer := appNats.NewConsumer(nc, js)
+	consumer, producer, err := a.initNats(ctx, &cfg.Nats)
 
 	// Init cache Redis
 	a.initRedis(ctx, &cfg.Redis)
@@ -130,6 +114,29 @@ func (a *App) Run() error {
 	}
 
 	return nil
+}
+
+func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *nats.Producer, error) {
+	const op = "app.initNats"
+
+	nc, err := gonats.Connect(
+		cfg.URL,
+		gonats.Name("message_service"),
+		gonats.Timeout(cfg.Timeout),
+		gonats.MaxReconnects(cfg.MaxReconnects),
+		gonats.ReconnectWait(cfg.ReconnectWait),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)
+	}
+
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("s: failed to initilize JetStream: %w", op, err)
+	}
+
+	a.nats = nc
+	return nats.NewConsumer(nc, js), nats.NewProducer(nc, js), nil
 }
 
 func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, error) {
