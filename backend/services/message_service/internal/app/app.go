@@ -52,23 +52,25 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		}
 	}()
 
-	// Init clients
 	grpcCommunity, grpcRelationship, err := a.initGRPCClient(ctx, &cfg.GRPC)
 	if err != nil {
 		return nil, err
 	}
-
-	// Init Broker (Nuts)
 	consumer, producer, err := a.initNats(ctx, &cfg.Nats)
-
-	// Init cache Redis
-	a.initRedis(ctx, &cfg.Redis)
-
-	// Init repository (Cassandra)
-	a.initCassandra(ctx, &cfg.Cassandra)
+	if err != nil {
+		return nil, err
+	}
+	cache, err := a.initRedis(ctx, &cfg.Redis)
+	if err != nil {
+		return nil, err
+	}
+	repo, err := a.initCassandra(ctx, &cfg.Cassandra)
+	if err != nil {
+		return nil, err
+	}
 
 	// Init service, handler & router
-	service := messagesService.New(log, a.repo, a.broker, a.cache, a.clientCommunity, a.clientUser)
+	service := messagesService.New(log, repo, producer, cache, grpcCommunity, grpcRelationship)
 	messageHandler := messagesHandler.New(log, service)
 
 	// TODO: add logger middlaware
@@ -210,36 +212,32 @@ func (a *App) Stop(ctx context.Context) error {
 	}
 
 	// Close clients (gRPC)
-	if a.clientCommunity != nil {
-		if err := a.clientCommunity.Close(); err != nil {
+	if a.grpcCommunity != nil {
+		if err := a.grpcCommunity.Close(); err != nil {
 			log.Warn("failed to close community gRPC client", zap.Error(err))
 		}
 	}
-	if a.clientUser != nil {
-		if err := a.clientUser.Close(); err != nil {
+	if a.grpcRelationship != nil {
+		if err := a.grpcRelationship.Close(); err != nil {
 			log.Warn("failed to close user gRPC client", zap.Error(err))
 		}
 	}
 
-	// Close broker
-	if a.broker != nil {
-		if err := a.broker.Stop(); err != nil {
-			log.Warn("failed to stop broker", zap.Error(err))
-		}
+	// Close nats
+	if a.nats != nil {
+		a.nats.Close()
 	}
 
-	// Close cache
-	if a.cache != nil {
-		if err := a.cache.Stop(); err != nil {
+	// Close redis
+	if a.redis != nil {
+		if err := a.redis.Close(); err != nil {
 			log.Warn("failed to stop cache", zap.Error(err))
 		}
 	}
 
-	// Close repository
-	if a.repo != nil {
-		if err := a.repo.Close(); err != nil {
-			log.Warn("failed to close repository", zap.Error(err))
-		}
+	// Close cassandra
+	if a.cassandra != nil {
+		a.cassandra.Close()
 	}
 
 	log.Info("application stopped successfully")
