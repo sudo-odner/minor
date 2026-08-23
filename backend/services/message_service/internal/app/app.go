@@ -140,9 +140,11 @@ func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *
 }
 
 func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, error) {
+	const op = "app.initRedis"
+
 	opts, err := goredis.ParseURL(cfg.Url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
 	}
 	opts.PoolSize = cfg.PoolSize         // Максимальное колличество соединений на сервис
 	opts.MinIdleConns = cfg.MinIdleConns // Минимальное значения откртых соединений (горячий старт)
@@ -179,6 +181,7 @@ func (a *App) initCassandra(ctx context.Context, cfg *config.Cassandra) (*cassan
 		return nil, fmt.Errorf("%s: failed to create session: %w", op, err)
 	}
 
+	a.cassandra = session
 	return cassandra.New(session), nil
 }
 
