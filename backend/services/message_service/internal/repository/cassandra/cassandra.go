@@ -13,14 +13,3 @@ func New(session *gocql.Session) *Repository {
 		session: session,
 	}
 }
-
-func (r *Repository) Ping() error {
-	return r.session.Query("SELECT now() FROM system.local").Exec()
-}
-
-func (r *Repository) Close() error {
-	if r.session != nil {
-		r.session.Close()
-	}
-	return nil
-}
