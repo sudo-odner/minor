@@ -11,7 +11,10 @@ import (
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
-// TODO: Продумать replyTo *uuid.UUID
+// TODO: Write SaveBatchMessage for asinc save
+
+// SaveMessage creates and persists a new message in Cassandra for the specified channel and user.
+// The replyTo parameter is optional; pass nil if the message is not a reply (not zero value uuid).
 func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUID, content string, replyTo *uuid.UUID) (*models.Message, error) {
 	const op = "repository.cassandra.SaveMessage"
 
@@ -21,25 +24,16 @@ func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUI
 		return nil, fmt.Errorf("%s: failed generate uuid message: %w", op, err)
 	}
 
-	cqlMessageID := gocql.UUID(messageID)
-	cqlUserID := gocql.UUID(userID)
-	cqlChannelID := gocql.UUID(channelID)
-
-	var cqlReplyTo any = nil
-	if replyTo != nil {
-		cqlReplyTo = gocql.UUID(*replyTo)
-	}
-
 	query := `
 	INSERT INTO messages (channel_id, message_id, user_id, content, reply_to, created_at) 
 	VALUES (?, ?, ?, ?, ?, ?);`
 	err = r.session.Query(
 		query,
-		cqlChannelID,
-		cqlMessageID,
-		cqlUserID,
+		gocql.UUID(channelID),
+		gocql.UUID(messageID),
+		gocql.UUID(userID),
 		content,
-		cqlReplyTo,
+		(*gocql.UUID)(replyTo),
 		now,
 	).WithContext(ctx).Exec()
 	if err != nil {
@@ -56,17 +50,13 @@ func (r *Repository) SaveMessage(ctx context.Context, userID, channelID uuid.UUI
 	}, nil
 }
 
+// GetMessages retrieves up to limit messages from the specified channel in reverse chronological order.
+// If beforeID is provided, it returns messages created prior to that message ID for pagination.
 func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit int, beforeID *uuid.UUID) ([]models.Message, error) {
 	const op = "repository.cassandra.GetMessages"
 
 	var query string
 	var args []any
-
-	cqlChannelID := gocql.UUID(channelID)
-	var cqlBeforeID any = nil
-	if beforeID != nil {
-		cqlBeforeID = gocql.UUID(*beforeID)
-	}
 
 	if beforeID == nil {
 		query = `
@@ -74,44 +64,32 @@ func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit
 		FROM messages 
 		WHERE channel_id = ? 
 		LIMIT ?;`
-		args = []any{cqlChannelID, limit}
+		args = []any{gocql.UUID(channelID), limit}
 	} else {
 		query = `
 		SELECT channel_id, message_id, user_id, content, reply_to, created_at 
 		FROM messages 
 		WHERE channel_id = ? AND message_id < ? 
 		LIMIT ?;`
-		args = []any{cqlChannelID, cqlBeforeID, limit}
+		args = []any{gocql.UUID(channelID), (*gocql.UUID)(beforeID), limit}
 	}
 
 	iter := r.session.Query(query, args...).WithContext(ctx).Iter()
 	messages := make([]models.Message, 0, limit)
 	var (
-		cqlIterChannelID gocql.UUID
-		cqlIterMessageID gocql.UUID
-		cqlIterUserID    gocql.UUID
-		cqlIterContent   string
-		cqlIterReplyTo   *gocql.UUID
-		cqlIterCreatedAt time.Time
+		mChannelID, mMessageID, mUserID gocql.UUID
+		mContent                        string
+		mReplyTo                        *gocql.UUID
+		mCreatedAt                      time.Time
 	)
-	for iter.Scan(&cqlIterChannelID, &cqlIterMessageID, &cqlIterUserID, &cqlIterContent, &cqlIterReplyTo, &cqlIterCreatedAt) {
-		iterChannelID := uuid.UUID(cqlIterChannelID)
-		iterMessageID := uuid.UUID(cqlIterMessageID)
-		iterUserID := uuid.UUID(cqlIterUserID)
-
-		var iterReplyTo *uuid.UUID
-		if cqlIterReplyTo != nil {
-			parsedUUID := uuid.UUID(*cqlIterReplyTo)
-			iterReplyTo = &parsedUUID
-		}
-
+	for iter.Scan(&mChannelID, &mMessageID, &mUserID, &mContent, &mReplyTo, &mCreatedAt) {
 		messages = append(messages, models.Message{
-			ChannelID: iterChannelID,
-			MessageID: iterMessageID,
-			UserID:    iterUserID,
-			Content:   cqlIterContent,
-			ReplyTo:   iterReplyTo,
-			CreatedAt: cqlIterCreatedAt,
+			ChannelID: uuid.UUID(mChannelID),
+			MessageID: uuid.UUID(mMessageID),
+			UserID:    uuid.UUID(mUserID),
+			Content:   mContent,
+			ReplyTo:   (*uuid.UUID)(mReplyTo),
+			CreatedAt: mCreatedAt,
 		})
 	}
 
@@ -122,37 +100,26 @@ func (r *Repository) GetMessages(ctx context.Context, channelID uuid.UUID, limit
 	return messages, nil
 }
 
+// GetMessage get message from the specified channel by messageID.
 func (r *Repository) GetMessage(ctx context.Context, channelID, messageID uuid.UUID) (*models.Message, error) {
 	const op = "repository.cassandra.GetMessage"
 
-	cqlMessageID := gocql.UUID(messageID)
-	cqlChannelID := gocql.UUID(channelID)
 	var (
-		cqlIterChannelID gocql.UUID
-		cqlIterMessageID gocql.UUID
-		cqlIterUserID    gocql.UUID
-		cqlIterContent   string
-		cqlIterReplyTo   *gocql.UUID
-		cqlIterCreatedAt time.Time
+		mChannelID, mMessageID, mUserID gocql.UUID
+		mContent                        string
+		mReplyTo                        *gocql.UUID
+		mCreatedAt                      time.Time
 	)
-
-	query := `
-	SELECT channel_id, message_id, user_id, content, reply_to, created_at 
-	FROM messages 
-	WHERE channel_id = ? AND message_id = ?;`
 
 	err := r.session.Query(
-		query,
-		cqlChannelID,
-		cqlMessageID,
-	).WithContext(ctx).Scan(
-		&cqlIterChannelID,
-		&cqlIterMessageID,
-		&cqlIterUserID,
-		&cqlIterContent,
-		&cqlIterReplyTo,
-		&cqlIterCreatedAt,
-	)
+		`
+			SELECT channel_id, message_id, user_id, content, reply_to, created_at 
+			FROM messages 
+			WHERE channel_id = ? AND message_id = ?;
+		`,
+		gocql.UUID(messageID),
+		gocql.UUID(channelID),
+	).WithContext(ctx).Scan(&mChannelID, &mMessageID, &mUserID, &mContent, &mReplyTo, &mCreatedAt)
 	if err != nil {
 		if errors.Is(err, gocql.ErrNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, models.ErrMessageNotFound)
@@ -160,34 +127,22 @@ func (r *Repository) GetMessage(ctx context.Context, channelID, messageID uuid.U
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	iterChannelID := uuid.UUID(cqlIterChannelID)
-	iterMessageID := uuid.UUID(cqlIterMessageID)
-	iterUserID := uuid.UUID(cqlIterUserID)
-
-	var iterReplyTo *uuid.UUID
-	if cqlIterReplyTo != nil {
-		parsedUUID := uuid.UUID(*cqlIterReplyTo)
-		iterReplyTo = &parsedUUID
-	}
-
 	return &models.Message{
-		ChannelID: iterChannelID,
-		MessageID: iterMessageID,
-		UserID:    iterUserID,
-		Content:   cqlIterContent,
-		ReplyTo:   iterReplyTo,
-		CreatedAt: cqlIterCreatedAt,
+		ChannelID: uuid.UUID(mChannelID),
+		MessageID: uuid.UUID(mMessageID),
+		UserID:    uuid.UUID(mUserID),
+		Content:   mContent,
+		ReplyTo:   (*uuid.UUID)(mReplyTo),
+		CreatedAt: mCreatedAt,
 	}, nil
 }
 
+// DeleteMessage delete message from the specified channel by messageID.
 func (r *Repository) DeleteMessage(ctx context.Context, channelID, messageID uuid.UUID) error {
 	const op = "repository.cassandra.DeleteMessage"
 
-	cqlChannelID := gocql.UUID(channelID)
-	cqlMessageID := gocql.UUID(messageID)
-
 	query := `DELETE FROM messages WHERE channel_id = ? AND message_id = ?;`
-	if err := r.session.Query(query, cqlChannelID, cqlMessageID).WithContext(ctx).Exec(); err != nil {
+	if err := r.session.Query(query, gocql.UUID(channelID), gocql.UUID(messageID)).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
