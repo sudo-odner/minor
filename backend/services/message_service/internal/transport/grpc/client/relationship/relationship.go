@@ -30,3 +30,5 @@ func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUI
 
 	return authz.Permission(resp.GetPermissionMask()), nil
 }
+
+// TODO: CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error)
