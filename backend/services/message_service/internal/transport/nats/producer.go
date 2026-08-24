@@ -26,7 +26,7 @@ func NewProducer(nc *nats.Conn, js jetstream.JetStream) *Producer {
 }
 
 // PublishMessageCreated publish event a message is created
-func (p *Producer) PublishMessageCreated(ctx context.Context, msg models.Message) error {
+func (p *Producer) PublishMessageCreated(ctx context.Context, msg *models.Message) error {
 	const op = "broker.nuts.PublishMessageCreated"
 
 	event := eventsMessage.MessageCreatedEvent{
