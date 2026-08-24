@@ -17,4 +17,4 @@ func NewConsumer(nc *nats.Conn, js jetstream.JetStream) *Consumer {
 	}
 }
 
-// TODO: write consumer (for batching operations)
+// TODO: Write message butcher on create and delete

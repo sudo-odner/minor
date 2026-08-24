@@ -8,7 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/sudo-odner/minor-shared/pkg/events"
+	events "github.com/sudo-odner/minor-shared/pkg/nats/events"
+	eventsMessage "github.com/sudo-odner/minor-shared/pkg/nats/events/message"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
@@ -24,14 +25,14 @@ func NewProducer(nc *nats.Conn, js jetstream.JetStream) *Producer {
 	}
 }
 
+// PublishMessageCreated publish event a message is created
 func (p *Producer) PublishMessageCreated(ctx context.Context, msg models.Message) error {
 	const op = "broker.nuts.PublishMessageCreated"
 
-	event := events.MessageCreatedEvent{
+	event := eventsMessage.MessageCreatedEvent{
 		MessageID: msg.MessageID,
 		ChannelID: msg.ChannelID,
-		AuthorID:  msg.UserID,
-		Username:  msg.Username,
+		UserID:    msg.UserID,
 		Content:   msg.Content,
 		ReplyTo:   msg.ReplyTo,
 		CreatedAt: msg.CreatedAt,
@@ -49,10 +50,11 @@ func (p *Producer) PublishMessageCreated(ctx context.Context, msg models.Message
 	return nil
 }
 
+// PublishMessageDeleted publish event a message is deleted
 func (p *Producer) PublishMessageDeleted(ctx context.Context, channelID, messageID uuid.UUID) error {
 	const op = "broker.nuts.PublishMessageDeleted"
 
-	event := events.MessageDeletedEvent{
+	event := eventsMessage.MessageDeletedEvent{
 		MessageID: messageID,
 		ChannelID: channelID,
 	}
