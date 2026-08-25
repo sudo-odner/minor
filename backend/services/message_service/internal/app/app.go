@@ -55,7 +55,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	consumer, producer, err := a.initNats(ctx, &cfg.Nats)
+	_, producer, err := a.initNats(ctx, &cfg.Nats)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*mNats.Consumer, 
 
 	js, err := jetstream.New(nc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("s: failed to initilize JetStream: %w", op, err)
+		return nil, nil, fmt.Errorf("%s: failed to initilize JetStream: %w", op, err)
 	}
 
 	a.nats = nc
