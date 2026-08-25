@@ -9,14 +9,14 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 	goredis "github.com/redis/go-redis/v9"
 	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
-	relationshipv1 "github.com/sudo-odner/minor-shared/pkg/pb/relationship/v1"
+	dmv1 "github.com/sudo-odner/minor-shared/pkg/pb/dm/v1"
 	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/redis"
 	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/relationship"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/dm"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http"
 	messagesHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
@@ -30,8 +30,8 @@ type App struct {
 	log      *zap.Logger
 	httpServ *httpServ.HttpServ
 
-	grpcRelationship *grpc.ClientConn
-	grpcCommunity    *grpc.ClientConn
+	grpcDM        *grpc.ClientConn
+	grpcCommunity *grpc.ClientConn
 
 	nats      *gonats.Conn
 	redis     *goredis.Client
@@ -51,7 +51,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		}
 	}()
 
-	grpcCommunity, grpcRelationship, err := a.initGRPCClient(ctx, &cfg.GRPC)
+	grpcCommunity, grpcDM, err := a.initGRPCClient(ctx, &cfg.GRPC)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// Init service, handler & router
-	service := messagesService.New(log, repo, producer, cache, grpcCommunity, grpcRelationship)
+	service := messagesService.New(log, repo, producer, cache, grpcCommunity, grpcDM)
 	messageHandler := messagesHandler.New(log, service)
 
 	a.httpServ = httpServ.New(
@@ -94,7 +94,7 @@ func (a *App) Run() error {
 	return nil
 }
 
-func (a *App) initGRPCClient(ctx context.Context, cfg *config.GRPC) (*community.Client, *relationship.Client, error) {
+func (a *App) initGRPCClient(ctx context.Context, cfg *config.GRPC) (*community.Client, *dm.Client, error) {
 	const op = "app.initGRPCClient"
 
 	// Community gRPC client
@@ -107,14 +107,14 @@ func (a *App) initGRPCClient(ctx context.Context, cfg *config.GRPC) (*community.
 	}
 	a.grpcCommunity = grpcCommunity
 
-	// Relationship gRPC client
-	grpcRelationship, err := grpc.NewClient(cfg.Client.TargetRelationship, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// DM gRPC client
+	grpcDM, err := grpc.NewClient(cfg.Client.TargetDM, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: falied connect (gRPC) to relationship service: %w", op, err)
+		return nil, nil, fmt.Errorf("%s: falied connect (gRPC) to dm service: %w", op, err)
 	}
-	a.grpcRelationship = grpcRelationship
+	a.grpcDM = grpcDM
 
-	return community.New(communityv1.NewCommunityServiceClient(grpcCommunity)), relationship.New(relationshipv1.NewRelationshipServiceClient(grpcRelationship)), nil
+	return community.New(communityv1.NewCommunityServiceClient(grpcCommunity)), dm.New(dmv1.NewDMServiceClient(grpcDM)), nil
 }
 
 func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *nats.Producer, error) {
@@ -204,8 +204,8 @@ func (a *App) Stop(ctx context.Context) error {
 			log.Warn("failed to close community gRPC client", zap.Error(err))
 		}
 	}
-	if a.grpcRelationship != nil {
-		if err := a.grpcRelationship.Close(); err != nil {
+	if a.grpcDM != nil {
+		if err := a.grpcDM.Close(); err != nil {
 			log.Warn("failed to close user gRPC client", zap.Error(err))
 		}
 	}

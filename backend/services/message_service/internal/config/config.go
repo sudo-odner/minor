@@ -60,8 +60,8 @@ type GRPC struct {
 }
 
 type GRPCClient struct {
-	TargetCommunity    string `env:"GRPC_CLIENT_COMMUNITY_TARGET" env-required:"true"`
-	TargetRelationship string `env:"GRPC_CLIENT_RELATIONSHIP_TARGET" env-required:"true"`
+	TargetCommunity string `env:"GRPC_CLIENT_COMMUNITY_TARGET" env-required:"true"`
+	TargetDM        string `env:"GRPC_CLIENT_DM_TARGET" env-required:"true"`
 }
 
 func MustLoad() *Config {

@@ -1,4 +1,4 @@
-package relationship
+package dm
 
 import (
 	"context"
@@ -6,21 +6,21 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor-shared/pkg/authz"
-	relationshipv1 "github.com/sudo-odner/minor-shared/pkg/pb/relationship/v1"
+	dmv1 "github.com/sudo-odner/minor-shared/pkg/pb/dm/v1"
 )
 
 type Client struct {
-	client relationshipv1.RelationshipServiceClient
+	client dmv1.DMServiceClient
 }
 
-func New(client relationshipv1.RelationshipServiceClient) *Client {
+func New(client dmv1.DMServiceClient) *Client {
 	return &Client{
 		client: client,
 	}
 }
 
 func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
-	resp, err := c.client.FetchPermission(ctx, &relationshipv1.FetchPermissionRequest{
+	resp, err := c.client.FetchPermission(ctx, &dmv1.FetchPermissionRequest{
 		UserId:    userID.String(),
 		ChannelId: channelID.String(),
 	})
