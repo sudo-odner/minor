@@ -5,21 +5,21 @@ import (
 	"fmt"
 
 	"github.com/gocql/gocql"
-	gonats "github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	goredis "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9"
 	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
 	dmv1 "github.com/sudo-odner/minor-shared/pkg/pb/dm/v1"
-	httpServ "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
+	httpserv "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/repository/redis"
-	messagesService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
+	mCassandra "github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
+	mRedis "github.com/sudo-odner/minor/backend/services/message_service/internal/repository/redis"
+	mService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/dm"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http"
-	messagesHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler/messages"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
+	mHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler/messages"
+	mNats "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -28,13 +28,13 @@ import (
 
 type App struct {
 	log      *zap.Logger
-	httpServ *httpServ.HTTPServ
+	httpServ *httpserv.HTTPServ
 
 	grpcDM        *grpc.ClientConn
 	grpcCommunity *grpc.ClientConn
 
-	nats      *gonats.Conn
-	redis     *goredis.Client
+	nats      *nats.Conn
+	redis     *redis.Client
 	cassandra *gocql.Session
 }
 
@@ -69,10 +69,10 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	// Init service, handler & router
-	service := messagesService.New(log, repo, producer, cache, grpcCommunity, grpcDM)
-	messageHandler := messagesHandler.New(log, service)
+	service := mService.New(log, repo, producer, cache, grpcCommunity, grpcDM)
+	messageHandler := mHandler.New(log, service)
 
-	a.httpServ = httpServ.New(
+	a.httpServ = httpserv.New(
 		&cfg.HTTPServer,
 		http.NewRouter(http.Handlers{
 			Message: messageHandler,
@@ -117,15 +117,15 @@ func (a *App) initGRPCClient(ctx context.Context, cfg *config.GRPC) (*community.
 	return community.New(communityv1.NewCommunityServiceClient(grpcCommunity)), dm.New(dmv1.NewDMServiceClient(grpcDM)), nil
 }
 
-func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *nats.Producer, error) {
+func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*mNats.Consumer, *mNats.Producer, error) {
 	const op = "app.initNats"
 
-	nc, err := gonats.Connect(
+	nc, err := nats.Connect(
 		cfg.URL,
-		gonats.Name("message_service"),
-		gonats.Timeout(cfg.Timeout),
-		gonats.MaxReconnects(cfg.MaxReconnects),
-		gonats.ReconnectWait(cfg.ReconnectWait),
+		nats.Name("message_service"),
+		nats.Timeout(cfg.Timeout),
+		nats.MaxReconnects(cfg.MaxReconnects),
+		nats.ReconnectWait(cfg.ReconnectWait),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)
@@ -137,13 +137,13 @@ func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *
 	}
 
 	a.nats = nc
-	return nats.NewConsumer(nc, js), nats.NewProducer(nc, js), nil
+	return mNats.NewConsumer(nc, js), mNats.NewProducer(nc, js), nil
 }
 
-func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, error) {
+func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*mRedis.Cache, error) {
 	const op = "app.initRedis"
 
-	opts, err := goredis.ParseURL(cfg.URL)
+	opts, err := redis.ParseURL(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
 	}
@@ -153,11 +153,11 @@ func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, e
 	opts.ReadTimeout = cfg.ReadTimeout
 	opts.WriteTimeout = cfg.WriteTimeout
 
-	a.redis = goredis.NewClient(opts)
-	return redis.New(a.redis), nil
+	a.redis = redis.NewClient(opts)
+	return mRedis.New(a.redis), nil
 }
 
-func (a *App) initCassandra(ctx context.Context, cfg *config.Cassandra) (*cassandra.Repository, error) {
+func (a *App) initCassandra(ctx context.Context, cfg *config.Cassandra) (*mCassandra.Repository, error) {
 	const op = "app.initCassandra"
 
 	cluster := gocql.NewCluster(cfg.Host)
@@ -183,7 +183,7 @@ func (a *App) initCassandra(ctx context.Context, cfg *config.Cassandra) (*cassan
 	}
 
 	a.cassandra = session
-	return cassandra.New(session), nil
+	return mCassandra.New(session), nil
 }
 
 func (a *App) Stop(ctx context.Context) error {
