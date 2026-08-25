@@ -10,14 +10,14 @@ import (
 
 type Config struct {
 	Env        string `env:"ENV" env-required:"true"`
-	HttpServer HttpServer
+	HTTPServer HTTPServer
 	Cassandra  Cassandra
 	Nats       Nats
 	Redis      Redis
 	GRPC       GRPC
 }
 
-type HttpServer struct {
+type HTTPServer struct {
 	Address     string        `env:"HTTP_SERVER_ADDRESS" env-required:"true"`
 	Timeout     time.Duration `env:"HTTP_SERVER_TIMEOUT"`
 	IdleTimeout time.Duration `env:"HTTP_SERVER_IDLE_TIMEOUT"`
@@ -37,7 +37,7 @@ type Cassandra struct {
 
 type Redis struct {
 	// REQUIRED
-	Url string `env:"REDIS_URL" env-required:"true"`
+	URL string `env:"REDIS_URL" env-required:"true"`
 	// OPTIONAL
 	PoolSize     int           `env:"REDIS_POOL_SIZE" env-default:"10"`
 	MinIdleConns int           `env:"REDIS_MIN_IDLE_CONNS" env-default:"3"`

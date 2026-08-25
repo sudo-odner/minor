@@ -28,7 +28,7 @@ import (
 
 type App struct {
 	log      *zap.Logger
-	httpServ *httpServ.HttpServ
+	httpServ *httpServ.HTTPServ
 
 	grpcDM        *grpc.ClientConn
 	grpcCommunity *grpc.ClientConn
@@ -73,7 +73,7 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	messageHandler := messagesHandler.New(log, service)
 
 	a.httpServ = httpServ.New(
-		&cfg.HttpServer,
+		&cfg.HTTPServer,
 		http.NewRouter(http.Handlers{
 			Message: messageHandler,
 		}),
@@ -143,7 +143,7 @@ func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*nats.Consumer, *
 func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redis.Cache, error) {
 	const op = "app.initRedis"
 
-	opts, err := goredis.ParseURL(cfg.Url)
+	opts, err := goredis.ParseURL(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
 	}
