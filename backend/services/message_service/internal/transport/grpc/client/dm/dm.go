@@ -19,6 +19,17 @@ func New(client dmv1.DMServiceClient) *Client {
 	}
 }
 
+func (c *Client) CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error) {
+	resp, err := c.client.CheckChannelExists(ctx, &dmv1.CheckChannelExistsRequest{
+		ChannelId: channelID.String(),
+	})
+	if err != nil {
+		return false, fmt.Errorf("falied check channel exist in community service: %w", err)
+	}
+
+	return resp.GetExists(), nil
+}
+
 func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUID) (authz.Permission, error) {
 	resp, err := c.client.FetchPermission(ctx, &dmv1.FetchPermissionRequest{
 		UserId:    userID.String(),
@@ -30,5 +41,3 @@ func (c *Client) FetchPermission(ctx context.Context, userID, channelID uuid.UUI
 
 	return authz.Permission(resp.GetPermissionMask()), nil
 }
-
-// TODO: CheckChannelExists(ctx context.Context, channelID uuid.UUID) (bool, error)
