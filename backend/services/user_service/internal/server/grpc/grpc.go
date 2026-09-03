@@ -94,6 +94,9 @@ func (s *ServerAPI) GetUserEmail(ctx context.Context, req *userv1.GetUserEmailRe
 
 	email, err := s.userService.GetUser(ctx, userID)
 	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
 		return nil, status.Error(codes.Internal, "falied get user email")
 	}
 
@@ -126,4 +129,3 @@ func (s *ServerAPI) GetUserName(ctx context.Context, req *userv1.GetUserNameRequ
 		Username: username,
 	}, nil
 }
-
