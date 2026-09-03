@@ -52,7 +52,7 @@ func main() {
 	}
 	defer presenceClient.Close()
 
-	userClient, _ := userClient.NewUserClient(cfg.GRPC.PresenceService.Address)
+	userClient, _ := userClient.NewUserClient(cfg.GRPC.UserService.Address)
 
 	// 5. Сборка слоев (Dependency Injection)
 	// Доставка (заглушка Firebase/Email)
@@ -138,7 +138,7 @@ func initStreams(ctx context.Context, js jetstream.JetStream, logger *zap.Logger
 			Subjects: []string{"chat.message.>"},
 		},
 		{
-			Name:     "AUTH_STREAM",
+			Name: "AUTH_STREAM",
 			// Subjects: []string{"auth.user.>", "auth.password.>"},
 			Subjects: []string{"auth.>"},
 		},
@@ -159,11 +159,12 @@ func initStreams(ctx context.Context, js jetstream.JetStream, logger *zap.Logger
 	for _, cfg := range streams {
 		_, err := js.CreateOrUpdateStream(ctx, cfg)
 		if err != nil {
-			logger.Fatal("failed to create stream", 
-				zap.String("stream", cfg.Name), 
+			logger.Fatal("failed to create stream",
+				zap.String("stream", cfg.Name),
 				zap.Error(err),
 			)
 		}
 		logger.Info("stream initialized", zap.String("stream", cfg.Name))
 	}
 }
+
