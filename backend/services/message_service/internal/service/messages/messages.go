@@ -256,7 +256,7 @@ func (ms *MessageService) GetMessage(
 	}
 
 	// Проверка прав доступа на запись
-	if !authz.Has(maskPermission, authz.PermReadChat) {
+	if !authz.Has(maskPermission, authz.PermViewChannel) {
 		log.Debug(
 			"permission denied to read message in channel",
 			zap.String("userID", userID.String()),
