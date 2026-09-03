@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/models"
 	"go.uber.org/zap"
 )
 
 type Cache interface {
 	SetStatus(ctx context.Context, userID string, status models.UserStatus, customStatus string, lastActiveAt int64) error
+	GetUserStatus(ctx context.Context, userID uuid.UUID) (*models.Presence, error)
 	GetUserStatuses(ctx context.Context, userIDs []string) (map[string]*models.Presence, error)
 }
 
@@ -30,6 +32,19 @@ func New(log *zap.Logger, cache Cache, broker Broker) *Service {
 		cache:  cache,
 		broker: broker,
 	}
+}
+
+func (s *Service) GetStatus(ctx context.Context, userID uuid.UUID) (*models.Presence, error) {
+	const op = "service.presence.GetStatus"
+	log := s.log.With(zap.String("op", op))
+
+	userStatus, err := s.cache.GetUserStatus(ctx, userID)
+	if err != nil {
+		log.Error("falied read user status", zap.Error(err))
+		return nil, fmt.Errorf("failed read user status")
+	}
+
+	return userStatus, nil
 }
 
 func (s *Service) SetStatus(ctx context.Context, userID string, status models.UserStatus, customStatus string) error {

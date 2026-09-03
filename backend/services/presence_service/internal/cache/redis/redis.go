@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/config"
 	"github.com/sudo-odner/minor/backend/services/presence_service/internal/models"
@@ -55,6 +56,20 @@ func (c *Cache) SetStatus(ctx context.Context, userID string, status models.User
 	}
 
 	return nil
+}
+
+// GetUserStatus Получить статус пользователя
+func (c *Cache) GetUserStatus(ctx context.Context, userID uuid.UUID) (*models.Presence, error) {
+	const op = "cache.redis.GetUserStatus"
+
+	key := fmt.Sprintf("presence:user:%s", userID.String())
+
+	var userStatus models.Presence
+	if err := c.client.HGetAll(ctx, key).Scan(&userStatus); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &userStatus, nil
 }
 
 // GetUserStatuses Получить статусы списка пользователей
