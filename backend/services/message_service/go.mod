@@ -12,7 +12,7 @@ require (
 	github.com/nats-io/nats.go v1.52.0
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/scylladb/gocqlx/v2 v2.8.0
-	github.com/sudo-odner/minor-shared v0.6.10
+	github.com/sudo-odner/minor-shared v0.7.7
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
