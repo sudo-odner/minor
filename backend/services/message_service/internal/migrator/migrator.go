@@ -2,7 +2,6 @@ package migrator
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"log"
 	"time"
@@ -10,10 +9,8 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v3"
 	"github.com/scylladb/gocqlx/v3/migrate"
+	message "github.com/sudo-odner/minor/backend/services/message_service"
 )
-
-//go:embed migrations/*.cql
-var migrationFiles embed.FS
 
 func reconnect(ctx context.Context, clusterCfg *gocql.ClusterConfig, maxRetries int, retryInterval time.Duration) (*gocql.Session, error) {
 	const op = "migrator.reconnect"
@@ -87,7 +84,7 @@ func RunMigrations(ctx context.Context, hosts []string, keyspace string, maxRetr
 	defer cqlxSession.Close()
 
 	log.Printf("%s: running migration on keyspace '%s'...", op, keyspace)
-	if err := migrate.FromFS(ctx, cqlxSession, migrationFiles); err != nil {
+	if err := migrate.FromFS(ctx, cqlxSession, message.MigrationsFS); err != nil {
 		return fmt.Errorf("%s: falied migrate: %w", op, err)
 	}
 	log.Printf("%s: database schema successufully update", op)
