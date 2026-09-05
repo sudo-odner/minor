@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/gocql/gocql"
 	"github.com/nats-io/nats.go"
@@ -10,14 +12,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	communityv1 "github.com/sudo-odner/minor-shared/pkg/pb/community/v1"
 	dmv1 "github.com/sudo-odner/minor-shared/pkg/pb/dm/v1"
-	httpserv "github.com/sudo-odner/minor/backend/services/message_service/internal/app/http"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/config"
 	mCassandra "github.com/sudo-odner/minor/backend/services/message_service/internal/repository/cassandra"
 	mRedis "github.com/sudo-odner/minor/backend/services/message_service/internal/repository/redis"
 	mService "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/dm"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http"
+	routerHTTP "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http"
 	mHandler "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler/messages"
 	mNats "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
 
@@ -27,8 +28,9 @@ import (
 )
 
 type App struct {
-	log      *zap.Logger
-	httpServ *httpserv.HTTPServ
+	log *zap.Logger
+
+	httpServer *http.Server
 
 	grpcDM        *grpc.ClientConn
 	grpcCommunity *grpc.ClientConn
@@ -72,12 +74,15 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	service := mService.New(log, repo, producer, cache, grpcCommunity, grpcDM)
 	messageHandler := mHandler.New(log, service)
 
-	a.httpServ = httpserv.New(
-		&cfg.HTTPServer,
-		http.NewRouter(http.Handlers{
+	// Setup HTTP Server
+	a.httpServer = &http.Server{
+		Addr: cfg.HTTPServer.Address,
+		Handler: routerHTTP.NewRouter(routerHTTP.Handlers{
 			Message: messageHandler,
 		}),
-	)
+		ReadTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout: cfg.HTTPServer.IdleTimeout,
+	}
 
 	success = true
 	return a, nil
@@ -85,9 +90,9 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 
 func (a *App) Run() error {
 	const op = "app.Run"
-	a.log.Info("starting http server", zap.String("address", a.httpServ.Address()))
+	a.log.Info("starting http server", zap.String("address", a.httpServer.Addr))
 
-	if err := a.httpServ.Run(); err != nil {
+	if err := a.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -192,8 +197,8 @@ func (a *App) Stop(ctx context.Context) error {
 	log.Info("stopping application")
 
 	// Close server (http)
-	if a.httpServ != nil {
-		if err := a.httpServ.Stop(ctx); err != nil {
+	if a.httpServer != nil {
+		if err := a.httpServer.Shutdown(ctx); err != nil {
 			log.Warn("failed to stop http server", zap.Error(err))
 		}
 	}
