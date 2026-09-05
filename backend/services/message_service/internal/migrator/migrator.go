@@ -2,15 +2,19 @@ package migrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/v3"
-	"github.com/scylladb/gocqlx/v3/migrate"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/cassandra"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	message "github.com/sudo-odner/minor/backend/services/message_service"
 )
+
+// TODO: Better create config settings for migrations (for setting keyspace)
 
 func reconnect(ctx context.Context, clusterCfg *gocql.ClusterConfig, maxRetries int, retryInterval time.Duration) (*gocql.Session, error) {
 	const op = "migrator.reconnect"
@@ -44,7 +48,6 @@ func reconnect(ctx context.Context, clusterCfg *gocql.ClusterConfig, maxRetries 
 	return nil, fmt.Errorf("%s: connection limit exceeded (%d attempts)", op, maxRetries)
 }
 
-// TODO: Better create config settings for migrations (for setting keyspace)
 func RunMigrations(ctx context.Context, hosts []string, keyspace string, maxRetries int, retryInterval time.Duration) error {
 	const op = "migrator.RunMigrations"
 	// Init cluster config
@@ -52,41 +55,50 @@ func RunMigrations(ctx context.Context, hosts []string, keyspace string, maxRetr
 	cluster.Timeout = 5 * time.Second
 
 	// Connect to cluster cassandra and create keyspcase
-	err := func() error {
-		session, err := reconnect(ctx, cluster, maxRetries, retryInterval)
-		if err != nil {
-			return err
-		}
-		defer session.Close()
-
-		log.Printf("%s: success connect to Cassandra", op)
-
-		createKeySpaceQuery := fmt.Sprintf(`
-			CREATE KEYSPACE IF NOT EXISTS %s
-			WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
-		`, keyspace)
-		if err := session.Query(createKeySpaceQuery).Exec(); err != nil {
-			return fmt.Errorf("failed create keyspace: %w", err)
-		}
-		log.Printf("%s: keyspace '%s' is created/checked", op, keyspace)
-		return nil
-	}()
+	session, err := reconnect(ctx, cluster, maxRetries, retryInterval)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+	defer session.Close()
 
-	// Connect to cluser with keyspace and run migrations
-	cluster.Keyspace = keyspace
-	cqlxSession, err := gocqlx.WrapSession(reconnect(ctx, cluster, maxRetries, retryInterval))
+	log.Printf("INFO: %s: success connect to Cassandra", op)
+
+	createKeySpaceQuery := fmt.Sprintf(`
+		CREATE KEYSPACE IF NOT EXISTS %s
+		WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+	`, keyspace)
+	if err = session.Query(createKeySpaceQuery).Exec(); err != nil {
+		return fmt.Errorf("%s: failed create keyspace: %w", op, err)
+	}
+	log.Printf("INFO: %s: keyspace '%s' is created/checked", op, keyspace)
+
+	// Use keyspace by Query (without reconnect)
+	if err = session.Query(fmt.Sprintf("USE %s;", keyspace)).Exec(); err != nil {
+		return fmt.Errorf("%s: use keyspace failed: %w", op, err)
+	}
+	log.Printf("INFO: %s: connect to keyspace '%s'", op, keyspace)
+
+	// Setup migrator and run Migrations
+	sourceDriver, err := iofs.New(message.MigrationsFS, "migrations")
 	if err != nil {
-		return fmt.Errorf("%s: failed connect to keyspace: %w", op, err)
+		return fmt.Errorf("%s: init source driver falied: %w", op, err)
 	}
-	defer cqlxSession.Close()
 
-	log.Printf("%s: running migration on keyspace '%s'...", op, keyspace)
-	if err := migrate.FromFS(ctx, cqlxSession, message.MigrationsFS); err != nil {
-		return fmt.Errorf("%s: falied migrate: %w", op, err)
+	dbDriver, err := cassandra.WithInstance(session, &cassandra.Config{
+		KeyspaceName: keyspace,
+	})
+	if err != nil {
+		return fmt.Errorf("%s: init db driver falied: %w", op, err)
 	}
-	log.Printf("%s: database schema successufully update", op)
+
+	m, err := migrate.NewWithInstance("iofs", sourceDriver, "cassandra", dbDriver)
+	if err != nil {
+		return fmt.Errorf("%s: init migrator falied: %w", op, err)
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("%s: run up falied: %w", op, err)
+	}
+	log.Printf("INFO: %s: database schema successufully update", op)
 	return nil
 }
