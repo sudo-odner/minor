@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	messageEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/message"
 	authEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/auth"
+	messageEvents "github.com/sudo-odner/minor-shared/pkg/nats/events/message"
 	"github.com/sudo-odner/minor/backend/services/notification_service/internal/client/grpc/presence"
 )
 
@@ -36,7 +36,7 @@ func NewNotifier(presenceClient *presence.Client, userClient UserClient, emailPr
 
 func (n *Notifier) HandleRegistration(ctx context.Context, event authEvents.UserRegisteredEvent) error {
 	title := "Добро пожаловать в Minor!"
-	body := fmt.Sprintf("Здравствуйте, %s!\n\nВы успешно зарегистрировались. Ваш ID: %s", 
+	body := fmt.Sprintf("Здравствуйте, %s!\n\nВы успешно зарегистрировались. Ваш ID: %s",
 		event.Email, event.UserID)
 
 	return n.emailProvider.Send(ctx, event.Email, title, body)
@@ -49,7 +49,7 @@ func (n *Notifier) HandleLogin(ctx context.Context, event authEvents.UserLoginSu
 	username, _ := n.userClient.GetUserName(ctx, event.UserID)
 
 	title := "Новый вход в аккаунт"
-	body := fmt.Sprintf("Привет, %s!\n\nВ твой аккаунт вошли.\nIP: %s\nВремя: %s", 
+	body := fmt.Sprintf("Привет, %s!\n\nВ твой аккаунт вошли.\nIP: %s\nВремя: %s",
 		username, event.IP, event.Timestamp.Format("15:04:05 02.01.2006"))
 
 	return n.emailProvider.Send(ctx, email, title, body)
@@ -57,8 +57,8 @@ func (n *Notifier) HandleLogin(ctx context.Context, event authEvents.UserLoginSu
 
 func (n *Notifier) HandleChatMessage(ctx context.Context, event messageEvents.MessageCreatedEvent) error {
 	// 1. Проверяем статус (Online/Offline)
-	// Используем AuthorID или RecipientID из твоего события
-	isOnline, err := n.presenceClient.IsUserOnline(ctx, event.AuthorID.String())
+	// Используем UserID или RecipientID из твоего события
+	isOnline, err := n.presenceClient.IsUserOnline(ctx, event.UserID.String())
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (n *Notifier) HandleChatMessage(ctx context.Context, event messageEvents.Me
 	}
 
 	// 2. Получаем данные и шлем письмо
-	email, err := n.userClient.GetUserEmail(ctx, event.AuthorID.String())
+	email, err := n.userClient.GetUserEmail(ctx, event.UserID.String())
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (n *Notifier) HandleChatMessage(ctx context.Context, event messageEvents.Me
 
 // func (n *Notifier) HandlePasswordReset(ctx context.Context, event events.PasswordResetRequestedEvent) error {
 // 	title := "Восстановление пароля в Minor"
-	
+
 // 	// Используем твой стиль из примера SMTP клиента
 // 	body := fmt.Sprintf(
 // 		"Здравствуйте, %s!\n\n"+
@@ -101,14 +101,15 @@ func (n *Notifier) HandleChatMessage(ctx context.Context, event messageEvents.Me
 // }
 
 func (n *Notifier) HandlePasswordReset(ctx context.Context, event authEvents.PasswordResetRequestedEvent) error {
-    // Формируем ссылку на фронтенд (localhost для разработки)
-    resetLink := fmt.Sprintf("http://localhost/reset-password?token=%s", event.Code)
+	// Формируем ссылку на фронтенд (localhost для разработки)
+	resetLink := fmt.Sprintf("http://localhost/reset-password?token=%s", event.Code)
 
-    title := "Восстановление пароля"
-    body := fmt.Sprintf(
-        "Здравствуйте, %s!\n\nДля сброса пароля перейдите по ссылке:\n%s\n\nСсылка действует 15 минут.",
-        event.Username, resetLink,
-    )
+	title := "Восстановление пароля"
+	body := fmt.Sprintf(
+		"Здравствуйте, %s!\n\nДля сброса пароля перейдите по ссылке:\n%s\n\nСсылка действует 15 минут.",
+		event.Username, resetLink,
+	)
 
-    return n.emailProvider.Send(ctx, event.Email, title, body)
+	return n.emailProvider.Send(ctx, event.Email, title, body)
 }
+

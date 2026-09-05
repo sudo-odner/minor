@@ -232,7 +232,6 @@ func (ms *MessageService) GetMessage(
 		log.Error("failed to resolve channel permissions", zap.Error(err))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	// Check access to read message
 	if !authz.Has(maskPermission, authz.PermViewChannel) {
 		log.Debug(
 			"permission denied: user cannot read messages in channel",

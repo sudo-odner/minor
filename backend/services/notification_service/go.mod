@@ -6,7 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/nats-io/nats.go v1.52.0
-	github.com/sudo-odner/minor-shared v0.6.10
+	github.com/sudo-odner/minor-shared v0.7.7
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 )
