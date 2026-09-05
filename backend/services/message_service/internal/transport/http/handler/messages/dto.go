@@ -7,7 +7,6 @@ type Message struct {
 	MessageID string    `json:"message_id"`
 	AuthorID  string    `json:"author_id"`
 	Content   string    `json:"content"`
-	Username  string    `json:"username"`
 	ReplyTo   string    `json:"reply_to"`
 	CreateAt  time.Time `json:"create_at"`
 }

@@ -2,18 +2,19 @@ package migrator
 
 import (
 	"context"
-	"embed"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/v2"
-	"github.com/scylladb/gocqlx/v2/migrate"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/cassandra"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	message "github.com/sudo-odner/minor/backend/services/message_service"
 )
 
-//go:embed migrations/*.cql
-var migrationFiles embed.FS
+// TODO: Better create config settings for migrations (for setting keyspace)
 
 func reconnect(ctx context.Context, clusterCfg *gocql.ClusterConfig, maxRetries int, retryInterval time.Duration) (*gocql.Session, error) {
 	const op = "migrator.reconnect"
@@ -47,7 +48,6 @@ func reconnect(ctx context.Context, clusterCfg *gocql.ClusterConfig, maxRetries 
 	return nil, fmt.Errorf("%s: connection limit exceeded (%d attempts)", op, maxRetries)
 }
 
-// TODO: Better create config settings for migrations (for setting keyspace)
 func RunMigrations(ctx context.Context, hosts []string, keyspace string, maxRetries int, retryInterval time.Duration) error {
 	const op = "migrator.RunMigrations"
 	// Init cluster config
@@ -62,34 +62,52 @@ func RunMigrations(ctx context.Context, hosts []string, keyspace string, maxRetr
 		}
 		defer session.Close()
 
-		log.Printf("%s: success connect to Cassandra", op)
+		log.Printf("INFO: %s: success connect to Cassandra", op)
 
 		createKeySpaceQuery := fmt.Sprintf(`
 			CREATE KEYSPACE IF NOT EXISTS %s
 			WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 		`, keyspace)
-		if err := session.Query(createKeySpaceQuery).Exec(); err != nil {
+		if err = session.Query(createKeySpaceQuery).Exec(); err != nil {
 			return fmt.Errorf("failed create keyspace: %w", err)
 		}
-		log.Printf("%s: keyspace '%s' is created/checked", op, keyspace)
+		log.Printf("INFO: %s: keyspace '%s' is created/checked", op, keyspace)
 		return nil
 	}()
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Connect to cluser with keyspace and run migrations
+	// Connect to cluster cassandra with keyspace
 	cluster.Keyspace = keyspace
-	cqlxSession, err := gocqlx.WrapSession(reconnect(ctx, cluster, maxRetries, retryInterval))
+	session, err := reconnect(ctx, cluster, maxRetries, retryInterval)
 	if err != nil {
-		return fmt.Errorf("%s: failed connect to keyspace: %w", op, err)
+		return fmt.Errorf("%s: connect to keyspace failed: %w", op, err)
 	}
-	defer cqlxSession.Close()
+	defer session.Close()
+	log.Printf("INFO: %s: success connect to Cassandra with keyspcae '%s'", op, keyspace)
 
-	log.Printf("%s: running migration on keyspace '%s'...", op, keyspace)
-	if err := migrate.FromFS(ctx, cqlxSession, migrationFiles); err != nil {
-		return fmt.Errorf("%s: falied migrate: %w", op, err)
+	// Setup migrator and run Migrations
+	sourceDriver, err := iofs.New(message.MigrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("%s: init source driver falied: %w", op, err)
 	}
-	log.Printf("%s: database schema successufully update", op)
+
+	dbDriver, err := cassandra.WithInstance(session, &cassandra.Config{
+		KeyspaceName: keyspace,
+	})
+	if err != nil {
+		return fmt.Errorf("%s: init db driver falied: %w", op, err)
+	}
+
+	m, err := migrate.NewWithInstance("iofs", sourceDriver, "cassandra", dbDriver)
+	if err != nil {
+		return fmt.Errorf("%s: init migrator falied: %w", op, err)
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("%s: run up falied: %w", op, err)
+	}
+	log.Printf("INFO: %s: database schema successufully update", op)
 	return nil
 }

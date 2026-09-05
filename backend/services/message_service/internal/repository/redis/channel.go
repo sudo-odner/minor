@@ -10,7 +10,7 @@ import (
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
 )
 
-// Получить из cache(redis) кто владеет каналом
+// GetChannelOwner get channel owner service (community or dm service)
 func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (models.ChannelOwner, error) {
 	const op = "cache.redis.GetChannelOwner"
 
@@ -29,7 +29,7 @@ func (c *Cache) GetChannelOwner(ctx context.Context, channelID uuid.UUID) (model
 	return models.ChannelOwner(val), nil
 }
 
-// Запись в cache(redis) кто владет каналом
+// WriteChannelOwner write cahnnel owner in cache (TTL with 1 minute)
 func (c *Cache) WriteChannelOwner(ctx context.Context, channelID uuid.UUID, owner models.ChannelOwner) error {
 	const op = "cache.redis.WriteChannelOwner"
 

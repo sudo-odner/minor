@@ -13,7 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/sudo-odner/minor/backend/services/message_service/internal/models"
-	"github.com/sudo-odner/minor/backend/services/message_service/internal/server/http/handler"
+	"github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler"
 	"go.uber.org/zap"
 )
 
@@ -122,7 +122,6 @@ func (mh *MessageHandler) SendMessage() http.HandlerFunc {
 			ChannelID: msg.ChannelID.String(),
 			AuthorID:  msg.UserID.String(),
 			Content:   msg.Content,
-			Username:  msg.Username,
 			ReplyTo:   replyToStr,
 			CreateAt:  msg.CreatedAt,
 		})
@@ -209,7 +208,6 @@ func (mh *MessageHandler) GetMessages() http.HandlerFunc {
 				ChannelID: msg.ChannelID.String(),
 				AuthorID:  msg.UserID.String(),
 				Content:   msg.Content,
-				Username: msg.Username,
 				ReplyTo:   replyToStr,
 				CreateAt:  msg.CreatedAt,
 			})
