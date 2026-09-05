@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/gocql/gocql"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -18,7 +19,6 @@ import (
 	messagesrv "github.com/sudo-odner/minor/backend/services/message_service/internal/service/messages"
 	communityclient "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/community"
 	dbclient "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/grpc/client/dm"
-	httptransport "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http"
 	messagehandler "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/http/handler/messages"
 	natstransport "github.com/sudo-odner/minor/backend/services/message_service/internal/transport/nats"
 
@@ -136,12 +136,25 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 	service := messagesrv.New(log, repo, producer, cache, grpcCommunity, grpcDM)
 	messageHandler := messagehandler.New(log, service)
 
+	router := chi.NewRouter()
+	router.Route("/api/v1/messages", func(r chi.Router) {
+		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		})
+
+		r.Route("/{channel_id}", func(r chi.Router) {
+			r.Post("/", messageHandler.SendMessage())
+			r.Get("/", messageHandler.GetMessages())
+			r.Get("/{message_id}", messageHandler.GetMessage())
+			r.Delete("/{message_id}", messageHandler.DeleteMessage())
+		})
+	})
+
 	// Setup HTTP Server
 	a.httpServer = &http.Server{
-		Addr: cfg.HTTPServer.Address,
-		Handler: httptransport.NewRouter(httptransport.Handlers{
-			Message: messageHandler,
-		}),
+		Addr:        cfg.HTTPServer.Address,
+		Handler:     router,
 		ReadTimeout: cfg.HTTPServer.Timeout,
 		IdleTimeout: cfg.HTTPServer.IdleTimeout,
 	}
