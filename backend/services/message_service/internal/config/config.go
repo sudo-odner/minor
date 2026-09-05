@@ -65,10 +65,6 @@ type GRPCClient struct {
 }
 
 func MustLoad() *Config {
-	// if err := godotenv.Load(); err != nil {
-	// 	log.Println("DEBUG: not found .env file, read form env")
-	// }
-
 	var cfg Config
 
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
