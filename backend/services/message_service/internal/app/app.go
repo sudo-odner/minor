@@ -53,22 +53,84 @@ func New(cfg *config.Config, log *zap.Logger) (*App, error) {
 		}
 	}()
 
-	grpcCommunity, grpcDM, err := a.initGRPCClient(ctx, &cfg.GRPC)
+	// Init GRPC Client
+	// Community gRPC client
+	grpcCommunityConn, err := grpc.NewClient(
+		cfg.GRPC.Client.TargetCommunity,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: falied connect (gRPC) to community service: %w", op, err)
 	}
-	_, producer, err := a.initNats(ctx, &cfg.Nats)
+	a.grpcCommunity = grpcCommunityConn
+
+	// DM gRPC client
+	grpcDMConn, err := grpc.NewClient(cfg.GRPC.Client.TargetDM, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: falied connect (gRPC) to dm service: %w", op, err)
 	}
-	cache, err := a.initRedis(ctx, &cfg.Redis)
+	a.grpcDM = grpcDMConn
+	grpcCommunity, grpcDM := communityclient.New(communityv1.NewCommunityServiceClient(grpcCommunityConn)), dbclient.New(dmv1.NewDMServiceClient(grpcDMConn))
+
+	// Init NATS
+	nc, err := nats.Connect(
+		cfg.Nats.URL,
+		nats.Name("message_service"),
+		nats.Timeout(cfg.Nats.Timeout),
+		nats.MaxReconnects(cfg.Nats.MaxReconnects),
+		nats.ReconnectWait(cfg.Nats.ReconnectWait),
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)
 	}
-	repo, err := a.initCassandra(ctx, &cfg.Cassandra)
+
+	js, err := jetstream.New(nc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: failed to initilize JetStream: %w", op, err)
 	}
+
+	a.nats = nc
+	_, producer := natstransport.NewConsumer(nc, js), natstransport.NewProducer(nc, js)
+
+	// Init Redis
+	opts, err := redis.ParseURL(cfg.Redis.URL)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
+	}
+	opts.PoolSize = cfg.Redis.PoolSize         // Максимальное колличество соединений на сервис
+	opts.MinIdleConns = cfg.Redis.MinIdleConns // Минимальное значения откртых соединений (горячий старт)
+	opts.DialTimeout = cfg.Redis.DialTimeout
+	opts.ReadTimeout = cfg.Redis.ReadTimeout
+	opts.WriteTimeout = cfg.Redis.WriteTimeout
+
+	a.redis = redis.NewClient(opts)
+	cache := redisrepo.New(a.redis)
+
+	// Init Cassandra
+	cluster := gocql.NewCluster(cfg.Cassandra.Host)
+	cluster.Keyspace = cfg.Cassandra.Keyspace
+	if cfg.Cassandra.Username != "" {
+		cluster.Authenticator = gocql.PasswordAuthenticator{
+			Username: cfg.Cassandra.Username,
+			Password: cfg.Cassandra.Password,
+		}
+	}
+
+	cluster.Timeout = cfg.Cassandra.Timeout
+	consistency, err := gocql.ParseConsistencyWrapper(cfg.Cassandra.Consistency)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unncorect consistency type %w", op, err)
+	}
+	cluster.Consistency = consistency
+	cluster.NumConns = cfg.Cassandra.NumConns
+
+	session, err := cluster.CreateSession()
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to create session: %w", op, err)
+	}
+
+	a.cassandra = session
+	repo := cassandrarepo.New(session)
 
 	// Init service, handler & router
 	service := messagesrv.New(log, repo, producer, cache, grpcCommunity, grpcDM)
@@ -97,98 +159,6 @@ func (a *App) Run() error {
 	}
 
 	return nil
-}
-
-func (a *App) initGRPCClient(ctx context.Context, cfg *config.GRPC) (*communityclient.Client, *dbclient.Client, error) {
-	const op = "app.initGRPCClient"
-
-	// Community gRPC client
-	grpcCommunity, err := grpc.NewClient(
-		cfg.Client.TargetCommunity,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%s: falied connect (gRPC) to community service: %w", op, err)
-	}
-	a.grpcCommunity = grpcCommunity
-
-	// DM gRPC client
-	grpcDM, err := grpc.NewClient(cfg.Client.TargetDM, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("%s: falied connect (gRPC) to dm service: %w", op, err)
-	}
-	a.grpcDM = grpcDM
-
-	return communityclient.New(communityv1.NewCommunityServiceClient(grpcCommunity)), dbclient.New(dmv1.NewDMServiceClient(grpcDM)), nil
-}
-
-func (a *App) initNats(ctx context.Context, cfg *config.Nats) (*natstransport.Consumer, *natstransport.Producer, error) {
-	const op = "app.initNats"
-
-	nc, err := nats.Connect(
-		cfg.URL,
-		nats.Name("message_service"),
-		nats.Timeout(cfg.Timeout),
-		nats.MaxReconnects(cfg.MaxReconnects),
-		nats.ReconnectWait(cfg.ReconnectWait),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%s: failed to connect to NATS Core:%w", op, err)
-	}
-
-	js, err := jetstream.New(nc)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%s: failed to initilize JetStream: %w", op, err)
-	}
-
-	a.nats = nc
-	return natstransport.NewConsumer(nc, js), natstransport.NewProducer(nc, js), nil
-}
-
-func (a *App) initRedis(ctx context.Context, cfg *config.Redis) (*redisrepo.Cache, error) {
-	const op = "app.initRedis"
-
-	opts, err := redis.ParseURL(cfg.URL)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to parse redis url: %w", op, err)
-	}
-	opts.PoolSize = cfg.PoolSize         // Максимальное колличество соединений на сервис
-	opts.MinIdleConns = cfg.MinIdleConns // Минимальное значения откртых соединений (горячий старт)
-	opts.DialTimeout = cfg.DialTimeout
-	opts.ReadTimeout = cfg.ReadTimeout
-	opts.WriteTimeout = cfg.WriteTimeout
-
-	a.redis = redis.NewClient(opts)
-	return redisrepo.New(a.redis), nil
-}
-
-func (a *App) initCassandra(ctx context.Context, cfg *config.Cassandra) (*cassandrarepo.Repository, error) {
-	const op = "app.initCassandra"
-
-	cluster := gocql.NewCluster(cfg.Host)
-	cluster.Keyspace = cfg.Keyspace
-	if cfg.Username != "" {
-		cluster.Authenticator = gocql.PasswordAuthenticator{
-			Username: cfg.Username,
-			Password: cfg.Password,
-		}
-	}
-
-	cluster.Timeout = cfg.Timeout
-	consistency, err := gocql.ParseConsistencyWrapper(cfg.Consistency)
-	if err != nil {
-		return nil, fmt.Errorf("%s: unncorect consistency type %w", op, err)
-	}
-	cluster.Consistency = consistency
-	cluster.NumConns = cfg.NumConns
-
-	session, err := cluster.CreateSession()
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to create session: %w", op, err)
-	}
-
-	a.cassandra = session
-	return cassandrarepo.New(session), nil
 }
 
 func (a *App) Stop(ctx context.Context) error {
