@@ -55,28 +55,37 @@ func RunMigrations(ctx context.Context, hosts []string, keyspace string, maxRetr
 	cluster.Timeout = 5 * time.Second
 
 	// Connect to cluster cassandra and create keyspcase
-	session, err := reconnect(ctx, cluster, maxRetries, retryInterval)
+	err := func() error {
+		session, err := reconnect(ctx, cluster, maxRetries, retryInterval)
+		if err != nil {
+			return err
+		}
+		defer session.Close()
+
+		log.Printf("INFO: %s: success connect to Cassandra", op)
+
+		createKeySpaceQuery := fmt.Sprintf(`
+			CREATE KEYSPACE IF NOT EXISTS %s
+			WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+		`, keyspace)
+		if err = session.Query(createKeySpaceQuery).Exec(); err != nil {
+			return fmt.Errorf("failed create keyspace: %w", err)
+		}
+		log.Printf("INFO: %s: keyspace '%s' is created/checked", op, keyspace)
+		return nil
+	}()
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
+	// Connect to cluster cassandra with keyspace
+	cluster.Keyspace = keyspace
+	session, err := reconnect(ctx, cluster, maxRetries, retryInterval)
+	if err != nil {
+		return fmt.Errorf("%s: connect to keyspace failed: %w", op, err)
+	}
 	defer session.Close()
-
-	log.Printf("INFO: %s: success connect to Cassandra", op)
-
-	createKeySpaceQuery := fmt.Sprintf(`
-		CREATE KEYSPACE IF NOT EXISTS %s
-		WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
-	`, keyspace)
-	if err = session.Query(createKeySpaceQuery).Exec(); err != nil {
-		return fmt.Errorf("%s: failed create keyspace: %w", op, err)
-	}
-	log.Printf("INFO: %s: keyspace '%s' is created/checked", op, keyspace)
-
-	// Use keyspace by Query (without reconnect)
-	if err = session.Query(fmt.Sprintf("USE %s;", keyspace)).Exec(); err != nil {
-		return fmt.Errorf("%s: use keyspace failed: %w", op, err)
-	}
-	log.Printf("INFO: %s: connect to keyspace '%s'", op, keyspace)
+	log.Printf("INFO: %s: success connect to Cassandra with keyspcae '%s'", op, keyspace)
 
 	// Setup migrator and run Migrations
 	sourceDriver, err := iofs.New(message.MigrationsFS, "migrations")
