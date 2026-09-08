@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sudo-odner/minor/backend/service/dm_service/internal/config"
-	"github.com/sudo-odner/minor/backend/service/dm_service/internal/repository/postgres"
+	channelrepo "github.com/sudo-odner/minor/backend/service/dm_service/internal/repository/postgres/channel"
 )
 
 type App struct {
@@ -27,7 +27,7 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: falied connect to postgres: %w", op, err)
 	}
 	a.postgrespool = pool
-	_ = postgres.New(pool)
+	_ = channelrepo.New(pool)
 
 	return a, nil
 }
