@@ -22,6 +22,8 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/sudo-odner/minor-shared v0.7.7 h1:iWaPEoR0WWPkDqNnaSCCCtT0fv/AcTmx+LYn0lBzYAI=
 github.com/sudo-odner/minor-shared v0.7.7/go.mod h1:qIDnhPjj8ZH7I54FGKC1E87CzBVDz+n+DIXc3RZ0OKM=
+github.com/sudo-odner/minor-shared v0.8.0 h1:1VaXGEqQsha/9+xD/NhYl9dSU5nyd7k/B51+aYfTKoM=
+github.com/sudo-odner/minor-shared v0.8.0/go.mod h1:qIDnhPjj8ZH7I54FGKC1E87CzBVDz+n+DIXc3RZ0OKM=
 golang.org/x/sync v0.17.0 h1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=
 golang.org/x/sync v0.17.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
 golang.org/x/sync v0.19.0 h1:vV+1eWNmZ5geRlYjzm2adRgW2/mcpevXNg50YZtPCE4=
