@@ -50,8 +50,13 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: failed to initilize JetStream: %w", op, err)
 	}
 	a.nats = nc
-
 	_ = channelproducer.New(nc, js)
+
+	// Init service
+
+	// Init GRPC handler & service
+
+	// Init HTTP handler & service
 
 	return a, nil
 }
