@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Env        string `env:"ENV" env-required:"true"`
 	HTTPServer HTTPServer
+	Nats       Nats
 	Postgres   Postgres
 }
 
@@ -18,6 +19,15 @@ type HTTPServer struct {
 	Address     string        `env:"HTTP_SERVER_ADDRESS" env-required:"true"`
 	Timeout     time.Duration `env:"HTTP_SERVER_TIMEOUT"`
 	IdleTimeout time.Duration `env:"HTTP_SERVER_IDLE_TIMEOUT"`
+}
+
+type Nats struct {
+	// REQUIRED
+	URL string `env:"NATS_URL" env-required:"true"`
+	// OPTIONAL
+	Timeout       time.Duration `env:"NATS_TIMEOUT" env-default:"10s"`
+	MaxReconnects int           `env:"NATS_MAX_RECONNECTS" env-default:"5"`
+	ReconnectWait time.Duration `env:"NATS_RECONNECT_WAIT" env-default:"2s"`
 }
 
 type Postgres struct {
