@@ -7,31 +7,32 @@ import (
 	dmv1 "github.com/sudo-odner/minor-shared/pkg/pb/dm/v1"
 )
 
-type ChannelService interface {
+type DMChannelService interface {
 	Permission()
 	Members()
 }
 
-type GRPCHandler struct {
+type Handler struct {
 	dmv1.UnimplementedDMServiceServer
-	log            *slog.Logger
-	channelService ChannelService
+	log              *slog.Logger
+	dmChannelService DMChannelService
 }
 
-func New(log *slog.Logger) *GRPCHandler {
-	return &GRPCHandler{
-		log: log,
+func New(log *slog.Logger, dmChannelSerivce DMChannelService) *Handler {
+	return &Handler{
+		log:              log,
+		dmChannelService: dmChannelSerivce,
 	}
 }
 
-func (h *GRPCHandler) FetchPermission(
+func (h *Handler) FetchPermission(
 	ctx context.Context,
 	req *dmv1.FetchPermissionRequest,
 ) (*dmv1.FetchPermissionResponse, error) {
 	return nil, nil
 }
 
-func (h *GRPCHandler) FetchMembers(
+func (h *Handler) FetchMembers(
 	ctx context.Context,
 	req *dmv1.FetchMembersRequest,
 ) (*dmv1.FetchMembersResponse, error) {
