@@ -140,8 +140,24 @@ func (r *ChannelRepository) Membres(ctx context.Context, channelID uuid.UUID) ([
 	return userIDs, err
 }
 
-func (r *ChannelRepository) UserPermission(channelID, userID uuid.UUID) authz.Permission {
-	return 0x0000000000000000
+// UserPermission if user in channel his can READ, WRITE, ATTACH FILES and KICK MEMBERS
+func (r *ChannelRepository) UserPermission(ctx context.Context, channelID, userID uuid.UUID) (authz.Permission, error) {
+	const op = "repository.psotgres.UserPermission"
+
+	query := `
+		select 1
+		from members_channel
+		where user_id = $1 and channel_id = $2 
+	`
+	var l int
+	if err := r.pool.QueryRow(ctx, query, userID, channelID).Scan(&l); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return authz.None, nil
+		}
+		return authz.None, fmt.Errorf("%s: failed query row: %w", op, err)
+	}
+
+	return authz.PermViewChannel | authz.PermSendMessages | authz.PermAttachFiles | authz.PermKickMembers, nil
 }
 
 func (r *ChannelRepository) Delete(channelID, userID uuid.UUID) error { return nil }
