@@ -17,6 +17,5 @@ type Channel struct {
 	ID        uuid.UUID   `json:"id"`
 	Type      ChannelType `json:"type"`
 	Name      *string     `json:"name"`
-	UpdatedAt time.Time   `json:"updated_at"`
 	CreatedAt time.Time   `json:"created_at"`
 }

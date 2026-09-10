@@ -5,7 +5,6 @@ create table channels (
     id uuid primary key,
     type dm_channel_type not null,
     name varchar(255),                                      -- Only for dm_group
-    updated_at timestamp not null default current_timestamp,
     created_at timestamp not null default current_timestamp
 
     constraint chk_channel_name_by_type check (
