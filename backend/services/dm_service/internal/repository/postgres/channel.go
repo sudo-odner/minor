@@ -2,6 +2,7 @@ package channel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -70,7 +71,25 @@ func (r *ChannelRepository) Create(ctx context.Context, channelType domain.Chann
 	}, nil
 }
 
-func (r *ChannelRepository) ByID(channelID uuid.UUID) (*domain.Channel, error) { return nil, nil }
+func (r *ChannelRepository) ByID(ctx context.Context, channelID uuid.UUID) (*domain.Channel, error) {
+	const op = "repository.postgres.ByID"
+
+	var channel domain.Channel
+
+	query := `
+		select
+			id, type, name, updated_at, created_at
+		from channels where id = $1;
+	`
+	if err := r.pool.QueryRow(ctx, query, channelID).Scan(&channel.ID, &channel.Type, &channel.Name, &channel.UpdatedAt, &channel.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%s (channel id=%s): %w", op, channelID.String(), domain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("%s: falied select channel by id: %w", op, err)
+	}
+
+	return &channel, nil
+}
 
 func (r *ChannelRepository) ByUserID(userID uuid.UUID) ([]domain.Channel, error) { return nil, nil }
 
