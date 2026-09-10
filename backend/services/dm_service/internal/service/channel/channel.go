@@ -29,10 +29,20 @@ type ChannelService struct {
 	eventPublisher    EventPublisher
 }
 
-func New(log *slog.Logger, channelRepository ChannelRepository, eventPublisher EventPublisher) *ChannelService {
+func NewChannelService(log *slog.Logger, channelRepository ChannelRepository, eventPublisher EventPublisher) *ChannelService {
 	return &ChannelService{
 		log:               log,
 		channelRepository: channelRepository,
 		eventPublisher:    eventPublisher,
 	}
+}
+
+func (s *ChannelService) UserPermission(ctx context.Context, channelID, userID uuid.UUID) (authz.Permission, error) {
+	const op = "service.channel.UserPermission"
+	return s.channelRepository.UserPermission(ctx, channelID, userID)
+}
+
+func (s *ChannelService) Membres(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
+	const op = "service.channel.Members"
+	return s.channelRepository.Membres(ctx, channelID)
 }
