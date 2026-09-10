@@ -39,7 +39,7 @@ func (r *ChannelRepository) Create(ctx context.Context, channelType domain.Chann
 	defer tx.Rollback(ctx)
 
 	channelQuery := `
-		insert into channels (id, type, name, updated_at, created_at)
+		insert into channels (id, type, name, created_at)
 		values ($1, $2, $3, $4, $5)
 	`
 	if _, err := tx.Exec(ctx, channelQuery, id, channelType, name, now, now); err != nil {
@@ -67,7 +67,6 @@ func (r *ChannelRepository) Create(ctx context.Context, channelType domain.Chann
 		Type:      channelType,
 		Name:      name,
 		CreatedAt: now,
-		UpdatedAt: now,
 	}, nil
 }
 
@@ -78,10 +77,10 @@ func (r *ChannelRepository) ByID(ctx context.Context, channelID uuid.UUID) (*dom
 
 	query := `
 		select
-			id, type, name, updated_at, created_at
+			id, type, name, created_at
 		from channels where id = $1;
 	`
-	if err := r.pool.QueryRow(ctx, query, channelID).Scan(&channel.ID, &channel.Type, &channel.Name, &channel.UpdatedAt, &channel.CreatedAt); err != nil {
+	if err := r.pool.QueryRow(ctx, query, channelID).Scan(&channel.ID, &channel.Type, &channel.Name, &channel.CreatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s (channel id=%s): %w", op, channelID.String(), domain.ErrNotFound)
 		}
@@ -96,7 +95,7 @@ func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]d
 
 	query := `
 		select 
-			id, type, name, updated_at, created_at
+			id, type, name, created_at
 		from members_channel mc
 		join channels c on c.id = mc.channel_id
 		where mc.user_id = $1
@@ -109,7 +108,7 @@ func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]d
 	var channels []domain.Channel
 	for rows.Next() {
 		var ch domain.Channel
-		if err := rows.Scan(&ch.ID, &ch.Type, &ch.Name, &ch.UpdatedAt, &ch.CreatedAt); err != nil {
+		if err := rows.Scan(&ch.ID, &ch.Type, &ch.Name, &ch.CreatedAt); err != nil {
 			return nil, fmt.Errorf("%s: scan channel error: %w", op, err)
 		}
 		channels = append(channels, ch)
