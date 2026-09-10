@@ -11,7 +11,6 @@ create table channels (
 create table members_channel (
     user_id uuid not null,
     channel_id uuid not null references channels(id) on delete cascade,
-    updated_at timestamp not null default current_timestamp,
     created_at timestamp not null default current_timestamp,
 
     primary key (user_id, channel_id)
