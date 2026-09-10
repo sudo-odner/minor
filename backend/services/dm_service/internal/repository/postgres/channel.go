@@ -121,7 +121,7 @@ func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]d
 	return channels, nil
 }
 
-func (r *ChannelRepository) Membres(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
+func (r *ChannelRepository) Members(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
 	const op = "repository.postgres.Members"
 
 	query := `

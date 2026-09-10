@@ -14,7 +14,7 @@ type ChannelRepository interface {
 	Create(ctx context.Context, channelType domain.ChannelType, name *string, userIDs []uuid.UUID) (*domain.Channel, error)
 	ByID(ctx context.Context, channelID uuid.UUID) (*domain.Channel, error)
 	ByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Channel, error)
-	Membres(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error)
+	Members(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error)
 	UserPermission(ctx context.Context, channelID, userID uuid.UUID) (authz.Permission, error)
 	Delete(ctx context.Context, channelID, userID uuid.UUID) error
 }
@@ -48,10 +48,10 @@ func (s *ChannelService) UserPermission(ctx context.Context, channelID, userID u
 	return s.channelRepository.UserPermission(ctx, channelID, userID)
 }
 
-func (s *ChannelService) Membres(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
+func (s *ChannelService) Members(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
 	const op = "service.channel.Members"
-	return s.channelRepository.Membres(ctx, channelID)
+	return s.channelRepository.Members(ctx, channelID)
 }
 
-func (s *ChannelService) Create(ctx context.Context, channelType domain.ChannelType, name *string, userIDs []uuid.UUID) {
+func (s *ChannelService) Create(ctx context.Context, actorID uuid.UUID, channelType domain.ChannelType, name *string, userIDs []uuid.UUID) (*domain.Channel, error) {
 }
