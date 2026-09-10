@@ -20,8 +20,3 @@ type Channel struct {
 	UpdatedAt time.Time   `json:"updated_at"`
 	CreatedAt time.Time   `json:"created_at"`
 }
-
-type UserMeta struct {
-	ID   uuid.UUID
-	Name string
-}

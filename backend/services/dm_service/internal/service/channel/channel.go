@@ -23,17 +23,23 @@ type EventPublisher interface {
 	Publish(ctx context.Context, evt events.Event)
 }
 
+type UserFetcher interface {
+	NamesByIDs(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
+}
+
 type ChannelService struct {
 	log               *slog.Logger
 	channelRepository ChannelRepository
 	eventPublisher    EventPublisher
+	userFetcher       UserFetcher
 }
 
-func NewChannelService(log *slog.Logger, channelRepository ChannelRepository, eventPublisher EventPublisher) *ChannelService {
+func NewChannelService(log *slog.Logger, channelRepository ChannelRepository, eventPublisher EventPublisher, userFetcher UserFetcher) *ChannelService {
 	return &ChannelService{
 		log:               log,
 		channelRepository: channelRepository,
 		eventPublisher:    eventPublisher,
+		userFetcher:       userFetcher,
 	}
 }
 
@@ -45,4 +51,7 @@ func (s *ChannelService) UserPermission(ctx context.Context, channelID, userID u
 func (s *ChannelService) Membres(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
 	const op = "service.channel.Members"
 	return s.channelRepository.Membres(ctx, channelID)
+}
+
+func (s *ChannelService) Create(ctx context.Context, channelType domain.ChannelType, name *string, userIDs []uuid.UUID) {
 }
