@@ -9,8 +9,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sudo-odner/minor/backend/service/dm_service/internal/config"
-	channelrepo "github.com/sudo-odner/minor/backend/service/dm_service/internal/repository/postgres/channel"
-	channelproducer "github.com/sudo-odner/minor/backend/service/dm_service/internal/transport/nats/producer"
+	repo "github.com/sudo-odner/minor/backend/service/dm_service/internal/repository/postgres"
+	"github.com/sudo-odner/minor/backend/service/dm_service/internal/transport/nats/producer"
 )
 
 type App struct {
@@ -31,7 +31,7 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: falied connect to postgres: %w", op, err)
 	}
 	a.postgrespool = pool
-	_ = channelrepo.New(pool)
+	repository := repo.NewChannelRepository(pool)
 
 	// Init Nats
 	nc, err := nats.Connect(
@@ -50,7 +50,7 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 		return nil, fmt.Errorf("%s: failed to initilize JetStream: %w", op, err)
 	}
 	a.nats = nc
-	_ = channelproducer.New(nc, js)
+	_ = producer.New(nc, js)
 
 	// Init service
 
