@@ -8,7 +8,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/nats-io/nats.go v1.53.1
-	github.com/sudo-odner/minor-shared v0.8.1
+	github.com/sudo-odner/minor-shared v0.8.2
 )
 
 require (
