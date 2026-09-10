@@ -2,6 +2,7 @@ package channel
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -24,7 +25,7 @@ type EventPublisher interface {
 }
 
 type UserFetcher interface {
-	NamesByIDs(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
+	NameByID(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
 type ChannelService struct {
@@ -45,13 +46,46 @@ func NewChannelService(log *slog.Logger, channelRepository ChannelRepository, ev
 
 func (s *ChannelService) UserPermission(ctx context.Context, channelID, userID uuid.UUID) (authz.Permission, error) {
 	const op = "service.channel.UserPermission"
-	return s.channelRepository.UserPermission(ctx, channelID, userID)
+	permission, err := s.channelRepository.UserPermission(ctx, channelID, userID)
+	if err != nil {
+		return permission, fmt.Errorf("%s: %w", op, err)
+	}
+	return permission, nil
 }
 
 func (s *ChannelService) Members(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
 	const op = "service.channel.Members"
-	return s.channelRepository.Members(ctx, channelID)
+	members, err := s.channelRepository.Members(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return members, nil
 }
 
-func (s *ChannelService) Create(ctx context.Context, actorID uuid.UUID, channelType domain.ChannelType, name *string, userIDs []uuid.UUID) (*domain.Channel, error) {
+func (s *ChannelService) CreateDM(ctx context.Context, actorID, partnerID uuid.UUID) (*domain.Channel, error) {
+	const op = "serivce.channel.CreateDM"
+
+	name, err := s.userFetcher.NameByID(ctx, actorID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	channel, err := s.channelRepository.Create(ctx, domain.ChannelTypeDM, nil, []uuid.UUID{actorID, partnerID})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	channel.Name = &name
+	return channel, nil
+}
+
+func (s *ChannelService) CreateDMGroup(ctx context.Context, actorID uuid.UUID, name string, userIDs []uuid.UUID) (*domain.Channel, error) {
+	const op = "service.channel.CreateDMGroup"
+
+	channel, err := s.channelRepository.Create(ctx, domain.ChannelTypeDMGroup, &name, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return channel, nil
 }
