@@ -1,3 +1,5 @@
+create type dm_channel_type as enum('DM' 'DM_GROUP')
+
 -- DM Channel
 create table channels (
     id uuid primary key,
@@ -5,6 +7,11 @@ create table channels (
     name varchar(255),                                      -- Only for dm_group
     updated_at timestamp not null default current_timestamp,
     created_at timestamp not null default current_timestamp
+
+    constraint chk_channel_name_by_type check (
+        (type = 'DM' and name is null) or
+        (type = 'DM_GROUP' and name is not null)
+    )
 );
 
 -- DM members
