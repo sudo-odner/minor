@@ -142,7 +142,7 @@ func (r *ChannelRepository) Membres(ctx context.Context, channelID uuid.UUID) ([
 
 // UserPermission if user in channel his can READ, WRITE, ATTACH FILES and KICK MEMBERS
 func (r *ChannelRepository) UserPermission(ctx context.Context, channelID, userID uuid.UUID) (authz.Permission, error) {
-	const op = "repository.psotgres.UserPermission"
+	const op = "repository.postgres.UserPermission"
 
 	query := `
 		select 1
@@ -160,4 +160,22 @@ func (r *ChannelRepository) UserPermission(ctx context.Context, channelID, userI
 	return authz.PermViewChannel | authz.PermSendMessages | authz.PermAttachFiles | authz.PermKickMembers, nil
 }
 
-func (r *ChannelRepository) Delete(channelID, userID uuid.UUID) error { return nil }
+func (r *ChannelRepository) Delete(ctx context.Context, channelID, userID uuid.UUID) error {
+	const op = "repository.postgres.Delete"
+
+	query := `
+		delete from channels
+		where id = $1 and exists (
+			select 1 from members_channel where channel_id = $1 and user_id = $2
+		)
+	`
+	tag, err := r.pool.Exec(ctx, query, channelID, userID)
+	if err != nil {
+		return fmt.Errorf("%s: failed execute delete: %w", op, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("%s: %w", op, domain.ErrNotFound)
+	}
+
+	return nil
+}
