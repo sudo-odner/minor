@@ -91,7 +91,35 @@ func (r *ChannelRepository) ByID(ctx context.Context, channelID uuid.UUID) (*dom
 	return &channel, nil
 }
 
-func (r *ChannelRepository) ByUserID(userID uuid.UUID) ([]domain.Channel, error) { return nil, nil }
+func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Channel, error) {
+	const op = "repository.postgres.ByUserID"
+
+	query := `
+		select 
+			id, type, name, updated_at, created_at
+		from members_channel mc
+		join channels c on c.id = mc.channel_id
+		where mc.user_id = $1
+	`
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: falied to query user channels: %w", op, err)
+	}
+
+	var channels []domain.Channel
+	for rows.Next() {
+		var ch domain.Channel
+		if err := rows.Scan(&ch.ID, &ch.Type, &ch.Name, &ch.UpdatedAt, &ch.CreatedAt); err != nil {
+			return nil, fmt.Errorf("%s: scan channel error: %w", op, err)
+		}
+		channels = append(channels, ch)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: rows iteration error: %w", op, err)
+	}
+
+	return channels, nil
+}
 
 func (r *ChannelRepository) Membres(channelID uuid.UUID) ([]uuid.UUID, error) { return nil, nil }
 
