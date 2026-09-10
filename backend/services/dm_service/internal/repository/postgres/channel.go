@@ -85,7 +85,7 @@ func (r *ChannelRepository) ByID(ctx context.Context, channelID uuid.UUID) (*dom
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%s (channel id=%s): %w", op, channelID.String(), domain.ErrNotFound)
 		}
-		return nil, fmt.Errorf("%s: falied select channel by id: %w", op, err)
+		return nil, fmt.Errorf("%s: failed select channel by id: %w", op, err)
 	}
 
 	return &channel, nil
@@ -103,7 +103,7 @@ func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]d
 	`
 	rows, err := r.pool.Query(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%s: falied to query user channels: %w", op, err)
+		return nil, fmt.Errorf("%s: failed to query user channels: %w", op, err)
 	}
 
 	var channels []domain.Channel
@@ -121,7 +121,24 @@ func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]d
 	return channels, nil
 }
 
-func (r *ChannelRepository) Membres(channelID uuid.UUID) ([]uuid.UUID, error) { return nil, nil }
+func (r *ChannelRepository) Membres(ctx context.Context, channelID uuid.UUID) ([]uuid.UUID, error) {
+	const op = "repository.postgres.Members"
+
+	query := `
+		select user_id
+		from members_channel where channel_id = $1
+	`
+	rows, err := r.pool.Query(ctx, query, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to qyery members channel: %w", op, err)
+	}
+	userIDs, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed collect members: %w", op, err)
+	}
+
+	return userIDs, err
+}
 
 func (r *ChannelRepository) UserPermission(channelID, userID uuid.UUID) authz.Permission {
 	return 0x0000000000000000
