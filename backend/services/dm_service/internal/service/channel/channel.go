@@ -89,3 +89,13 @@ func (s *ChannelService) CreateDMGroup(ctx context.Context, actorID uuid.UUID, n
 
 	return channel, nil
 }
+
+func (s *ChannelService) Delete(ctx context.Context, actorID, channelID uuid.UUID) error {
+	const op = "service.channel.DeleteDM"
+
+	if err := s.channelRepository.Delete(ctx, channelID, actorID); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
