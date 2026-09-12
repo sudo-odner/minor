@@ -104,11 +104,50 @@ func (r *ChannelRepository) ByUserID(ctx context.Context, userID uuid.UUID) ([]d
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to query user channels: %w", op, err)
 	}
+	defer rows.Close()
 
 	var channels []domain.Channel
 	for rows.Next() {
 		var ch domain.Channel
 		if err := rows.Scan(&ch.ID, &ch.Type, &ch.Name, &ch.CreatedAt); err != nil {
+			return nil, fmt.Errorf("%s: scan channel error: %w", op, err)
+		}
+		channels = append(channels, ch)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: rows iteration error: %w", op, err)
+	}
+
+	return channels, nil
+}
+
+func (r *ChannelRepository) ByUserIDWithMembers(ctx context.Context, userID uuid.UUID) ([]domain.ChannelWithMembers, error) {
+	const op = "repository.postgres.ByUserID"
+
+	query := `
+	select
+		c.id,
+		c.type,
+		c.name,
+		c.created_at.
+		coalesce(array_agg(all_mc.user_id), '{}') as members_ids
+	from members_channel mc
+	join channels c on c.id = mc.channel_id
+	join members_channel all_mc on all_mc.channel_id = c.id
+	where mc.user_id = $1
+	group by c.id, c.type, c.name, c.created_at
+	`
+
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to query user channels: %w", op, err)
+	}
+	defer rows.Close()
+
+	var channels []domain.ChannelWithMembers
+	for rows.Next() {
+		var ch domain.ChannelWithMembers
+		if err := rows.Scan(&ch.ID, &ch.Type, &ch.Name, &ch.CreatedAt, &ch.Members); err != nil {
 			return nil, fmt.Errorf("%s: scan channel error: %w", op, err)
 		}
 		channels = append(channels, ch)
