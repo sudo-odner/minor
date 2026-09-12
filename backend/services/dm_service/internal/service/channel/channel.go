@@ -62,7 +62,7 @@ func (s *ChannelService) Members(ctx context.Context, channelID uuid.UUID) ([]uu
 	return members, nil
 }
 
-func (s *ChannelService) CreateDM(ctx context.Context, actorID, partnerID uuid.UUID) (*domain.Channel, error) {
+func (s *ChannelService) CreateDM(ctx context.Context, actorID, partnerID uuid.UUID) (*domain.ChannelWithMembers, error) {
 	const op = "serivce.channel.CreateDM"
 
 	name, err := s.userFetcher.NameByID(ctx, actorID)
@@ -75,11 +75,16 @@ func (s *ChannelService) CreateDM(ctx context.Context, actorID, partnerID uuid.U
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	channel.Name = &name
-	return channel, nil
+	return &domain.ChannelWithMembers{
+		ID:        channel.ID,
+		Type:      channel.Type,
+		Name:      &name,
+		Members:   []uuid.UUID{actorID, partnerID},
+		CreatedAt: channel.CreatedAt,
+	}, nil
 }
 
-func (s *ChannelService) CreateDMGroup(ctx context.Context, actorID uuid.UUID, name string, userIDs []uuid.UUID) (*domain.Channel, error) {
+func (s *ChannelService) CreateDMGroup(ctx context.Context, actorID uuid.UUID, name string, userIDs []uuid.UUID) (*domain.ChannelWithMembers, error) {
 	const op = "service.channel.CreateDMGroup"
 
 	channel, err := s.channelRepository.Create(ctx, domain.ChannelTypeDMGroup, &name, userIDs)
@@ -87,7 +92,13 @@ func (s *ChannelService) CreateDMGroup(ctx context.Context, actorID uuid.UUID, n
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return channel, nil
+	return &domain.ChannelWithMembers{
+		ID:        channel.ID,
+		Type:      channel.Type,
+		Name:      &name,
+		Members:   userIDs,
+		CreatedAt: channel.CreatedAt,
+	}, nil
 }
 
 func (s *ChannelService) Delete(ctx context.Context, actorID, channelID uuid.UUID) error {
@@ -100,16 +111,16 @@ func (s *ChannelService) Delete(ctx context.Context, actorID, channelID uuid.UUI
 	return nil
 }
 
-func (s *ChannelService) ByID(ctx context.Context, actorID, channelID uuid.UUID) (*domain.Channel, []uuid.UUID, error) {
+func (s *ChannelService) ByID(ctx context.Context, actorID, channelID uuid.UUID) (*domain.ChannelWithMembers, error) {
 	const op = "service.channel.ByID"
 
 	channel, err := s.channelRepository.ByID(ctx, channelID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	members, err := s.channelRepository.Members(ctx, channelID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	var access bool
@@ -119,7 +130,7 @@ func (s *ChannelService) ByID(ctx context.Context, actorID, channelID uuid.UUID)
 		}
 	}
 	if !access {
-		return nil, nil, fmt.Errorf("%s: actor not access to channel: %w", op, domain.ErrForbidden)
+		return nil, fmt.Errorf("%s: actor not access to channel: %w", op, domain.ErrForbidden)
 	}
 
 	if channel.Type == domain.ChannelTypeDM {
@@ -132,10 +143,22 @@ func (s *ChannelService) ByID(ctx context.Context, actorID, channelID uuid.UUID)
 
 		partnerName, err := s.userFetcher.NameByID(ctx, partnerID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		channel.Name = &partnerName
 	}
 
-	return channel, nil, nil
+	return &domain.ChannelWithMembers{
+		ID:        channel.ID,
+		Type:      channel.Type,
+		Name:      channel.Name,
+		Members:   members,
+		CreatedAt: channel.CreatedAt,
+	}, nil
+}
+
+func (s *ChannelService) ByUserID(ctx context.Context, actorID uuid.UUID) (*domain.ChannelWithMembers, error) {
+	const op = "serivce.channel.ByUserID"
+
+	return nil, nil
 }
