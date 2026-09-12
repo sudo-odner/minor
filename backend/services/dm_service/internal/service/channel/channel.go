@@ -91,11 +91,51 @@ func (s *ChannelService) CreateDMGroup(ctx context.Context, actorID uuid.UUID, n
 }
 
 func (s *ChannelService) Delete(ctx context.Context, actorID, channelID uuid.UUID) error {
-	const op = "service.channel.DeleteDM"
+	const op = "service.channel.Delete"
 
 	if err := s.channelRepository.Delete(ctx, channelID, actorID); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
+}
+
+func (s *ChannelService) ByID(ctx context.Context, actorID, channelID uuid.UUID) (*domain.Channel, []uuid.UUID, error) {
+	const op = "service.channel.ByID"
+
+	channel, err := s.channelRepository.ByID(ctx, channelID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", op, err)
+	}
+	members, err := s.channelRepository.Members(ctx, channelID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var access bool
+	for _, id := range members {
+		if id == actorID {
+			access = true
+		}
+	}
+	if !access {
+		return nil, nil, fmt.Errorf("%s: actor not access to channel: %w", op, domain.ErrForbidden)
+	}
+
+	if channel.Type == domain.ChannelTypeDM {
+		var partnerID uuid.UUID
+		if members[0] != actorID {
+			partnerID = members[0]
+		} else {
+			partnerID = members[1]
+		}
+
+		partnerName, err := s.userFetcher.NameByID(ctx, partnerID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: %w", op, err)
+		}
+		channel.Name = &partnerName
+	}
+
+	return channel, nil, nil
 }
