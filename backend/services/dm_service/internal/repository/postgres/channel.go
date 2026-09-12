@@ -129,7 +129,7 @@ func (r *ChannelRepository) ByUserIDWithMembers(ctx context.Context, userID uuid
 		c.id,
 		c.type,
 		c.name,
-		c.created_at.
+		c.created_at,
 		coalesce(array_agg(all_mc.user_id), '{}') as members_ids
 	from members_channel mc
 	join channels c on c.id = mc.channel_id
